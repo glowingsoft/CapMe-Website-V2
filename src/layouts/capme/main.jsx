@@ -13,7 +13,7 @@ export function Main({ children, sx, ...other }) {
         display: 'flex',
         flex: '1 1 auto',
         flexDirection: 'column',
-        bgcolor: '#F5F6F8',
+        bgcolor: '#0A0C12',
         ...sx,
       }}
       {...other}

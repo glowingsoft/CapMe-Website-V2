@@ -9,35 +9,8 @@ import { Main } from './main';
 
 function HeaderRailLogo() {
   return (
-    <Box
-      sx={{
-        width: 86,
-        height: 74,
-        display: 'grid',
-        placeItems: 'center',
-      }}
-    >
-      <Box sx={{ position: 'relative', width: 54, height: 54, display: 'grid', placeItems: 'center' }}>
-        <Iconify icon="solar:sun-2-linear" width={54} sx={{ color: '#F68B2B' }} />
-        <Box
-          sx={{
-            position: 'absolute',
-            width: 34,
-            height: 34,
-            borderRadius: '50%',
-            border: '2px solid #F68B2B',
-            color: '#F68B2B',
-            display: 'grid',
-            placeItems: 'center',
-            fontFamily: 'Varela, sans-serif',
-            fontSize: 15,
-            fontWeight: 400,
-            lineHeight: 1,
-          }}
-        >
-          ME
-        </Box>
-      </Box>
+    <Box sx={{ width: 112, height: 74, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+      <Box component="img" src="/logo/logo-single.svg" alt="Capme logo" sx={{ width: 52, height: 52 }} />
     </Box>
   );
 }
@@ -222,19 +195,19 @@ export function CapmeLayout({ children, sx, headerSlots = {}, layoutQuery = 'lg'
           <Box sx={{ width: '100%', maxWidth: '100%', mx: 0, height: 74, display: 'flex', alignItems: 'center', minWidth: 0 }}>
             <HeaderRailLogo />
 
-            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2.5, lg: 5 } }}>
-            <Box sx={{ flex: '0 1 303px', minWidth: { xs: 190, sm: 220 }, maxWidth: 303, height: 74 }}>
-              {headerSlots.leftArea || <DefaultHeaderLeft />}
-            </Box>
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2, lg: 4 } }}>
+              <Box sx={{ flex: '0 1 303px', minWidth: { xs: 190, sm: 220 }, maxWidth: 303, height: 74 }}>
+                {headerSlots.leftArea || <DefaultHeaderLeft />}
+              </Box>
 
-            <Box sx={{ flex: 1, minWidth: 0, height: 68, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2, md: '20px' } }}>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                {headerSlots.centerArea || <DefaultHeaderCenter />}
+              <Box sx={{ flex: 1, minWidth: 0, height: 68, display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 2, md: '20px' } }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {headerSlots.centerArea || <DefaultHeaderCenter />}
+                </Box>
+                <Box sx={{ flexShrink: 0 }}>
+                  {headerSlots.rightArea || <DefaultHeaderRight />}
+                </Box>
               </Box>
-              <Box sx={{ flexShrink: 0 }}>
-                {headerSlots.rightArea || <DefaultHeaderRight />}
-              </Box>
-            </Box>
             </Box>
           </Box>
         </Box>
