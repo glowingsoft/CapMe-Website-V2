@@ -8,8 +8,8 @@ export const defaultSettings = {
   colorScheme: 'light',       // 'light' | 'dark'
   direction: 'ltr',           // 'rtl' | 'ltr'
   contrast: 'default',
-  navLayout: 'vertical',      // 'vertical' | 'horizontal' | 'mini'
-  primaryColor: 'default',    // 'default' | 'cyan' | 'purple' | 'blue' | 'orange' | 'red'
+  navLayout: 'mini',      // 'vertical' | 'horizontal' | 'mini'
+  primaryColor: 'purple',    // 'default' | 'cyan' | 'purple' | 'blue' | 'orange' | 'red'
   navColor: 'integrate',
   compactLayout: true,
   fontFamily: defaultFont,    // 'Public Sans', 'Inter', 'DM Sans', 'Nunito Sans' 

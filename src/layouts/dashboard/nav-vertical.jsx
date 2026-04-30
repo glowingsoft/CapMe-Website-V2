@@ -72,7 +72,7 @@ export function NavVertical({ sx, data, slots, isNavMini, layoutQuery, onToggleN
         ...sx,
       }}
     >
-      <NavToggleButton
+      {/* <NavToggleButton
         isNavMini={isNavMini}
         onClick={onToggleNav}
         sx={{
@@ -81,7 +81,7 @@ export function NavVertical({ sx, data, slots, isNavMini, layoutQuery, onToggleN
             display: 'inline-flex',
           },
         }}
-      />
+      /> */}
       {isNavMini ? renderNavMini : renderNavVertical}
     </Box>
   );

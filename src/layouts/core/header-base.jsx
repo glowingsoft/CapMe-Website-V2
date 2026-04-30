@@ -9,7 +9,8 @@ import { RouterLink } from 'src/routes/components';
 import { Logo } from 'src/components/logo';
 
 import { HeaderSection } from './header-section';
-import { Searchbar } from '../components/searchbar';
+import CustomSearchBar from 'src/components/custom-search-bar';
+import { Icon } from '@iconify/react';
 import { MenuButton } from '../components/menu-button';
 import { SignInButton } from '../components/sign-in-button';
 import { AccountDrawer } from '../components/account-drawer';
@@ -18,6 +19,37 @@ import { LanguagePopover } from '../components/language-popover';
 import { ContactsPopover } from '../components/contacts-popover';
 import { WorkspacesPopover } from '../components/workspaces-popover';
 import { NotificationsDrawer } from '../components/notifications-drawer';
+
+// CapmeBox styled component
+const CapmeBox = styled(Box)(({ theme }) => ({
+  background: '#232323',
+  borderRadius: 8,
+  padding: theme.spacing(1, 2),
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 120,
+  marginRight: theme.spacing(2),
+}));
+
+const CapmeTitle = styled('span')(({ theme }) => ({
+  color: '#fff',
+  fontWeight: 600,
+  fontSize: 16,
+  marginBottom: 2,
+}));
+
+const CapmeTokens = styled('span')(({ theme }) => ({
+  color: '#FF9900',
+  fontWeight: 700,
+  fontSize: 28,
+  marginLeft: theme.spacing(1),
+}));
+
+const CapmeSubtitle = styled('span')(({ theme }) => ({
+  color: '#bdbdbd',
+  fontSize: 12,
+  marginTop: 2,
+}));
 
 // ----------------------------------------------------------------------
 
@@ -76,7 +108,11 @@ export function HeaderBase({
 
   return (
     <HeaderSection
-      sx={sx}
+      sx={{
+        background: '#141414',
+        py: 1,
+        ...sx,
+      }}
       layoutQuery={layoutQuery}
       slots={{
         ...slots,
@@ -84,6 +120,17 @@ export function HeaderBase({
         leftArea: (
           <>
             {slots?.leftAreaStart}
+
+            {/* -- Capme Box -- */}
+            <CapmeBox>
+              <Box sx={{ py: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '15rem' }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                  <CapmeTitle>Capme</CapmeTitle>
+                  <CapmeSubtitle>Available Tokens</CapmeSubtitle>
+                </Box>
+                <CapmeTokens>{data?.tokens ?? 42}</CapmeTokens>
+              </Box>
+            </CapmeBox>
 
             {/* -- Menu button -- */}
             {menuButton && (
@@ -120,17 +167,20 @@ export function HeaderBase({
                 display: 'flex',
                 alignItems: 'center',
                 gap: { xs: 1, sm: 1.5 },
+                width: '100%',
+                maxWidth: 600,
               }}
             >
+              {/* -- Searchbar -- */}
+              {searchbar && (
+                <Box sx={{ flex: 1, mr: 2 }}>
+                  <CustomSearchBar placeholder="Search Here.." />
+                </Box>
+              )}
+
               {/* -- Help link -- */}
               {helpLink && (
-                <Link
-                  data-slot="help-link"
-                  href={paths.faqs}
-                  component={RouterLink}
-                  color="inherit"
-                  sx={{ typography: 'subtitle2' }}
-                >
+                <Link data-slot="help-link" href={paths.faqs} component={RouterLink} color="inherit" sx={{ typography: 'subtitle2' }}>
                   Need help?
                 </Link>
               )}

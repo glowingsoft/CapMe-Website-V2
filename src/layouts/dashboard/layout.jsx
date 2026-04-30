@@ -145,6 +145,9 @@ export function DashboardLayout({ sx, children, data }) {
             <NavVertical
               data={navData}
               isNavMini={isNavMini}
+              sx={{
+                background: '#141414',
+              }}
               layoutQuery={layoutQuery}
               cssVars={navColorVars.section}
               onToggleNav={() => settings.onUpdateField('navLayout', settings.navLayout === 'vertical' ? 'mini' : 'vertical')}

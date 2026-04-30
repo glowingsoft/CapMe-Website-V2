@@ -74,6 +74,8 @@ const PermissionDeniedPage = lazy(() => import('src/pages/dashboard/permission')
 // Blank page
 const ParamsPage = lazy(() => import('src/pages/dashboard/params'));
 const BlankPage = lazy(() => import('src/pages/dashboard/blank'));
+//
+const HomePage = lazy(() => import('src/pages/dashboard/home'));
 
 // ----------------------------------------------------------------------
 
@@ -91,7 +93,7 @@ export const dashboardRoutes = [
     // element: CONFIG.auth.skip ? <>{layoutContent}</> : <>{layoutContent}</>,
     element: CONFIG.auth.skip ? <>{layoutContent}</> : <ProtectedRoute requiredPermission={[2]}>{layoutContent}</ProtectedRoute>,
     children: [
-      { element: <IndexPage />, index: true },
+      { element: <HomePage />, index: true },
       { path: 'ecommerce', element: <OverviewEcommercePage /> },
       { path: 'analytics', element: <OverviewAnalyticsPage /> },
       { path: 'banking', element: <OverviewBankingPage /> },
