@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -7,19 +7,52 @@ import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import { Iconify } from 'src/components/iconify';
 
-export default function LeftDrawer({ open, onToggle, roomsData }) {
-  // Responsive width
+export default function LeftDrawer({ open, onToggle, roomsData, activeRoomId, onRoomSelect }) {
+  const [tab, setTab] = useState('all');
+  const [favourite, setFavourite] = useState(roomsData.favourite);
+  const [other, setOther] = useState(roomsData.other);
+
+  const handleToggleFavourite = (room, isFav) => {
+    if (isFav) {
+      setFavourite((prev) => prev.filter((r) => r.id !== room.id));
+      setOther((prev) => [...prev, room]);
+    } else {
+      setOther((prev) => prev.filter((r) => r.id !== room.id));
+      setFavourite((prev) => [...prev, room]);
+    }
+  };
+
+  const handleRoomClick = (room) => {
+    if (onRoomSelect) onRoomSelect(room);
+  };
+
   const drawerWidth = open ? 420 : 0;
+
+  let roomList = [];
+  if (tab === 'all') {
+    roomList = [
+      { label: 'Starred Rooms', data: favourite, isFav: true },
+      { label: 'Rooms', data: other, isFav: false },
+    ];
+  } else if (tab === 'myRooms') {
+    roomList = [
+      { label: 'My Rooms', data: roomsData.myRooms || [], isFav: false },
+    ];
+  } else if (tab === 'following') {
+    roomList = [
+      { label: 'Following', data: roomsData.following || [], isFav: false },
+    ];
+  }
 
   return (
     <>
-      {/* Floating Toggle Button (always visible, position depends on open state) */}
+      {/* Floating Toggle Button */}
       <IconButton
         onClick={onToggle}
         sx={{
           position: 'fixed',
-          top: 120, // 105 + 24 (matches old top + button offset)
-          left: open ? 88 + (open ? drawerWidth || 420 : 0) - 24 : 70, // When open, place at drawer edge; when closed, at left edge
+          top: 120,
+          left: open ? 88 + drawerWidth - 24 : 70,
           bgcolor: '#4C4EFF',
           color: '#fff',
           width: 35,
@@ -40,90 +73,177 @@ export default function LeftDrawer({ open, onToggle, roomsData }) {
         sx={{
           width: drawerWidth,
           minWidth: open ? 420 : 0,
-          maxWidth: 340,
           transition: 'width 0.3s cubic-bezier(.4,0,.2,1)',
           bgcolor: '#18181B',
           color: '#fff',
-          height: '100vh',
+          height: 'calc(100vh - 105px)',  // ← exact height, no overflow onto page
           position: 'fixed',
           top: 105,
           left: 88,
           zIndex: 1200,
           boxShadow: open ? '2px 0 16px 0 rgba(0,0,0,0.10)' : 'none',
           borderTopRightRadius: 32,
-          borderBottomRightRadius: 0,
           overflow: 'hidden',
           display: { xs: 'none', md: 'block' },
         }}
       >
-        {/* Drawer Content */}
-        {open && (
-          <Box sx={{ p: 3, pt: 4 }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-              Rooms
-            </Typography>
-            <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
-              Discover and manage your rooms.
-            </Typography>
-            {/* Tabs */}
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-              <Button variant="contained" size="small" sx={{ bgcolor: '#4C4EFF', borderRadius: 2, fontWeight: 700, fontSize: 13, px: 2, py: 0.5, minWidth: 0 }}>
-                All {roomsData.allCount}
-              </Button>
-              <Button variant="text" size="small" sx={{ color: '#fff', fontWeight: 500, fontSize: 13, px: 1, minWidth: 0 }}>
-                My Rooms {roomsData.myRooms}
-              </Button>
-              <Button variant="text" size="small" sx={{ color: '#fff', fontWeight: 500, fontSize: 13, px: 1, minWidth: 0 }}>
-                Following {roomsData.following}
-              </Button>
-            </Stack>
-            {/* Favourite Rooms */}
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1, mt: 2 }}>
-              <Typography fontWeight={600} fontSize={15}>
-                Favourite Rooms
-              </Typography>
-              <Button variant="text" size="small" sx={{ color: '#bdbdbd', fontSize: 12, fontWeight: 500, minWidth: 0, p: 0 }}>
-                View All
-              </Button>
-            </Stack>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {open && (
+            <>
+              {/* Fixed header */}
+              <Box sx={{ p: 3, pt: 4, flexShrink: 0 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+                  Rooms
+                </Typography>
+                <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
+                  Discover and manage your rooms.
+                </Typography>
 
-            <Stack spacing={0.3} sx={{ mb: 2 }}>
-              {roomsData.favourite.map((room) => (
-                <Stack key={room.id} direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.2 }}>
-                  <Avatar src={room.icon} sx={{ width: 38, height: 38, mr: 1 }} />
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography fontWeight={600} fontSize={15}>
-                      {room.name}
-                    </Typography>
-                    <Typography fontSize={12} color="#bdbdbd">
-                      {room.desc}
-                    </Typography>
-                  </Box>
-                  <Iconify icon="ph:heart-fill" width={18} style={{ color: '#e53935' }} />
+                {/* Tabs */}
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                  {[
+                    { key: 'all', label: `All ${roomsData.allCount}` },
+                    { key: 'myRooms', label: `My Rooms ${roomsData.myRoomsCount ?? 0}` },
+                    { key: 'following', label: `Following ${roomsData.followingCount ?? 0}` },
+                  ].map((t) => (
+                    <Button
+                      key={t.key}
+                      variant={tab === t.key ? 'contained' : 'text'}
+                      size="small"
+                      onClick={() => setTab(t.key)}
+                      sx={{
+                        bgcolor: tab === t.key ? '#4C4EFF' : 'transparent',
+                        color: '#fff',
+                        borderRadius: 2,
+                        fontWeight: tab === t.key ? 700 : 500,
+                        fontSize: 13,
+                        px: 2,
+                        py: 0.5,
+                        minWidth: 0,
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: tab === t.key ? '#3b3bd6' : 'rgba(255,255,255,0.08)' },
+                      }}
+                    >
+                      {t.label}
+                    </Button>
+                  ))}
                 </Stack>
-              ))}
-            </Stack>
-            {/* Other Rooms */}
-            <Typography fontWeight={600} fontSize={15} sx={{ mb: 1, mt: 2 }}>
-              Other Rooms
-            </Typography>
-            <Stack spacing={0.3}>
-              {roomsData.other.map((room) => (
-                <Stack key={room.id} direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.2 }}>
-                  <Avatar src={room.icon} sx={{ width: 38, height: 38, mr: 1 }} />
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Typography fontWeight={600} fontSize={15}>
-                      {room.name}
-                    </Typography>
-                    <Typography fontSize={12} color="#bdbdbd">
-                      {room.desc}
-                    </Typography>
-                  </Box>
-                </Stack>
-              ))}
-            </Stack>
-          </Box>
-        )}
+              </Box>
+
+              {/* Scrollable room list */}
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  overflowY: 'auto',
+                  px: 3,
+                  pb: 3,
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: 'rgba(255,255,255,0.1) transparent',
+                  '&::-webkit-scrollbar': { width: '3px' },
+                  '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(255,255,255,0.08)',
+                    borderRadius: '10px',
+                  },
+                  '&:hover::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(255,255,255,0.25)',
+                  },
+                }}
+              >
+                {roomList.map((section) => (
+                  <React.Fragment key={section.label}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ mb: 1, mt: 2 }}
+                    >
+                      <Typography fontWeight={600} fontSize={15}>
+                        {section.label}
+                      </Typography>
+                    </Stack>
+
+                    <Stack spacing={0.3} sx={{ mb: 2 }}>
+                      {section.data.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 3, color: '#bdbdbd', fontSize: 14 }}>
+                          No rooms found.
+                        </Box>
+                      ) : (
+                        section.data.map((room) => (
+                          <Stack
+                            key={room.id}
+                            direction="row"
+                            alignItems="center"
+                            spacing={1.5}
+                            sx={{
+                              p: 1.2,
+                              cursor: 'pointer',
+                              borderRadius: 2,
+                              bgcolor: activeRoomId === room.id ? '#4C4EFF' : 'transparent',
+                              border: activeRoomId === room.id ? '1px solid #4C4EFF' : '1px solid transparent',
+                              transition: 'all 0.15s',
+                              '&:hover': {
+                                bgcolor: activeRoomId === room.id ? '#4C4EFF' : 'rgba(255,255,255,0.06)',
+                              },
+                            }}
+                            onClick={() => handleRoomClick(room)}
+                          >
+                            <Avatar
+                              src={room.icon || undefined}   // ← undefined forces fallback, empty string doesn't
+                              sx={{
+                                width: 38,
+                                height: 38,
+                                mr: 1,
+                                bgcolor: activeRoomId === room.id ? 'rgba(255,255,255,0.2)' : '#3f3f46',
+                                fontSize: 15,
+                                fontWeight: 700,
+                                color: '#fff',
+                              }}
+                            >
+                              {room.name?.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                              <Typography
+                                fontWeight={600}
+                                fontSize={15}
+                                color={activeRoomId === room.id ? '#fff' : 'inherit'}
+                                noWrap
+                              >
+                                {room.name}
+                              </Typography>
+                              <Typography
+                                fontSize={12}
+                                color={activeRoomId === room.id ? '#e0e0e0' : '#bdbdbd'}
+                                noWrap
+                              >
+                                {room.desc}
+                              </Typography>
+                            </Box>
+                            {section.isFav ? (
+                              <IconButton
+                                onClick={(e) => { e.stopPropagation(); handleToggleFavourite(room, true); }}
+                                sx={{ p: 0.5 }}
+                              >
+                                <Iconify icon="meteocons:star-fill" width={28} style={{ color: '#e53935' }} />
+                              </IconButton>
+                            ) : (
+                              <IconButton
+                                onClick={(e) => { e.stopPropagation(); handleToggleFavourite(room, false); }}
+                                sx={{ p: 0.5 }}
+                              >
+                                <Iconify icon="meteocons:star" width={28} style={{ color: '#bdbdbd' }} />
+                              </IconButton>
+                            )}
+                          </Stack>
+                        ))
+                      )}
+                    </Stack>
+                  </React.Fragment>
+                ))}
+              </Box>
+            </>
+          )}
+        </Box>
       </Box>
     </>
   );

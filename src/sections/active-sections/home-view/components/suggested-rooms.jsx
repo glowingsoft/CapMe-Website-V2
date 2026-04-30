@@ -44,7 +44,7 @@ export default function SuggestedRooms({ rooms }) {
               secondary={room.desc}
               secondaryTypographyProps={{ fontSize: 12, color: 'text.secondary' }}
             />
-            <Iconify icon="solar:heart-linear" width={18} style={{ color: '#888', cursor: 'pointer' }} />
+            <Iconify icon="meteocons:star" width={24} style={{ color: '#888', cursor: 'pointer' }} />
           </ListItem>
         ))}
       </List>

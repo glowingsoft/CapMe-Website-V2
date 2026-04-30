@@ -48,7 +48,7 @@ const mockLogin = async (payload) => {
       basicInfo: {
         _id: '692c5523e446ec147ce153aa',
         profileIcon: 'https://dummybucket.s3.us-east-1.amazonaws.com/noimage.png',
-        name: payload.userType === 'admin' ? 'Admin User' : 'Suheer',
+        name: payload.userType === 'admin' ? 'Admin User' : 'Hashir',
         email: payload.email,
         phoneNumber: null,
         language: 'en',

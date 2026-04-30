@@ -1,1 +1,1 @@
-export * from './confirm-dialog';
+export { default as ConfirmModal } from './confirm-modal';

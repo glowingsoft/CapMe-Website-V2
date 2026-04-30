@@ -1,11 +1,11 @@
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
-import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React from 'react';
 import { Iconify } from 'src/components/iconify';
+import DrawerHeader from './drawer-header';
 
 export default function CommentDrawer({ open, onClose, selectedPost, commentsData }) {
   return (
@@ -13,24 +13,29 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
       anchor="right"
       open={open}
       onClose={onClose}
+      hideBackdrop
+      disableEnforceFocus
+      disableAutoFocus
+      disableScrollLock
+      ModalProps={{ sx: { pointerEvents: 'none' } }}
       PaperProps={{
         sx: {
-          width: 450,
+          width: 420,
           borderTopLeftRadius: 20,
-          mt: 13,
+          mt: '105px',
+          height: 'calc(100vh - 105px)',
           bgcolor: '#fff',
           p: 0,
+          pointerEvents: 'auto',
         },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', px: 2, py: 2, borderBottom: '1px solid #eee' }}>
-        <IconButton onClick={onClose} sx={{ mr: 1 }}>
-          <Iconify icon="mingcute:close-line" width={24} />
-        </IconButton>
-        <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1 }}>
-          Comment
-        </Typography>
-      </Box>
+      <DrawerHeader
+        title="Comment"
+        onBack={onClose}
+        showEdit={false}
+        showShare={false}
+      />
       {selectedPost && (
         <Box sx={{ px: 2, py: 2 }}>
           {/* Main comment (post) */}

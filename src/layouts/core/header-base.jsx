@@ -20,6 +20,8 @@ import { ContactsPopover } from '../components/contacts-popover';
 import { WorkspacesPopover } from '../components/workspaces-popover';
 import { NotificationsDrawer } from '../components/notifications-drawer';
 
+
+
 // CapmeBox styled component
 const CapmeBox = styled(Box)(({ theme }) => ({
   background: '#232323',
@@ -204,6 +206,9 @@ export function HeaderBase({
 
               {/* -- Account drawer -- */}
               {account && <AccountDrawer data-slot="account" data={data?.account} />}
+
+              {/* -- Profile drawer --
+              {account && <ProfileDrawer data-slot="account" data={data?.account} />}  */}
 
               {/* -- Sign in button -- */}
               {signIn && <SignInButton />}

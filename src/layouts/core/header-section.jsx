@@ -57,9 +57,8 @@ export function HeaderSection({
       },
     },
     offset: {
-      ...bgBlur({
-        color: varAlpha(theme.vars.palette.background.defaultChannel, 0.8),
-      }),
+      backgroundColor: '#141414',
+      backdropFilter: 'none',
     },
   };
 
