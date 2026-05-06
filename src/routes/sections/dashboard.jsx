@@ -74,6 +74,13 @@ const PermissionDeniedPage = lazy(() => import('src/pages/dashboard/permission')
 // Blank page
 const ParamsPage = lazy(() => import('src/pages/dashboard/params'));
 const BlankPage = lazy(() => import('src/pages/dashboard/blank'));
+// Settings pages
+const SettingsLanguagePage = lazy(() => import('src/pages/dashboard/active-routes/settings/language'));
+const SettingsContactPage = lazy(() => import('src/pages/dashboard/active-routes/settings/contact'));
+const SettingsTermsPage = lazy(() => import('src/pages/dashboard/active-routes/settings/terms'));
+const SettingsPrivacyPage = lazy(() => import('src/pages/dashboard/active-routes/settings/privacy'));
+const SubscriptionPage = lazy(() => import('src/pages/dashboard/active-routes/settings/subscription'));
+const SettingsKnowledgeGraphPage = lazy(() => import('src/pages/dashboard/active-routes/settings/knowledge-graph'));
 //
 const HomePage = lazy(() => import('src/pages/dashboard/home'));
 
@@ -89,11 +96,15 @@ const layoutContent = (
 
 export const dashboardRoutes = [
   {
-    path: 'dashboard',
+    path: 'home',
     // element: CONFIG.auth.skip ? <>{layoutContent}</> : <>{layoutContent}</>,
     element: CONFIG.auth.skip ? <>{layoutContent}</> : <ProtectedRoute requiredPermission={[2]}>{layoutContent}</ProtectedRoute>,
     children: [
       { element: <HomePage />, index: true },
+      { path: 'explore', element: <OverviewEcommercePage /> },
+      { path: 'activity-feed', element: <OverviewAnalyticsPage /> },
+      { path: 'chat-me', element: <OverviewBankingPage /> },
+      { path: 'notifications', element: <SamplePage /> },
       { path: 'ecommerce', element: <OverviewEcommercePage /> },
       { path: 'analytics', element: <OverviewAnalyticsPage /> },
       { path: 'banking', element: <OverviewBankingPage /> },
@@ -182,6 +193,18 @@ export const dashboardRoutes = [
       { path: 'permission', element: <PermissionDeniedPage /> },
       { path: 'params', element: <ParamsPage /> },
       { path: 'blank', element: <BlankPage /> },
+      {
+        path: 'settings',
+        children: [
+          { element: <BlankPage />, index: true },
+          { path: 'language', element: <SettingsLanguagePage /> },
+          { path: 'contact', element: <SettingsContactPage /> },
+          { path: 'terms', element: <SettingsTermsPage /> },
+          { path: 'privacy', element: <SettingsPrivacyPage /> },
+          { path: 'knowledge-graph', element: <SettingsKnowledgeGraphPage /> },
+          { path: 'subscription', element: <SubscriptionPage /> },
+        ],
+      },
     ],
   },
 ];

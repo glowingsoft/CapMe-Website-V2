@@ -19,7 +19,8 @@ export function RHFCode({ name, ...other }) {
             autoFocus
             gap={1.5}
             length={6}
-            TextFieldsProps={{ error: !!error, placeholder: '-' }}
+            validateChar={(char) => /^\d$/.test(char)}
+            TextFieldsProps={{ error: !!error, placeholder: '-', inputMode: 'numeric' }}
             {...other}
           />
 

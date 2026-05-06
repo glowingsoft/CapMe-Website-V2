@@ -1,6 +1,7 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 
@@ -18,6 +19,8 @@ export default function ConfirmModal({
     confirmColor = '#C40000',
     children,
 }) {
+    const iconBg = getSoftIconBg(iconColor);
+
     return (
         <Dialog
             open={open}
@@ -26,93 +29,94 @@ export default function ConfirmModal({
             fullWidth
             PaperProps={{
                 sx: {
-                    borderRadius: 3,
-                    px: 4,
-                    py: 4,
-                    textAlign: 'center',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.22)',
+                    borderRadius: 4,
+                    boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+                    overflow: 'hidden',
                 },
             }}
             BackdropProps={{
                 sx: {
                     bgcolor: 'rgba(15, 15, 20, 0.55)',
-                    backdropFilter: 'blur(3px)',
+                    backdropFilter: 'blur(4px)',
                 },
             }}
         >
-            {/* Icon */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2.5 }}>
+            <Box sx={{ px: 3, pt: 3.5, pb: 3, textAlign: 'center' }}>
                 <Box
                     sx={{
-                        width: 78,
-                        height: 78,
+                        width: 64,
+                        height: 64,
                         borderRadius: '50%',
-                        bgcolor: iconColor,
+                        bgcolor: iconBg,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: `0 12px 28px ${iconColor}44`,
+                        mx: 'auto',
+                        mb: 2,
                     }}
                 >
-                    <Iconify icon={icon} width={46} sx={{ color: '#fff' }} />
+                    <Iconify icon={icon} width={30} sx={{ color: iconColor }} />
                 </Box>
+
+                <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}>
+                    {title}
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: children ? 2 : 3 }}>
+                    {description}
+                </Typography>
+
+                {children}
+
+                <Stack direction="row" spacing={1.5} sx={{ mt: 3 }}>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        disabled={loading}
+                        onClick={onClose}
+                        sx={{
+                            borderColor: 'rgba(0,0,0,0.15)',
+                            color: 'text.primary',
+                            borderRadius: 2,
+                            py: 1.2,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
+                        }}
+                    >
+                        {cancelLabel}
+                    </Button>
+
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        disabled={loading}
+                        onClick={onConfirm}
+                        sx={{
+                            bgcolor: confirmColor,
+                            color: '#fff',
+                            borderRadius: 2,
+                            py: 1.2,
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: confirmColor, filter: 'brightness(0.88)', boxShadow: 'none' },
+                            '&.Mui-disabled': { bgcolor: confirmColor, color: '#fff', opacity: 0.45 },
+                        }}
+                    >
+                        {loading ? `${confirmLabel}...` : confirmLabel}
+                    </Button>
+                </Stack>
             </Box>
-
-            <Typography sx={{ fontSize: 26, fontWeight: 800, color: '#514BFF', mb: 1.5 }}>
-                {title}
-            </Typography>
-
-            <Typography sx={{ fontSize: 16, color: '#666', lineHeight: 1.6 }}>
-                {description}
-            </Typography>
-
-            {children}
-
-            <Button
-                fullWidth
-                disabled={loading}
-                onClick={onConfirm}
-                sx={{
-                    height: 52,
-                    borderRadius: 2,
-                    bgcolor: confirmColor,
-                    color: '#fff',
-                    fontSize: 16,
-                    fontWeight: 700,
-                    textTransform: 'none',
-                    boxShadow: `0 12px 28px ${confirmColor}66`,
-                    mt: 3,
-                    '&:hover': {
-                        bgcolor: confirmColor,
-                        opacity: 0.9,
-                    },
-                    '&.Mui-disabled': {
-                        bgcolor: confirmColor,
-                        color: '#fff',
-                        opacity: 0.6,
-                    },
-                }}
-            >
-                {loading ? `${confirmLabel}...` : confirmLabel}
-            </Button>
-
-            <Button
-                disabled={loading}
-                onClick={onClose}
-                sx={{
-                    mt: 1.5,
-                    color: '#777',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&:hover': {
-                        bgcolor: 'transparent',
-                        color: '#444',
-                    },
-                }}
-            >
-                {cancelLabel}
-            </Button>
         </Dialog>
     );
+}
+
+function getSoftIconBg(hexColor) {
+    const hex = (hexColor || '').replace('#', '');
+    if (hex.length !== 6) return 'rgba(76,78,255,0.10)';
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, 0.10)`;
 }

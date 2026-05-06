@@ -1,12 +1,13 @@
 import { Helmet } from 'react-helmet-async';
+import { RHFCheckbox } from 'src/components/hook-form';
 
 import { CONFIG } from 'src/config-global';
 
-import { OrderListView } from 'src/sections/order/view';
+import NotificationsView from 'src/sections/active-sections/notifications-view/notifications-view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Sample | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Notifications | Dashboard - ${CONFIG.site.name}` };
 
 export default function Page() {
   return (
@@ -15,7 +16,9 @@ export default function Page() {
         <title> {metadata.title}</title>
       </Helmet>
 
-      <OrderListView />
+      <NotificationsView />
     </>
   );
 }
+
+

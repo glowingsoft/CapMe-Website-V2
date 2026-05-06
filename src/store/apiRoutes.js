@@ -15,4 +15,9 @@ export const API_ROUTES = {
 
     CATEGORIES: '/categories',
     CATEGORIES_BY_ID: (id) => `/categories/${id}`,
+
+    ROOMS: '/rooms',
+    ROOMS_BY_ID: (id) => `/rooms/${id}`,
+    ROOMS_FOLLOW: (id) => `/rooms/${id}/follow`,
+    ROOMS_UNFOLLOW: (id) => `/rooms/${id}/follow`,
 };

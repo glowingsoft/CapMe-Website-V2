@@ -149,6 +149,8 @@ const StyledNavItem = styled(ButtonBase, {
       padding: 'var(--nav-item-root-padding)',
       [`& .${navSectionClasses.item.icon}`]: {
         ...baseStyles.icon,
+        width: 28,
+        height: 28,
         margin: 'var(--nav-icon-root-margin)',
       },
       [`& .${navSectionClasses.item.title}`]: {
@@ -173,13 +175,24 @@ const StyledNavItem = styled(ButtonBase, {
       [`& .${navSectionClasses.item.info}`]: { ...baseStyles.info },
       // State
       ...(active && {
-        color: 'var(--nav-item-root-active-color)',
-        backgroundColor: 'var(--nav-item-root-active-bg)',
-        '&:hover': {
-          backgroundColor: 'var(--nav-item-root-active-hover-bg)',
+        color: '#fff',
+        backgroundColor: 'transparent',
+        '&:hover': { backgroundColor: 'transparent' },
+        [`& .${navSectionClasses.item.icon}`]: {
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          backgroundColor: '#4C4EFF',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          margin: '0 0 6px 0',
         },
-        [stylesMode.dark]: {
-          color: 'var(--nav-item-root-active-color-on-dark)',
+        [`& .${navSectionClasses.item.title}`]: {
+          fontWeight: 'semibold',
+          color: '#fff',
+          fontSize: theme.typography.pxToRem(11),
         },
       }),
       ...(open && {

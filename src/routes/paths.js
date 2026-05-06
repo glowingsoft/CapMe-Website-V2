@@ -11,7 +11,7 @@ const MOCK_TITLE = _postTitles[2];
 const ROOTS = {
   AUTH: '/auth',
   AUTH_DEMO: '/auth-demo',
-  DASHBOARD: '/dashboard',
+  DASHBOARD: '/home',
   ADMIN_DASHBOARD: '/admin-dashboard',
   SUPER_ADMIN_DASHBOARD: '/super-admin-dashboard',
 };
@@ -112,6 +112,20 @@ export const paths = {
     income: `${ROOTS.DASHBOARD}/category/income`,
     expense: `${ROOTS.DASHBOARD}/category/expense`,
     profile: `${ROOTS.DASHBOARD}/profile`,
+    explore: `${ROOTS.DASHBOARD}/explore`,
+    activityFeed: `${ROOTS.DASHBOARD}/activity-feed`,
+    chatMe: `${ROOTS.DASHBOARD}/chat-me`,
+    notifications: `${ROOTS.DASHBOARD}/notifications`,
+    settings: {
+      root: `${ROOTS.DASHBOARD}/settings`,
+      language: `${ROOTS.DASHBOARD}/settings/language`,
+      contact: `${ROOTS.DASHBOARD}/settings/contact`,
+      terms: `${ROOTS.DASHBOARD}/settings/terms`,
+      privacy: `${ROOTS.DASHBOARD}/settings/privacy`,
+      knowledgeGraph: `${ROOTS.DASHBOARD}/settings/knowledge-graph`,
+    subscription: `${ROOTS.DASHBOARD}/settings/subscription`,
+    },
+    
     // category: {
     //   app: `${ROOTS.DASHBOARD}/app`,
     //   income: `${ROOTS.DASHBOARD}/income`,

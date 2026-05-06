@@ -27,9 +27,7 @@ const authJwt = {
       path: 'sign-in',
       element: (
         <GuestGuard>
-          <AuthSplitLayout section={{ title: 'Hi, Welcome back' }}>
-            <Jwt.SignInPage />
-          </AuthSplitLayout>
+          <Jwt.SignInPage />
         </GuestGuard>
       ),
     },
@@ -37,9 +35,7 @@ const authJwt = {
       path: 'sign-up',
       element: (
         <GuestGuard>
-          <AuthSplitLayout>
-            <Jwt.SignUpPage />
-          </AuthSplitLayout>
+          <Jwt.SignUpPage />
         </GuestGuard>
       ),
     },
@@ -47,9 +43,7 @@ const authJwt = {
       path: 'forget-password',
       element: (
         <GuestGuard>
-          <AuthSplitLayout>
-            <Jwt.ForgetPasswordPage />
-          </AuthSplitLayout>
+          <Jwt.ForgetPasswordPage />
         </GuestGuard>
       ),
     },
@@ -57,9 +51,7 @@ const authJwt = {
       path: 'verify-password',
       element: (
         <GuestGuard>
-          <AuthSplitLayout>
-            <Jwt.VerifyPasswordPage />
-          </AuthSplitLayout>
+          <Jwt.VerifyPasswordPage />
         </GuestGuard>
       ),
     },
@@ -67,9 +59,7 @@ const authJwt = {
       path: 'reset-password',
       element: (
         <GuestGuard>
-          <AuthSplitLayout>
-            <Jwt.ResetPasswordPage />
-          </AuthSplitLayout>
+          <Jwt.ResetPasswordPage />
         </GuestGuard>
       ),
     },

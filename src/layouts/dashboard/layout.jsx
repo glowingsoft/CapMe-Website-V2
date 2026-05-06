@@ -16,6 +16,7 @@ import { useSettingsContext } from 'src/components/settings';
 import { useSelector } from 'react-redux';
 
 import { Main } from './main';
+import GlobalDrawers from '../components/global-drawers';
 import { NavMobile } from './nav-mobile';
 import { layoutClasses } from '../classes';
 import { NavVertical } from './nav-vertical';
@@ -185,6 +186,7 @@ export function DashboardLayout({ sx, children, data }) {
           ...sx,
         }}
       >
+        <GlobalDrawers />
         <Main isNavHorizontal={isNavHorizontal}>{children}</Main>
       </LayoutSection>
     </>

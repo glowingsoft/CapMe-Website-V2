@@ -90,7 +90,8 @@ export const NavItem = forwardRef(
 
         {hasChild && (
           <Iconify
-            width={16}
+            width={undefined}
+            sx={{ width: 'var(--nav-icon-size)', height: 'var(--nav-icon-size)' }}
             icon={navItem.subItem ? 'eva:arrow-ios-forward-fill' : 'eva:arrow-ios-downward-fill'}
             className={navSectionClasses.item.arrow}
           />

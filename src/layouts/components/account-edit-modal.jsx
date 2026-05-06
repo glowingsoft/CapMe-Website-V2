@@ -68,7 +68,8 @@ export default function AccountEditModal({ open, onClose, user, onSave }) {
                                 width: 96 + size,
                                 height: 96 + size,
                                 borderRadius: '50%',
-                                border: `1px solid rgba(0,0,0,${i === 0 ? 0.35 : 0.10 - i * 0.02})`,
+                                border: `1px solid rgba(76,78,255,${i === 0 ? 0.35 : 0.14 - i * 0.02})`,
+
                                 pointerEvents: 'none',
                             }}
                         />
@@ -80,7 +81,7 @@ export default function AccountEditModal({ open, onClose, user, onSave }) {
                         sx={{
                             width: 96,
                             height: 96,
-                            bgcolor: '#d0d0d0',
+                            bgcolor: '#4C4EFF',
                             fontSize: 36,
                             fontWeight: 700,
                             position: 'relative',

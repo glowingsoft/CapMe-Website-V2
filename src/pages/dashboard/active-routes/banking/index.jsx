@@ -2,11 +2,11 @@ import { Helmet } from 'react-helmet-async';
 
 import { CONFIG } from 'src/config-global';
 
-import { OverviewBankingView } from 'src/sections/overview/banking/view';
+import ChatMeView from 'src/sections/active-sections/chat-me-view/chat-me-view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Chat Me | Dashboard - ${CONFIG.site.name}` };
 
 export default function Page() {
   return (
@@ -15,7 +15,7 @@ export default function Page() {
         <title> {metadata.title}</title>
       </Helmet>
 
-      <OverviewBankingView />
+      <ChatMeView />
     </>
   );
 }

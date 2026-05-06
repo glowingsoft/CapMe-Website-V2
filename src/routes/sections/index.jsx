@@ -27,22 +27,7 @@ export function Router() {
   return useRoutes([
     {
       path: '/',
-      /**
-       * Skip home page
-       * element: <Navigate to={CONFIG.auth.redirectPath} replace />,
-       */
-      element: (
-        // <Suspense fallback={<SplashScreen />}>
-        //   <MainLayout>
-        //     <HomePage />
-        //   </MainLayout>
-        // </Suspense>
-        <GuestGuard>
-          <AuthSplitLayout section={{ title: 'Hi, Welcome back' }}>
-            <Jwt.SignInPage />
-          </AuthSplitLayout>
-        </GuestGuard>
-      ),
+      element: <Navigate to="/auth/sign-in" replace />,
     },
 
     // Auth

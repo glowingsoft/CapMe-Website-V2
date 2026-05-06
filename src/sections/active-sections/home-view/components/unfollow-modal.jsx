@@ -11,7 +11,19 @@ export default function UnfollowModal({
   onConfirm,
   roomName = 'this room',
   loading = false,
+  // report / feedback mode
+  title = 'Confirmation',
+  description,
+  confirmLabel,
+  confirmColor = '#C40000',
+  icon = 'material-symbols:priority-high-rounded',
+  iconBgColor = '#C40000',
+  feedback,
+  onFeedbackChange,
 }) {
+  const isReportMode = feedback !== undefined;
+  const iconBg = getSoftIconBg(iconBgColor);
+
   return (
     <Dialog
       open={open}
@@ -20,117 +32,124 @@ export default function UnfollowModal({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          px: 4,
-          py: 4,
-          textAlign: 'center',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.22)',
+          borderRadius: 4,
+          boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+          overflow: 'hidden',
         },
       }}
       BackdropProps={{
         sx: {
           bgcolor: 'rgba(15, 15, 20, 0.55)',
-          backdropFilter: 'blur(3px)',
+          backdropFilter: 'blur(4px)',
         },
       }}
     >
-      {/* Icon */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2.5 }}>
+      <Box sx={{ px: 3, pt: 3.5, pb: 3, textAlign: 'center' }}>
         <Box
           sx={{
-            width: 78,
-            height: 78,
+            width: 64,
+            height: 64,
             borderRadius: '50%',
-            bgcolor: '#C40000',
+            bgcolor: iconBg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 12px 28px rgba(196,0,0,0.22)',
+            mx: 'auto',
+            mb: 2,
           }}
         >
-          <Iconify
-            icon="material-symbols:priority-high-rounded"
-            width={46}
-            sx={{ color: '#fff' }}
-          />
+          <Iconify icon={icon} width={30} sx={{ color: iconBgColor }} />
+        </Box>
+
+        <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}>
+          {title}
+        </Typography>
+
+        {isReportMode ? (
+          <>
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 2.5 }}>
+              {description ?? `Please share your feedback about "${roomName}"`}
+            </Typography>
+
+            <Box
+              component="textarea"
+              value={feedback}
+              onChange={(e) => onFeedbackChange?.(e.target.value)}
+              placeholder="Describe the issue..."
+              rows={5}
+              sx={{
+                width: '100%',
+                resize: 'none',
+                border: '1.5px solid #e0e0e0',
+                borderRadius: '10px',
+                p: '14px 16px',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                color: '#222',
+                bgcolor: '#fafbfc',
+                outline: 'none',
+                mb: 3,
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
+                '&:focus': { borderColor: '#4C4EFF' },
+              }}
+            />
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 3 }}>
+            {description ?? `Are you sure you want to unfollow "${roomName}"?`}
+          </Typography>
+        )}
+
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button
+            fullWidth
+            variant="outlined"
+            disabled={loading}
+            onClick={onClose}
+            sx={{
+              borderColor: 'rgba(0,0,0,0.15)',
+              color: 'text.primary',
+              borderRadius: 2,
+              py: 1.2,
+              fontWeight: 600,
+              textTransform: 'none',
+              '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={loading || (isReportMode && !feedback?.trim())}
+            onClick={onConfirm}
+            sx={{
+              bgcolor: confirmColor,
+              color: '#fff',
+              borderRadius: 2,
+              py: 1.2,
+              fontWeight: 700,
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: confirmColor, filter: 'brightness(0.88)', boxShadow: 'none' },
+              '&.Mui-disabled': { bgcolor: confirmColor, color: '#fff', opacity: 0.45 },
+            }}
+          >
+            {loading ? 'Submitting...' : (confirmLabel ?? (isReportMode ? 'Submit' : 'Unfollow'))}
+          </Button>
         </Box>
       </Box>
-
-      <Typography
-        sx={{
-          fontSize: 26,
-          fontWeight: 800,
-          color: '#514BFF',
-          mb: 1.5,
-        }}
-      >
-        Confirmation
-      </Typography>
-
-      <Typography
-        sx={{
-          fontSize: 16,
-          color: '#666',
-          lineHeight: 1.6,
-        }}
-      >
-        Are you sure you want to unfollow
-      </Typography>
-
-      <Typography
-        sx={{
-          fontSize: 18,
-          fontWeight: 800,
-          color: '#514BFF',
-          mb: 3,
-        }}
-      >
-        {roomName}?
-      </Typography>
-
-      <Button
-        fullWidth
-        disabled={loading}
-        onClick={onConfirm}
-        sx={{
-          height: 52,
-          borderRadius: 2,
-          bgcolor: '#C40000',
-          color: '#fff',
-          fontSize: 16,
-          fontWeight: 700,
-          textTransform: 'none',
-          boxShadow: '0 12px 28px rgba(196,0,0,0.28)',
-          '&:hover': {
-            bgcolor: '#A90000',
-          },
-          '&.Mui-disabled': {
-            bgcolor: '#C40000',
-            color: '#fff',
-            opacity: 0.6,
-          },
-        }}
-      >
-        {loading ? 'Unfollowing...' : 'Unfollow'}
-      </Button>
-
-      <Button
-        disabled={loading}
-        onClick={onClose}
-        sx={{
-          mt: 1.5,
-          color: '#777',
-          fontSize: 16,
-          fontWeight: 600,
-          textTransform: 'none',
-          '&:hover': {
-            bgcolor: 'transparent',
-            color: '#444',
-          },
-        }}
-      >
-        Not Now
-      </Button>
     </Dialog>
   );
+}
+
+function getSoftIconBg(hexColor) {
+  const hex = (hexColor || '').replace('#', '');
+  if (hex.length !== 6) return 'rgba(76,78,255,0.10)';
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, 0.10)`;
 }

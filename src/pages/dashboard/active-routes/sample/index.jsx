@@ -1,12 +1,12 @@
 import { Helmet } from 'react-helmet-async';
 
 import { CONFIG } from 'src/config-global';
-import { SampleListView } from 'src/sections/_active/sample-view/sample-list-view';
+import NotificationsView from 'src/sections/active-sections/notifications-view/notifications-view';
 
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Wallets | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Notifications | Dashboard - ${CONFIG.site.name}` };
 
 export default function Page() {
   return (
@@ -15,7 +15,7 @@ export default function Page() {
         <title> {metadata.title}</title>
       </Helmet>
 
-      <SampleListView />
+      <NotificationsView />
     </>
   );
 }

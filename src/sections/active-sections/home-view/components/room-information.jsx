@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -13,6 +15,9 @@ import { Scrollbar } from 'src/components/scrollbar';
 import { ConfirmModal } from 'src/components/custom-dialog';
 import { MOCK_FOLLOWERS } from '../mock';
 import DrawerHeader from './drawer-header';
+import RoomMediaPanel from './room-media-panel';
+import UnfollowModal from './unfollow-modal';
+import { DRAWER_EVENTS } from 'src/utils/drawer-events';
 
 export default function RoomInformation({
     open,
@@ -28,6 +33,29 @@ export default function RoomInformation({
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [removeModalOpen, setRemoveModalOpen] = useState(false);
     const [removingFollower, setRemovingFollower] = useState(null);
+    const [reportOpen, setReportOpen] = useState(false);
+    const [reportFeedback, setReportFeedback] = useState('');
+    const [toast, setToast] = useState({ open: false, message: '' });
+    const [showMedia, setShowMedia] = useState(false);
+
+    useEffect(() => {
+        if (!open) {
+            setShowMedia(false);
+        }
+    }, [open]);
+
+    useEffect(() => {
+        const closeDownloadedMedia = () => setShowMedia(false);
+
+        window.addEventListener(DRAWER_EVENTS.downloadedMediaClose, closeDownloadedMedia);
+
+        return () => {
+            window.removeEventListener(DRAWER_EVENTS.downloadedMediaClose, closeDownloadedMedia);
+        };
+    }, []);
+
+    const showToast = (message) => setToast({ open: true, message });
+    const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
     const roomName = room?.name || 'Creative Rooms';
     const roomDescription = room?.description || 'This is new room';
@@ -48,22 +76,27 @@ export default function RoomInformation({
     const handleConfirmDelete = () => {
         setDeleteModalOpen(false);
         onDeleteRoom?.();
+        showToast('Room deleted successfully');
     };
 
     const handleConfirmRemove = () => {
         setRemoveModalOpen(false);
-
-        if (removingFollower) {
-            onRemoveFollower?.(removingFollower);
-        }
-
+        if (removingFollower) onRemoveFollower?.(removingFollower);
         setRemovingFollower(null);
+        showToast('Follower removed successfully');
+    };
+
+    const handleConfirmReport = () => {
+        // TODO: call report API with reportFeedback
+        setReportOpen(false);
+        setReportFeedback('');
+        showToast('Room reported successfully');
     };
 
     return (
         <>
             <Drawer
-                open={open}
+                open={open && !showMedia}
                 onClose={onClose}
                 anchor="right"
                 hideBackdrop
@@ -201,7 +234,7 @@ export default function RoomInformation({
                     {/* Actions */}
                     <Stack spacing={2} sx={{ px: 2, pb: 3 }}>
                         <Box
-                            onClick={onDownloadMedia}
+                            onClick={() => setShowMedia(true)}
                             sx={{
                                 height: 64,
                                 bgcolor: '#fff',
@@ -236,15 +269,35 @@ export default function RoomInformation({
                                 gap: 2,
                                 cursor: 'pointer',
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
-                                '&:hover': {
-                                    bgcolor: '#f7f7f7',
-                                },
+                                '&:hover': { bgcolor: '#f7f7f7' },
                             }}
                         >
                             <Iconify icon="solar:trash-bin-trash-bold" width={24} sx={{ color: '#000' }} />
 
                             <Typography fontSize={16} fontWeight={700}>
                                 Delete Room
+                            </Typography>
+                        </Box>
+
+                        <Box
+                            onClick={() => setReportOpen(true)}
+                            sx={{
+                                height: 64,
+                                bgcolor: '#fff',
+                                borderRadius: 2,
+                                px: 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                cursor: 'pointer',
+                                boxShadow: '0 8px 24px rgba(0,0,0,0.04)',
+                                '&:hover': { bgcolor: '#fff5f5' },
+                            }}
+                        >
+                            <Iconify icon="material-symbols:report-rounded" width={24} sx={{ color: '#C40000' }} />
+
+                            <Typography fontSize={16} fontWeight={700} color="#C40000">
+                                Report
                             </Typography>
                         </Box>
                     </Stack>
@@ -320,6 +373,11 @@ export default function RoomInformation({
                 </Scrollbar>
             </Drawer>
 
+            <RoomMediaPanel
+                open={open && showMedia}
+                onBack={() => setShowMedia(false)}
+            />
+
             {/* Delete Room Modal */}
             <ConfirmModal
                 open={deleteModalOpen}
@@ -345,6 +403,38 @@ export default function RoomInformation({
                 icon="solar:user-remove-bold"
                 iconColor="#B90000"
             />
+
+            {/* Report Modal */}
+            <UnfollowModal
+                open={reportOpen}
+                onClose={() => { setReportOpen(false); setReportFeedback(''); }}
+                onConfirm={handleConfirmReport}
+                roomName={roomName}
+                title="Report Room"
+                icon="material-symbols:report-rounded"
+                iconBgColor="#4C4EFF"
+                confirmLabel="Submit"
+                confirmColor="#4C4EFF"
+                feedback={reportFeedback}
+                onFeedbackChange={setReportFeedback}
+            />
+
+            {/* Toast */}
+            <Snackbar
+                open={toast.open}
+                autoHideDuration={3000}
+                onClose={hideToast}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={hideToast}
+                    severity="success"
+                    variant="filled"
+                    sx={{ borderRadius: 2, fontWeight: 600 }}
+                >
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </>
     );
 }

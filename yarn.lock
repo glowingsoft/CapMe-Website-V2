@@ -1335,10 +1335,20 @@
   resolved "https://registry.npmjs.org/@fontsource/nunito-sans/-/nunito-sans-5.0.13.tgz"
   integrity sha512-rsajElysg08MhRPYiCZ1lh/34gTfHx9XzyP10oXPwgiFud7MIHAHjE1PTwYlZZDdceu89UzjxelRx98yie8wCw==
 
+"@fontsource/plus-jakarta-sans@^5.2.8":
+  version "5.2.8"
+  resolved "https://registry.npmjs.org/@fontsource/plus-jakarta-sans/-/plus-jakarta-sans-5.2.8.tgz"
+  integrity sha512-P5qE49fqdeD+7DXH1KBxmMPlB17LTz1zvBhFH0tFzfnYTKVJVyb0pR6plh0ZGXxcB+Oayb54FZZw3V42/DawTw==
+
 "@fontsource/public-sans@^5.0.18":
   version "5.0.18"
   resolved "https://registry.npmjs.org/@fontsource/public-sans/-/public-sans-5.0.18.tgz"
   integrity sha512-dYx/ULF7pRkjBO1ncCwIRXWWmI2oCsMsWxheHgjtNANm4+prtfq3gdGy3KOsuNcAhEKn6BQeIyg0hFqeoTpAaQ==
+
+"@fontsource/varela-round@^5.2.8":
+  version "5.2.8"
+  resolved "https://registry.npmjs.org/@fontsource/varela-round/-/varela-round-5.2.8.tgz"
+  integrity sha512-9jati7lFSnJlz95e8nxTDFqvKNs3XY9fqYb6f8bUXCLa0iDGp0cvdkwRaTNYjYtrpB+ymrHMeNoVo5oEd/ubcg==
 
 "@fullcalendar/core@^6.1.14", "@fullcalendar/core@~6.1.14":
   version "6.1.14"

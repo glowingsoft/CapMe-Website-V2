@@ -5,6 +5,12 @@ import { CONFIG } from 'src/config-global';
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
+import homeIconUrl from 'src/assets/icons/home_icon.svg?url';
+import exploreIconUrl from 'src/assets/icons/explore.svg?url';
+import activityFeedIconUrl from 'src/assets/icons/activity_feed.svg?url';
+import chatIconUrl from 'src/assets/icons/chat.svg?url';
+import notificationIconUrl from 'src/assets/icons/notification.svg?url';
+import settingIconUrl from 'src/assets/icons/setting.svg?url';
 
 // ----------------------------------------------------------------------
 
@@ -15,6 +21,12 @@ const icon = (name) => <SvgColor src={`${CONFIG.site.basePath}/assets/icons/navb
 // );
 
 const ICONS = {
+  home: <SvgColor src={homeIconUrl} />,
+  exploreCustom: <SvgColor src={exploreIconUrl} />,
+  activityFeedCustom: <SvgColor src={activityFeedIconUrl} />,
+  chatCustom: <SvgColor src={chatIconUrl} />,
+  notificationCustom: <SvgColor src={notificationIconUrl} />,
+  settingCustom: <SvgColor src={settingIconUrl} />,
   job: icon('ic-job'),
   blog: icon('ic-blog'),
   chat: icon('ic-chat'),
@@ -52,12 +64,12 @@ export const navData = [
   {
     // subheader: ' ',
     items: [
-      { title: 'Home', path: paths.dashboard.root, icon: ICONS.dashboard },
-      { title: 'Explore', path: paths.dashboard.general.ecommerce, icon: ICONS.ecommerce },
-      { title: 'Analytics', path: paths.dashboard.general.analytics, icon: ICONS.analytics },
-      { title: 'Chat Me', path: paths.dashboard.general.banking, icon: ICONS.banking },
-      { title: 'Notifications', path: paths.dashboard.sample, icon: ICONS.file },
-      { title: 'Profile', path: paths.dashboard.blank, icon: ICONS.blank },
+      { title: 'Home', path: paths.dashboard.root, icon: ICONS.home },
+      { title: 'Explore', path: paths.dashboard.explore, icon: ICONS.exploreCustom },
+      { title: 'Activity Feed', path: paths.dashboard.activityFeed, icon: ICONS.activityFeedCustom },
+      { title: 'Chat Me', path: paths.dashboard.chatMe, icon: ICONS.chatCustom },
+      { title: 'Notifications', path: paths.dashboard.notifications, icon: ICONS.notificationCustom },
+      { title: 'Settings', path: paths.dashboard.settings.root, icon: ICONS.settingCustom },
     ],
   },
   /**

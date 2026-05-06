@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 
 import { useBoolean } from 'src/hooks/use-boolean';
+import { closeOverlayDrawers, closeRoomInfoDrawer, emitNotificationsDrawerChange } from 'src/utils/drawer-events';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
@@ -49,6 +50,18 @@ export function NotificationsDrawer({ data = [], sx, ...other }) {
     setNotifications(notifications.map((notification) => ({ ...notification, isUnRead: false })));
   };
 
+  const handleOpenDrawer = useCallback(() => {
+    drawer.onTrue();
+    emitNotificationsDrawerChange(true);
+    closeOverlayDrawers();
+    closeRoomInfoDrawer();
+  }, [drawer]);
+
+  const handleCloseDrawer = useCallback(() => {
+    drawer.onFalse();
+    emitNotificationsDrawerChange(false);
+  }, [drawer]);
+
   const renderHead = (
     <Stack direction="row" alignItems="center" sx={{ py: 2, pl: 2.5, pr: 1, minHeight: 68 }}>
       <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -63,7 +76,7 @@ export function NotificationsDrawer({ data = [], sx, ...other }) {
         </Tooltip>
       )}
 
-      <IconButton onClick={drawer.onFalse} sx={{ display: { xs: 'inline-flex', sm: 'none' } }}>
+      <IconButton onClick={handleCloseDrawer} sx={{ display: { xs: 'inline-flex', sm: 'none' } }}>
         <Iconify icon="mingcute:close-line" />
       </IconButton>
 
@@ -117,7 +130,7 @@ export function NotificationsDrawer({ data = [], sx, ...other }) {
         whileTap="tap"
         whileHover="hover"
         variants={varHover(1.05)}
-        onClick={drawer.onTrue}
+        onClick={handleOpenDrawer}
         sx={sx}
         {...other}
       >
@@ -139,7 +152,7 @@ export function NotificationsDrawer({ data = [], sx, ...other }) {
 
       <Drawer
         open={drawer.value}
-        onClose={drawer.onFalse}
+        onClose={handleCloseDrawer}
         anchor="right"
         slotProps={{ backdrop: { invisible: true } }}
         PaperProps={{ sx: { width: 1, maxWidth: 420 } }}

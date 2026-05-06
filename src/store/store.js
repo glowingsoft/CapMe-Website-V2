@@ -6,6 +6,7 @@ import { authApi } from './Reducer/auth';
 import userReducer from './slices/userSlice';
 import { walletsApi } from './Reducer/wallets-api';
 import { categoriesApi } from './Reducer/categories-api';
+import { roomsApi } from './Reducer/rooms-api';
 
 const persistConfig = {
   key: 'root',
@@ -25,6 +26,7 @@ export const store = configureStore({
     [categoriesApi.reducerPath]: categoriesApi.reducer,
     [walletsApi.reducerPath]: walletsApi.reducer,
     [authApi.reducerPath]: authApi.reducer,
+    [roomsApi.reducerPath]: roomsApi.reducer,
     user: persistedUserReducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -35,7 +37,8 @@ export const store = configureStore({
     }).concat(
       authApi.middleware,
       walletsApi.middleware,
-      categoriesApi.middleware
+      categoriesApi.middleware,
+      roomsApi.middleware
     ),
 });
 

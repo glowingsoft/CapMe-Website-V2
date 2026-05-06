@@ -5,9 +5,7 @@ import CardMedia from '@mui/material/CardMedia';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useRef, useEffect } from 'react';
-import { Iconify } from 'src/components/iconify';
-import OldMessagesLabel from './old-messages-label';
+const RoomHashtagList = React.lazy(() => import('./room-hashtag-list'));
 
 // ── Single message bubble ──────────────────────────────────────────
 function MessageItem({ message, onMessageClick }) {
@@ -35,13 +33,35 @@ function MessageItem({ message, onMessageClick }) {
 
                 {message.content && (
                     <Typography fontSize={13} color="text.primary" lineHeight={1.6}>
-                        {message.content}
+                        {String(message.content).split(/(#[\p{L}\p{N}_]+)/gu).map((part, idx) =>
+                            part.startsWith && part.startsWith('#') ? (
+                                <span
+                                    key={part + idx}
+                                    style={{ color: '#4C4EFF', fontWeight: 600, cursor: 'pointer', marginRight: 6 }}
+                                >
+                                    {part}
+                                </span>
+                            ) : (
+                                part
+                            )
+                        )}
                     </Typography>
                 )}
 
                 {message.hashtags && (
-                    <Typography fontSize={12} sx={{ color: '#9e9e9e', mt: 0.3 }}>
-                        {message.hashtags}
+                    <Typography fontSize={12} sx={{ mt: 0.3, color: '#222' }}>
+                        {message.hashtags.split(/\s+/).map((tag, idx) =>
+                            tag.startsWith('#') ? (
+                                <span
+                                    key={tag + idx}
+                                    style={{ color: '#4C4EFF', fontWeight: 600, cursor: 'pointer', marginRight: 6 }}
+                                >
+                                    {tag}
+                                </span>
+                            ) : (
+                                tag + ' '
+                            )
+                        )}
                     </Typography>
                 )}
 
@@ -88,6 +108,7 @@ export default function RoomChannel({
     onMessageClick,
 }) {
     const bottomRef = useRef(null);
+    // Hashtag list/modal logic removed; now handled in header only
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

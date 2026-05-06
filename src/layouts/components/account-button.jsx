@@ -18,6 +18,7 @@ export function AccountButton({ open, photoURL, displayName, sx, ...other }) {
       sx={{
         width: 40,
         height: 40,
+        bgcolor: '#4C4EFF',
         border: `solid 2px ${theme.vars.palette.background.default}`,
       }}
     >
@@ -44,7 +45,7 @@ export function AccountButton({ open, photoURL, displayName, sx, ...other }) {
       <NoSsr fallback={renderFallback}>
         <AnimateAvatar
           slotProps={{
-            avatar: { src: photoURL, alt: displayName },
+            avatar: { src: photoURL, alt: displayName, sx: { bgcolor: '#4C4EFF' } },
             overlay: {
               border: 1,
               spacing: 2,
