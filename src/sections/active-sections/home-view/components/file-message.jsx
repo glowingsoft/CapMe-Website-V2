@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -24,12 +24,16 @@ export function AudioPlayer({ url, sx }) {
   const audioRef = useRef(null);
   const seekingForDurationRef = useRef(false);
   const rafRef = useRef(null);
+
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
   const stopRAF = () => {
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
   };
 
   const startRAF = () => {
@@ -44,26 +48,52 @@ export function AudioPlayer({ url, sx }) {
     rafRef.current = requestAnimationFrame(tick);
   };
 
-  // Clean up RAF on unmount
-  useState(() => () => stopRAF());
+  // Proper RAF cleanup on unmount
+  useEffect(() => () => stopRAF(), []);
+
+  // Reset all player state whenever the audio URL changes
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) {
+      el.pause();
+      el.currentTime = 0;
+    }
+    stopRAF();
+    setPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    seekingForDurationRef.current = false;
+    console.log('[AudioPlayer] url changed:', url);
+  }, [url]);
 
   const toggle = () => {
     const el = audioRef.current;
     if (!el) return;
+
     if (playing) {
       el.pause();
       setPlaying(false);
       stopRAF();
     } else {
-      el.play().catch(() => { });
-      setPlaying(true);
-      startRAF();
+      el.play()
+        .then(() => {
+          setPlaying(true);
+          startRAF();
+        })
+        .catch((err) => {
+          console.error('[AudioPlayer] play failed:', err?.message || err);
+          setPlaying(false);
+          stopRAF();
+        });
     }
   };
 
+  // Handles the Infinity-duration quirk of MediaRecorder blobs:
+  // seek to a huge value forces the browser to scan the full stream and report real duration.
   const handleLoadedMetadata = () => {
     const el = audioRef.current;
     if (!el) return;
+    console.log('[AudioPlayer] metadata loaded — raw duration:', el.duration);
     if (!isFinite(el.duration)) {
       seekingForDurationRef.current = true;
       el.currentTime = 1e101;
@@ -72,12 +102,35 @@ export function AudioPlayer({ url, sx }) {
     }
   };
 
+  const handleDurationChange = () => {
+    const el = audioRef.current;
+    if (!el || !isFinite(el.duration)) return;
+    console.log('[AudioPlayer] durationchange:', el.duration);
+    setDuration(el.duration);
+  };
+
   const handleSeeked = () => {
     const el = audioRef.current;
     if (!el || !seekingForDurationRef.current) return;
     seekingForDurationRef.current = false;
-    setDuration(isFinite(el.duration) ? el.duration : 0);
+    const d = isFinite(el.duration) ? el.duration : 0;
+    console.log('[AudioPlayer] seeked — resolved duration:', d);
+    setDuration(d);
     el.currentTime = 0;
+  };
+
+  // onTimeUpdate as a fallback in case RAF ticks stall (tab inactive, etc.)
+  const handleTimeUpdate = () => {
+    const el = audioRef.current;
+    if (el && !el.paused) setCurrentTime(el.currentTime);
+  };
+
+  const handleError = () => {
+    const el = audioRef.current;
+    const msg = el?.error?.message || 'unknown audio error';
+    console.error('[AudioPlayer] audio element error:', msg, 'url:', url);
+    setPlaying(false);
+    stopRAF();
   };
 
   const handleSeek = (e) => {
@@ -109,9 +162,17 @@ export function AudioPlayer({ url, sx }) {
         <audio
           ref={audioRef}
           src={url}
+          preload="metadata"
           onLoadedMetadata={handleLoadedMetadata}
+          onDurationChange={handleDurationChange}
           onSeeked={handleSeeked}
-          onEnded={() => { setPlaying(false); setCurrentTime(0); stopRAF(); }}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={() => {
+            setPlaying(false);
+            setCurrentTime(0);
+            stopRAF();
+          }}
+          onError={handleError}
           style={{ display: 'none' }}
         />
       )}

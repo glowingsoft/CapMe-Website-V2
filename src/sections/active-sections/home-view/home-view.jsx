@@ -301,7 +301,15 @@ export default function HomeView() {
 
                   {audioRecorderOpen ? (
                     <AudioRecorder
-                      onDone={(file) => { setAudioRecorderOpen(false); handleFileSelected(file); }}
+                      onDone={(fileData) => {
+                        setAudioRecorderOpen(false);
+                        setAttachedFile({
+                          url: fileData.url,
+                          type: fileData.type,
+                          name: fileData.name,
+                          size: fileData.size,
+                        });
+                      }}
                       onCancel={() => setAudioRecorderOpen(false)}
                     />
                   ) : (
