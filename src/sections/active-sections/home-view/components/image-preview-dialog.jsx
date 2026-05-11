@@ -2,16 +2,108 @@ import Box from '@mui/material/Box';
 import Dialog from '@mui/material/Dialog';
 import Fade from '@mui/material/Fade';
 import IconButton from '@mui/material/IconButton';
+import Typography from '@mui/material/Typography';
 import React from 'react';
 import { Iconify } from 'src/components/iconify';
+
+// ─── Shared close button ──────────────────────────────────────────────────────
+function CloseButton({ onClose, top = 8, right = 8 }) {
+  return (
+    <IconButton
+      onClick={onClose}
+      size="small"
+      sx={{
+        position: 'absolute',
+        top,
+        right,
+        zIndex: 10,
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        bgcolor: 'rgba(20,20,26,0.72)',
+        color: '#fff',
+        border: '1px solid rgba(255,255,255,0.14)',
+        '&:hover': { bgcolor: 'rgba(220,50,50,0.30)', borderColor: 'rgba(255,120,120,0.5)' },
+      }}
+    >
+      <Iconify icon="mingcute:close-line" width={16} />
+    </IconButton>
+  );
+}
+
+// ─── Video ────────────────────────────────────────────────────────────────────
+export function VideoPreviewDialog({ open, url, name, onClose }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { bgcolor: '#000', borderRadius: 3, overflow: 'hidden', position: 'relative' } }}
+    >
+      <CloseButton onClose={onClose} />
+      <Box
+        component="video"
+        src={url}
+        controls
+        autoPlay
+        sx={{ width: '100%', display: 'block', maxHeight: '75vh', bgcolor: '#000' }}
+      />
+    </Dialog>
+  );
+}
+
+// ─── PDF / iframe ─────────────────────────────────────────────────────────────
+export function PdfPreviewDialog({ open, url, name, onClose }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden', height: '85vh', position: 'relative' } }}
+    >
+      <CloseButton onClose={onClose} />
+      <Box
+        component="iframe"
+        src={url}
+        title={name || 'File preview'}
+        sx={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+      />
+    </Dialog>
+  );
+}
+
+// ─── Audio ────────────────────────────────────────────────────────────────────
+export function AudioPreviewDialog({ open, url, name, onClose }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, p: 2.5, position: 'relative' } }}
+    >
+      <CloseButton onClose={onClose} />
+      <Typography variant="subtitle2" sx={{ mb: 1.5, pr: 4 }} noWrap>
+        {name || 'Audio preview'}
+      </Typography>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <Box
+        component="audio"
+        src={url}
+        controls
+        sx={{ width: '100%', display: 'block', outline: 'none' }}
+      />
+    </Dialog>
+  );
+}
 
 export default function ImagePreviewDialog({ open, src, alt = 'Preview', onClose }) {
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open) {
-      setLoaded(false);
-    }
+    if (!open) setLoaded(false);
   }, [open]);
 
   return (
@@ -38,35 +130,8 @@ export default function ImagePreviewDialog({ open, src, alt = 'Preview', onClose
         },
       }}
     >
-      <Box
-        sx={{
-          position: 'relative',
-          width: 'min(1100px, 90vw)',
-          display: 'block',
-        }}
-      >
-        <IconButton
-          onClick={onClose}
-          size="small"
-          sx={{
-            position: 'absolute',
-            top: -14,
-            right: -14,
-            zIndex: 2,
-            width: 34,
-            height: 34,
-            borderRadius: '50%',
-            color: '#fff',
-            bgcolor: 'rgba(20,20,26,0.78)',
-            border: '1px solid rgba(255,255,255,0.16)',
-            '&:hover': {
-              bgcolor: 'rgba(220,50,50,0.30)',
-              borderColor: 'rgba(255,120,120,0.65)',
-            },
-          }}
-        >
-          <Iconify icon="mingcute:close-line" width={18} />
-        </IconButton>
+      <Box sx={{ position: 'relative', width: 'min(1100px, 90vw)', display: 'block' }}>
+        <CloseButton onClose={onClose} top={-14} right={-14} />
 
         {/* Image card */}
         <Box

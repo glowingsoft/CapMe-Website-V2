@@ -13,6 +13,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Iconify } from 'src/components/iconify';
 import DrawerHeader from './drawer-header';
 import ImagePreviewDialog from './image-preview-dialog';
+import AttachedFileChip from './attached-file-chip';
 
 function renderWithHashtags(text) {
   const parts = text.split(/(#[\p{L}\p{N}_]+)/u);
@@ -23,16 +24,33 @@ function renderWithHashtags(text) {
   );
 }
 
+function getAttachments(item) {
+  if (!item) return [];
+
+  if (Array.isArray(item.attachments) && item.attachments.length) {
+    return item.attachments.filter(Boolean);
+  }
+
+  if (Array.isArray(item.files) && item.files.length) {
+    return item.files.filter(Boolean);
+  }
+
+  return item.file ? [item.file] : [];
+}
+
 export default function CommentDrawer({ open, onClose, selectedPost, commentsData }) {
   const [commentText, setCommentText] = useState('');
   const [localComments, setLocalComments] = useState([]);
+  const [postLiked, setPostLiked] = useState(false);
+  const [postLikeCount, setPostLikeCount] = useState(0);
   const [fileMenuAnchor, setFileMenuAnchor] = useState(null);
   const [upload, setUpload] = useState({ file: null, progress: 0 });
   const [attachedFile, setAttachedFile] = useState(null);
   const [audioRecorderOpen, setAudioRecorderOpen] = useState(false);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
-  const [attachedPreviewOpen, setAttachedPreviewOpen] = useState(false);
   const uploadTimerRef = useRef(null);
+  const selectedPostAttachments = getAttachments(selectedPost);
+  const drawerFileImageSx = { height: 220, borderRadius: 2, objectFit: 'cover' };
 
   const handleFileSelected = (file) => {
     const url = URL.createObjectURL(file);
@@ -66,7 +84,30 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   useEffect(() => {
     setLocalComments(commentsData[selectedPost?.id] ?? []);
     setCommentText('');
+    setPostLiked(false);
+    setPostLikeCount(selectedPost?.stats?.likes ?? 0);
   }, [selectedPost?.id, commentsData]);
+
+  const handlePostLike = () => {
+    setPostLiked((prev) => {
+      setPostLikeCount((count) => (prev ? Math.max(0, count - 1) : count + 1));
+      return !prev;
+    });
+  };
+
+  const handleCommentLike = (commentId) => {
+    setLocalComments((prev) =>
+      prev.map((comment) => {
+        if (comment.id !== commentId) return comment;
+        const liked = !!comment.isLiked;
+        return {
+          ...comment,
+          isLiked: !liked,
+          likes: liked ? Math.max(0, (comment.likes ?? 0) - 1) : (comment.likes ?? 0) + 1,
+        };
+      })
+    );
+  };
 
   const handleSend = () => {
     const text = commentText.trim();
@@ -132,7 +173,19 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
           >
             {/* Post summary */}
             <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 2 }}>
-              <Avatar src={selectedPost.user.avatar} />
+              <Avatar
+                src={selectedPost.user.avatar || undefined}
+                sx={{
+                  bgcolor: '#4C4EFF',
+                  color: '#fff',
+                  fontWeight: 700,
+                  width: 40,
+                  height: 40,
+                  flexShrink: 0,
+                }}
+              >
+                {selectedPost.user?.name?.charAt(0).toUpperCase()}
+              </Avatar>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between">
                   <Typography fontWeight={700}>{selectedPost.user.name}</Typography>
@@ -164,6 +217,18 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
                   />
                 )}
 
+                {!!selectedPostAttachments.length && (
+                  <Stack spacing={1.25} sx={{ mt: 1.5 }}>
+                    {selectedPostAttachments.map((file, index) => (
+                      <FileMessage
+                        key={`${selectedPost.id}-attachment-${index}`}
+                        file={file}
+                        imageSx={drawerFileImageSx}
+                      />
+                    ))}
+                  </Stack>
+                )}
+
                 <ImagePreviewDialog
                   open={imagePreviewOpen}
                   src={selectedPost.image}
@@ -172,10 +237,24 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
                 />
 
                 <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
-                  <Stack direction="row" spacing={0.6} alignItems="center">
-                    <Iconify icon="ic:round-favorite" width={18} style={{ color: '#e53935' }} />
-                    <Typography variant="caption" fontWeight={500} color="text.secondary">
-                      {selectedPost.stats.likes}
+                  <Stack
+                    direction="row"
+                    spacing={0.6}
+                    alignItems="center"
+                    sx={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={handlePostLike}
+                  >
+                    <Iconify
+                      icon={postLiked ? 'ic:round-favorite' : 'ic:round-favorite-border'}
+                      width={18}
+                      style={{
+                        color: postLiked ? '#e53935' : '#9e9e9e',
+                        transition: 'color 0.15s, transform 0.15s',
+                        transform: postLiked ? 'scale(1.2)' : 'scale(1)',
+                      }}
+                    />
+                    <Typography variant="caption" fontWeight={500} color={postLiked ? '#e53935' : 'text.secondary'}>
+                      {postLikeCount}
                     </Typography>
                   </Stack>
                   <Stack direction="row" spacing={0.6} alignItems="center">
@@ -201,40 +280,80 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
 
             {/* Comments list */}
             <Stack spacing={2}>
-              {localComments.map((comment) => (
-                <Stack key={comment.id} direction="row" spacing={2} alignItems="flex-start">
-                  <Avatar src={comment.avatar} />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between">
-                      <Typography fontWeight={700}>{comment.user}</Typography>
-                      <Typography variant="caption" color="text.secondary">{comment.time}</Typography>
-                    </Stack>
+              {localComments.map((comment) => {
+                const commentAttachments = getAttachments(comment);
 
-                    <Typography sx={{ mt: 0.5, fontSize: 13, whiteSpace: 'pre-wrap' }}>{renderWithHashtags(comment.text)}</Typography>
-
-                    {comment.file && (
-                      <Box sx={{ mt: 1 }}>
-                        <FileMessage file={comment.file} />
-                      </Box>
-                    )}
-
-                    <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
-                      <Stack direction="row" spacing={0.6} alignItems="center">
-                        <Iconify icon="ic:round-favorite" width={18} style={{ color: '#e53935' }} />
-                        <Typography variant="caption" fontWeight={500} color="text.secondary">
-                          {comment.likes}
-                        </Typography>
+                return (
+                  <Stack key={comment.id} direction="row" spacing={2} alignItems="flex-start">
+                    <Avatar
+                      src={comment.avatar || undefined}
+                      sx={{
+                        bgcolor: '#4C4EFF',
+                        color: '#fff',
+                        fontWeight: 700,
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {comment.user?.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                        <Typography fontWeight={700}>{comment.user}</Typography>
+                        <Typography variant="caption" color="text.secondary">{comment.time}</Typography>
                       </Stack>
-                      <Stack direction="row" spacing={0.6} alignItems="center">
-                        <Iconify icon="mingcute:chat-3-line" width={18} style={{ color: '#9e9e9e' }} />
-                        <Typography variant="caption" fontWeight={500} color="text.secondary">
-                          {comment.replies}
-                        </Typography>
+
+                      <Typography sx={{ mt: 0.5, fontSize: 13, whiteSpace: 'pre-wrap' }}>{renderWithHashtags(comment.text)}</Typography>
+
+                      {!!commentAttachments.length && (
+                        <Stack spacing={1.25} sx={{ mt: 1 }}>
+                          {commentAttachments.map((file, index) => (
+                            <FileMessage
+                              key={`${comment.id}-attachment-${index}`}
+                              file={file}
+                              imageSx={drawerFileImageSx}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+
+                      <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
+                        <Stack
+                          direction="row"
+                          spacing={0.6}
+                          alignItems="center"
+                          sx={{ cursor: 'pointer', userSelect: 'none' }}
+                          onClick={() => handleCommentLike(comment.id)}
+                        >
+                          <Iconify
+                            icon={comment.isLiked ? 'ic:round-favorite' : 'ic:round-favorite-border'}
+                            width={18}
+                            style={{
+                              color: comment.isLiked ? '#e53935' : '#9e9e9e',
+                              transition: 'color 0.15s, transform 0.15s',
+                              transform: comment.isLiked ? 'scale(1.2)' : 'scale(1)',
+                            }}
+                          />
+                          <Typography
+                            variant="caption"
+                            fontWeight={500}
+                            color={comment.isLiked ? '#e53935' : 'text.secondary'}
+                          >
+                            {comment.likes ?? 0}
+                          </Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={0.6} alignItems="center">
+                          <Iconify icon="mingcute:chat-3-line" width={18} style={{ color: '#9e9e9e' }} />
+                          <Typography variant="caption" fontWeight={500} color="text.secondary">
+                            {comment.replies}
+                          </Typography>
+                        </Stack>
                       </Stack>
-                    </Stack>
-                  </Box>
-                </Stack>
-              ))}
+                    </Box>
+                  </Stack>
+                );
+              })}
             </Stack>
           </Box>
 
@@ -245,52 +364,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
             )}
 
             {attachedFile && !upload.file && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  px: 1.5,
-                  py: 0.8,
-                  mb: 0.5,
-                  bgcolor: '#f0f1ff',
-                  border: '1px solid #d0d2ff',
-                  borderRadius: 2,
-                }}
-              >
-                {attachedFile.type?.startsWith('image/') && (
-                  <>
-                    <Box
-                      component="img"
-                      src={attachedFile.url}
-                      alt={attachedFile.name || 'Attachment'}
-                      onClick={() => setAttachedPreviewOpen(true)}
-                      sx={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 1.5,
-                        objectFit: 'cover',
-                        border: '1px solid rgba(76,78,255,0.25)',
-                        cursor: 'zoom-in',
-                        flexShrink: 0,
-                      }}
-                    />
-                    <ImagePreviewDialog
-                      open={attachedPreviewOpen}
-                      src={attachedFile.url}
-                      alt={attachedFile.name || 'Attachment preview'}
-                      onClose={() => setAttachedPreviewOpen(false)}
-                    />
-                  </>
-                )}
-                <Iconify icon="solar:paperclip-bold" width={16} style={{ color: '#4C4EFF', flexShrink: 0 }} />
-                <Typography fontSize={13} fontWeight={500} color="#4C4EFF" noWrap sx={{ flex: 1 }}>
-                  {attachedFile.name}
-                </Typography>
-                <IconButton size="small" onClick={() => setAttachedFile(null)} sx={{ p: 0.2, color: '#9e9e9e' }}>
-                  <Iconify icon="mingcute:close-line" width={14} />
-                </IconButton>
-              </Box>
+              <AttachedFileChip file={attachedFile} onRemove={() => setAttachedFile(null)} />
             )}
 
             {audioRecorderOpen ? (

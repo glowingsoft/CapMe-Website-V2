@@ -195,6 +195,7 @@ export default function PostCard({ post, onCommentClick, onMenuAction }) {
                     sx={{
                         width: '100%',
                         height: 480,
+                        borderRadius: 2,
                         objectFit: 'cover',
                         objectPosition: 'center',
                         display: 'block',

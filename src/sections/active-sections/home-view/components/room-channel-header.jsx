@@ -28,7 +28,7 @@ const MOCK_MEMBERS = [
   { avatar: 'https://i.pravatar.cc/40?img=3' },
 ];
 
-export default function RoomChannelHeader({ room, memberCount = 12, members = MOCK_MEMBERS, onRoomInfoOpenChange, messages = [] }) {
+export default function RoomChannelHeader({ room, memberCount = 12, members = MOCK_MEMBERS, onRoomInfoOpenChange, messages = [], onMessageSelect, isGarage = false }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [unfollowOpen, setUnfollowOpen] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
@@ -123,7 +123,7 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
   const handleConfirmUnfollow = async () => {
     try {
       setUnfollowLoading(true);
-      // TODO: Call your unfollow API here
+
       setUnfollowOpen(false);
       showToast('You have unfollowed the room');
     } catch (error) {
@@ -209,52 +209,56 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
           </Typography>
         </Stack>
 
-        {/* Right: stacked avatars + count + divider + action icons */}
+        {/* Right: actions */}
         <Stack direction="row" spacing={0.5} alignItems="center">
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
-            {members.slice(0, 3).map((m, i) => (
-              <Avatar
-                key={i}
-                src={m.avatar}
-                sx={{
-                  width: 26,
-                  height: 26,
-                  ml: i === 0 ? 0 : '-8px',
-                  border: '2px solid #18181B',
-                  zIndex: 3 - i,
-                }}
-              />
-            ))}
-          </Box>
+          {!isGarage && (
+            <>
+              <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
+                {members.slice(0, 3).map((m, i) => (
+                  <Avatar
+                    key={i}
+                    src={m.avatar}
+                    sx={{
+                      width: 26,
+                      height: 26,
+                      ml: i === 0 ? 0 : '-8px',
+                      border: '2px solid #18181B',
+                      zIndex: 3 - i,
+                    }}
+                  />
+                ))}
+              </Box>
 
-          <Typography fontSize={13} fontWeight={600} color="#fff" sx={{ mr: 1 }}>
-            {memberCount}
-          </Typography>
+              <Typography fontSize={13} fontWeight={600} color="#fff" sx={{ mr: 1 }}>
+                {memberCount}
+              </Typography>
 
-          <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.15)', mx: 0.5 }} />
+              <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.15)', mx: 0.5 }} />
 
-          {/* Hashtag icon */}
-          <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
-            <Iconify icon="mdi:tag" width={20} />
-          </IconButton>
+              <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
+                <Iconify icon="mdi:tag" width={20} />
+              </IconButton>
 
-          {/* <IconButton size="small" sx={{ color: '#bdbdbd', '&:hover': { color: '#fff' } }}>
-            <Iconify icon="mingcute:down-line" width={16} />
-          </IconButton> */}
+              <IconButton
+                size="small"
+                onClick={handleToggleFavourite}
+                sx={{ color: isFavourite ? '#FFD700' : '#bdbdbd', '&:hover': { color: '#fff' } }}
+              >
+                <Iconify
+                  icon={isFavourite ? 'meteocons:star-fill' : 'meteocons:star'}
+                  width={22}
+                />
+              </IconButton>
+            </>
+          )}
 
-          <IconButton
-            size="small"
-            onClick={handleToggleFavourite}
-            sx={{ color: isFavourite ? '#FFD700' : '#bdbdbd', '&:hover': { color: '#fff' } }}
-          >
-            <Iconify
-              icon={isFavourite ? 'meteocons:star-fill' : 'meteocons:star'}
-              width={22}
-            />
-          </IconButton>
+          {isGarage && (
+            <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5 }}>
+              Private · Only you
+            </Typography>
+          )}
 
-          {/* Search icon */}
-
+          {/* Search */}
           <Stack direction="row" spacing={0.5} alignItems="center">
             {showSearch ? (
               <Box
@@ -291,28 +295,28 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
                 </IconButton>
               </Box>
             ) : (
-              <>
-                <IconButton
-                  size="small"
-                  onClick={() => setShowSearch(true)}
-                  sx={{ color: '#bdbdbd', '&:hover': { color: '#fff' } }}
-                >
-                  <Iconify icon="eva:search-fill" width={19} />
-                </IconButton>
-              </>
+              <IconButton
+                size="small"
+                onClick={() => setShowSearch(true)}
+                sx={{ color: '#bdbdbd', '&:hover': { color: '#fff' } }}
+              >
+                <Iconify icon="eva:search-fill" width={19} />
+              </IconButton>
             )}
           </Stack>
 
-          <IconButton
-            size="small"
-            onClick={handleOpenMenu}
-            sx={{
-              color: menuOpen ? '#fff' : '#bdbdbd',
-              '&:hover': { color: '#fff' },
-            }}
-          >
-            <Iconify icon="ph:dots-three-vertical-bold" width={18} />
-          </IconButton>
+          {!isGarage && (
+            <IconButton
+              size="small"
+              onClick={handleOpenMenu}
+              sx={{
+                color: menuOpen ? '#fff' : '#bdbdbd',
+                '&:hover': { color: '#fff' },
+              }}
+            >
+              <Iconify icon="ph:dots-three-vertical-bold" width={18} />
+            </IconButton>
+          )}
         </Stack>
       </Box>
 
@@ -470,6 +474,10 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
           onClose={() => setShowHashtagModal(false)}
           hashtag={selectedHashtag}
           messages={selectedHashtag ? getMessagesWithHashtag(selectedHashtag) : []}
+          onMessageClick={(message) => {
+            onMessageSelect?.(message);
+            setShowHashtagModal(false);
+          }}
         />
       )}
     </>

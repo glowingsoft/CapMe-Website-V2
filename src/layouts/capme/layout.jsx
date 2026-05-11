@@ -1,11 +1,20 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import InputBase from '@mui/material/InputBase';
 import { Iconify } from 'src/components/iconify';
-import IconButton from '@mui/material/IconButton';
 import Avatar from '@mui/material/Avatar';
 import { LayoutSection } from 'src/layouts/core/layout-section';
 import Typography from '@mui/material/Typography';
+import { useNavigate, useLocation } from 'react-router-dom';
+import AnnouncementModal from 'src/layouts/components/announcement-modal';
 import { Main } from './main';
+
+const GARAGE_ROOM = {
+  id: 'garage',
+  name: 'My Garage',
+  color: '#4C4EFF',
+  isGarage: true,
+};
 
 function HeaderRailLogo() {
   return (
@@ -139,6 +148,18 @@ function DefaultHeaderCenter() {
 }
 
 function DefaultHeaderRight() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+
+  const handleOpenGarage = () => {
+    if (location.pathname.startsWith('/home')) {
+      window.dispatchEvent(new CustomEvent('openRoom', { detail: GARAGE_ROOM }));
+    } else {
+      navigate('/home', { state: { pendingRoom: GARAGE_ROOM } });
+    }
+  };
+
   const actionSx = {
     width: { xs: 48, md: 56 },
     height: { xs: 48, md: 56 },
@@ -147,32 +168,42 @@ function DefaultHeaderRight() {
     display: 'grid',
     placeItems: 'center',
     color: '#FFFFFF',
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+    '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
   };
 
   return (
-    <Box
-      sx={{
-        height: { xs: 48, md: 56 },
-        display: 'flex',
-        alignItems: 'center',
-        gap: { xs: 1, md: '15px' },
-        flexShrink: 0,
-      }}
-    >
-      <Box sx={actionSx}>
-        <Iconify icon="solar:danger-circle-linear" sx={{ width: { xs: 20, md: 22.56 }, height: { xs: 20, md: 22.56 } }} />
+    <>
+      <Box
+        sx={{
+          height: { xs: 48, md: 56 },
+          display: 'flex',
+          alignItems: 'center',
+          gap: { xs: 1, md: '15px' },
+          flexShrink: 0,
+        }}
+      >
+        <Box sx={actionSx} onClick={() => setAnnouncementOpen(true)}>
+          <Iconify icon="solar:danger-circle-bold" sx={{ width: { xs: 20, md: 22.56 }, height: { xs: 20, md: 22.56 } }} />
+        </Box>
+
+        <Box sx={actionSx} onClick={handleOpenGarage}>
+          <Iconify icon="solar:garage-bold" sx={{ width: { xs: 20, md: 22 }, height: { xs: 20, md: 22 } }} />
+        </Box>
+
+        <Avatar
+          alt="Profile"
+          src="https://i.pravatar.cc/112?img=12"
+          sx={{ width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 }, border: '1px solid #FFFFFF4D' }}
+        />
       </Box>
 
-      <Box sx={actionSx}>
-        <Iconify icon="solar:users-group-rounded-linear" sx={{ width: { xs: 16, md: 17.55 }, height: { xs: 16, md: 17.55 } }} />
-      </Box>
-
-      <Avatar
-        alt="Profile"
-        src="https://i.pravatar.cc/112?img=12"
-        sx={{ width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 }, border: '1px solid #FFFFFF4D' }}
+      <AnnouncementModal
+        open={announcementOpen}
+        onClose={() => setAnnouncementOpen(false)}
       />
-    </Box>
+    </>
   );
 }
 

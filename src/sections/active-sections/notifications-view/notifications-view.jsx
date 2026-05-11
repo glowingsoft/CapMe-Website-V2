@@ -4,6 +4,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
+import { EmptyContent } from 'src/components/empty-content';
 import NotificationCard from './components/notification-card';
 import { NOTIFICATIONS } from './mock';
 
@@ -84,11 +85,19 @@ export default function NotificationsView() {
             </Button>
           </Stack>
 
-          <Stack spacing={1.7} sx={{ width: '100%' }}>
-            {items.map((n) => (
-              <NotificationCard key={n.id} notification={n} onClick={() => markRead(n.id)} />
-            ))}
-          </Stack>
+          {items.length === 0 ? (
+            <EmptyContent
+              title="No notifications"
+              description="You're all caught up! Check back later for updates."
+              sx={{ py: 12 }}
+            />
+          ) : (
+            <Stack spacing={1.7} sx={{ width: '100%' }}>
+              {items.map((n) => (
+                <NotificationCard key={n.id} notification={n} onClick={() => markRead(n.id)} />
+              ))}
+            </Stack>
+          )}
         </Box>
       </Box>
     </Box>

@@ -141,9 +141,12 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
                 borderColor: 'rgba(0,0,0,0.15)',
                 color: 'text.primary',
                 borderRadius: 2,
-                py: 1.2,
+                py: 0.95,
+                px: 2.75,
+                fontSize: 14,
                 fontWeight: 600,
                 textTransform: 'none',
+                minWidth: 100,
                 '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
               }}
             >
@@ -157,9 +160,12 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
                 bgcolor: '#e53935',
                 color: '#fff',
                 borderRadius: 2,
-                py: 1.2,
+                py: 0.95,
+                px: 2.75,
+                fontSize: 14,
                 fontWeight: 700,
                 textTransform: 'none',
+                minWidth: 100,
                 boxShadow: 'none',
                 '&:hover': { bgcolor: '#c62828', boxShadow: 'none' },
               }}

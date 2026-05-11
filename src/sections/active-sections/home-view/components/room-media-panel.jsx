@@ -13,6 +13,7 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import DrawerHeader from './drawer-header';
 import { AudioPlayer } from './file-message';
+import ImagePreviewDialog from './image-preview-dialog';
 import { MOCK_ROOM_MEDIA } from '../mock';
 
 const formatBytes = (bytes) => {
@@ -20,6 +21,13 @@ const formatBytes = (bytes) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const getFileTypeLabel = (name = '', type = '') => {
+  const ext = name.split('.').pop()?.toUpperCase();
+  if (ext) return ext;
+  if (type) return type.split('/').pop()?.toUpperCase() || 'FILE';
+  return 'FILE';
 };
 
 const FILE_COLOR = {
@@ -67,23 +75,7 @@ function CloseBtn({ onClick }) {
 }
 
 function ImageLightbox({ image, onClose }) {
-  return (
-    <Modal open={!!image} onClose={onClose} sx={BACKDROP_SX}>
-      <Box sx={{ position: 'relative', outline: 'none', maxWidth: 520, width: '100%' }}>
-        <CloseBtn onClick={onClose} />
-        {image?.url ? (
-          <Box
-            component="img"
-            src={image.url}
-            alt=""
-            sx={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 3, display: 'block' }}
-          />
-        ) : (
-          <Box sx={{ width: '100%', aspectRatio: '1', borderRadius: 3, bgcolor: image?.color }} />
-        )}
-      </Box>
-    </Modal>
-  );
+  return <ImagePreviewDialog open={!!image} src={image?.url} alt={image?.name || 'Image preview'} onClose={onClose} />;
 }
 
 function VideoModal({ video, onClose }) {
@@ -142,9 +134,14 @@ function ImagesGrid({ items }) {
               bgcolor: item.color,
               cursor: 'pointer',
               transition: 'opacity 0.15s',
-              '&:hover': { opacity: 0.72 },
+              overflow: 'hidden',
+              '&:hover': { opacity: 0.82 },
             }}
-          />
+          >
+            {item.url && (
+              <Box component="img" src={item.url} alt={item.name || 'Image'} sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            )}
+          </Box>
         ))}
       </Box>
       <ImageLightbox image={selected} onClose={() => setSelected(null)} />
@@ -211,6 +208,9 @@ function VideosGrid({ items }) {
             <Typography fontSize={12} fontWeight={600} noWrap sx={{ mt: 0.5, px: 0.5, color: 'text.secondary' }}>
               {item.name}
             </Typography>
+            <Typography fontSize={10} color="text.disabled" noWrap sx={{ px: 0.5 }}>
+              {[formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+            </Typography>
           </Box>
         ))}
       </Box>
@@ -245,7 +245,9 @@ function AudioList({ items }) {
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography fontSize={13} fontWeight={600} noWrap>{item.name}</Typography>
-              <Typography fontSize={11} color="text.secondary">{item.duration} · {formatBytes(item.size)}</Typography>
+              <Typography fontSize={11} color="text.secondary">
+                {[item.duration, formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+              </Typography>
             </Box>
           </Stack>
           <Box sx={{ px: 2, pb: 1.5 }}>
@@ -295,7 +297,9 @@ function FilesList({ items }) {
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography fontSize={13} fontWeight={600} noWrap>{item.name}</Typography>
-            <Typography fontSize={11} color="text.secondary">{formatBytes(item.size)}</Typography>
+            <Typography fontSize={11} color="text.secondary">
+              {[getFileTypeLabel(item.name, item.type), formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+            </Typography>
           </Box>
 
           <IconButton size="small" sx={{ color: '#4C4EFF', flexShrink: 0 }}>

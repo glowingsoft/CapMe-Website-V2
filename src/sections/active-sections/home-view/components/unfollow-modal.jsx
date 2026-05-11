@@ -101,17 +101,19 @@ export default function UnfollowModal({
           </Typography>
         )}
 
-        <Box sx={{ display: 'flex', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
           <Button
-            fullWidth
             variant="outlined"
             disabled={loading}
             onClick={onClose}
             sx={{
+              minWidth: 100,
               borderColor: 'rgba(0,0,0,0.15)',
               color: 'text.primary',
               borderRadius: 2,
-              py: 1.2,
+              py: 0.95,
+              px: 2.75,
+              fontSize: 14,
               fontWeight: 600,
               textTransform: 'none',
               '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
@@ -121,15 +123,17 @@ export default function UnfollowModal({
           </Button>
 
           <Button
-            fullWidth
             variant="contained"
             disabled={loading || (isReportMode && !feedback?.trim())}
             onClick={onConfirm}
             sx={{
+              minWidth: 100,
               bgcolor: confirmColor,
               color: '#fff',
               borderRadius: 2,
-              py: 1.2,
+              py: 0.95,
+              px: 2.75,
+              fontSize: 14,
               fontWeight: 700,
               textTransform: 'none',
               boxShadow: 'none',

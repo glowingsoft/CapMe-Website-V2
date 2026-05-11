@@ -18,9 +18,11 @@ import OldMessagesLabel from 'src/sections/chat/old-messages-label';
 import SelectFile from './components/select-file';
 import FileUploadProgress from './components/file-upload-progress';
 import AudioRecorder from './components/audio-recorder';
+import AttachedFileChip from './components/attached-file-chip';
 import HashtagSuggestions from 'src/components/hashtags/hashtag-suggestions';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
 import { HASHTAGS } from './hashtags-mock';
+import PinnedMessagesDisplay from './components/pinned-messages-display';
 
 // Must match LeftDrawer's drawerWidth when open
 const DRAWER_WIDTH = 420;
@@ -38,6 +40,7 @@ export default function HomeView() {
   const [attachedFile, setAttachedFile] = React.useState(null); // ready to send
   const [audioRecorderOpen, setAudioRecorderOpen] = React.useState(false);
   const uploadTimerRef = React.useRef(null);
+  const [pinnedMessages, setPinnedMessages] = React.useState([]);
 
   const handleFileSelected = (file) => {
     const url = URL.createObjectURL(file);
@@ -73,6 +76,50 @@ export default function HomeView() {
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = React.useState(false);
+  const [targetMessageId, setTargetMessageId] = React.useState(null);
+  const [highlightedMessageId, setHighlightedMessageId] = React.useState(null);
+  const postsContainerRef = React.useRef(null);
+  const highlightTimerRef = React.useRef(null);
+  const [localPosts, setLocalPosts] = React.useState(posts);
+
+  const onPinMessage = React.useCallback((e) => {
+    const { messageId, isPinned, message: detailMessage } = e.detail;
+    const message = detailMessage || localPosts.find((p) => String(p.id) === String(messageId));
+
+    if (!message) return;
+
+    setLocalPosts((prev) =>
+      prev.map((post) =>
+        String(post.id) === String(messageId)
+          ? { ...post, isPinned }
+          : post
+      )
+    );
+
+    if (isPinned) {
+      setPinnedMessages((prev) => {
+        const exists = prev.some((m) => String(m.id) === String(messageId));
+        if (exists) {
+          return prev.map((m) => (String(m.id) === String(messageId) ? { ...m, ...message, isPinned: true } : m));
+        }
+        return [...prev, { ...message, isPinned: true }];
+      });
+    } else {
+      setPinnedMessages((prev) => prev.filter((m) => String(m.id) !== String(messageId)));
+    }
+  }, [localPosts]);
+
+  const onDeleteMessage = React.useCallback((e) => {
+    const { messageId } = e.detail;
+    setLocalPosts((prev) => prev.filter((m) => m.id !== messageId));
+    setPinnedMessages((prev) => prev.filter((m) => m.id !== messageId));
+  }, []);
+
+  const onEditMessage = React.useCallback((e) => {
+    const { messageId, content } = e.detail;
+    setLocalPosts((prev) => prev.map((post) => (post.id === messageId ? { ...post, content } : post)));
+    setPinnedMessages((prev) => prev.map((post) => (post.id === messageId ? { ...post, content } : post)));
+  }, []);
 
   React.useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -91,6 +138,10 @@ export default function HomeView() {
     window.addEventListener('profileDrawerChange', onProfileChange);
     window.addEventListener('notificationsDrawerChange', onNotificationsChange);
     window.addEventListener(DRAWER_EVENTS.commentClose, onCloseComment);
+    window.addEventListener('pinMessage', onPinMessage);
+    window.addEventListener('deleteMessage', onDeleteMessage);
+    window.addEventListener('editMessage', onEditMessage);
+
     return () => {
       window.removeEventListener('accountDrawerChange', onAccountChange);
       window.removeEventListener('accountDrawerOpened', onAccountOpened);
@@ -98,11 +149,13 @@ export default function HomeView() {
       window.removeEventListener('profileDrawerChange', onProfileChange);
       window.removeEventListener('notificationsDrawerChange', onNotificationsChange);
       window.removeEventListener(DRAWER_EVENTS.commentClose, onCloseComment);
+      window.removeEventListener('pinMessage', onPinMessage);
+      window.removeEventListener('deleteMessage', onDeleteMessage);
+      window.removeEventListener('editMessage', onEditMessage);
     };
-  }, []);
+  }, [onDeleteMessage, onEditMessage, onPinMessage]);
 
   const anyRightDrawerOpen = drawerOpen || roomInfoOpen || accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
-  const [localPosts, setLocalPosts] = React.useState(posts);
   const location = useLocation();
 
   // Sentinel ref — always sits below the last post
@@ -112,9 +165,18 @@ export default function HomeView() {
 
   const showLeftDrawer = /^\/(home|dashboard)(\/|$)/.test(location.pathname);
 
+  const handleUnpinMessage = React.useCallback((messageId) => {
+    window.dispatchEvent(
+      new CustomEvent('pinMessage', {
+        detail: { messageId, isPinned: false },
+      })
+    );
+  }, []);
+
   const handleRoomSelect = (room) => {
     setActiveRoom(room);
     setLocalPosts(posts);
+    setPinnedMessages([]);
   };
 
   // Open a room passed via navigation state (e.g. from activity feed)
@@ -167,6 +229,37 @@ export default function HomeView() {
     setMessage(next);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
+
+  const handleMessageSelect = React.useCallback((selectedMessage) => {
+    if (!selectedMessage?.id) return;
+    setTargetMessageId(String(selectedMessage.id));
+  }, []);
+
+  React.useEffect(() => {
+    if (!targetMessageId || !postsContainerRef.current) return;
+
+    const messageElement = postsContainerRef.current.querySelector(`[data-message-id="${targetMessageId}"]`);
+
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMessageId(targetMessageId);
+      setTargetMessageId(null);
+
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+
+      highlightTimerRef.current = setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 1800);
+    }
+  }, [targetMessageId, localPosts]);
+
+  React.useEffect(() => () => {
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+  }, []);
 
   // Scroll to bottom: instant on room switch, smooth on new message
   React.useEffect(() => {
@@ -228,7 +321,9 @@ export default function HomeView() {
                 {/* Room channel header bar */}
                 <RoomChannelHeader
                   room={activeRoom}
+                  isGarage={activeRoom?.isGarage}
                   messages={localPosts}
+                  onMessageSelect={handleMessageSelect}
                   onRoomInfoOpenChange={(val) => {
                     setRoomInfoOpen(val);
                     if (val) {
@@ -239,8 +334,17 @@ export default function HomeView() {
                   }}
                 />
 
+                <Box sx={{ flexShrink: 0 }}>
+                  <PinnedMessagesDisplay
+                    pinnedMessages={pinnedMessages}
+                    onUnpin={handleUnpinMessage}
+                    onMessageClick={handleMessageSelect}
+                  />
+                </Box>
+
                 {/* Scrollable posts — only this scrolls */}
                 <Box
+                  ref={postsContainerRef}
                   sx={{
                     flex: 1,
                     minHeight: 0,
@@ -256,7 +360,20 @@ export default function HomeView() {
                     item.type === 'date' ? (
                       <OldMessagesLabel key={`date-${index}`} label={item.label} />
                     ) : (
-                      <PostCard key={`post-${item.id}`} post={item} onCommentClick={handleOpenComments} />
+                      <Box
+                        key={`post-${item.id}`}
+                        data-message-id={String(item.id)}
+                        sx={{
+                          borderRadius: 4,
+                          transition: 'box-shadow 0.25s ease, background-color 0.25s ease',
+                          ...(highlightedMessageId === String(item.id) && {
+                            backgroundColor: 'rgba(76, 78, 255, 0.08)',
+                            boxShadow: '0 0 0 2px rgba(76, 78, 255, 0.35)',
+                          }),
+                        }}
+                      >
+                        <PostCard post={item} onCommentClick={handleOpenComments} />
+                      </Box>
                     )
                   )}
                   {/* Sentinel — scrollIntoView targets this to reach the bottom */}
@@ -276,27 +393,7 @@ export default function HomeView() {
 
                   {/* Attached file chip — shows after upload is done, before send */}
                   {attachedFile && !upload.file && (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 1.5,
-                        py: 0.8,
-                        mb: 0.5,
-                        bgcolor: '#f0f1ff',
-                        border: '1px solid #d0d2ff',
-                        borderRadius: 2,
-                      }}
-                    >
-                      <Iconify icon="solar:paperclip-bold" width={16} style={{ color: '#4C4EFF', flexShrink: 0 }} />
-                      <Typography fontSize={13} fontWeight={500} color="#4C4EFF" noWrap sx={{ flex: 1 }}>
-                        {attachedFile.name}
-                      </Typography>
-                      <IconButton size="small" onClick={() => setAttachedFile(null)} sx={{ p: 0.2, color: '#9e9e9e' }}>
-                        <Iconify icon="mingcute:close-line" width={14} />
-                      </IconButton>
-                    </Box>
+                    <AttachedFileChip file={attachedFile} onRemove={() => setAttachedFile(null)} />
                   )}
 
                   {audioRecorderOpen ? (

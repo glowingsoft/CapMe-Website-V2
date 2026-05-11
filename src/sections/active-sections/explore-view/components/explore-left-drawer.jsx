@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import { EmptyContent } from 'src/components/empty-content';
 import { Iconify } from 'src/components/iconify';
 
 export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelect, onFilterOpen, filterCount = 0 }) {
@@ -58,8 +59,7 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
     const drawerWidth = 420;
 
     const visibleRooms = useMemo(() => {
-        // TODO: When API is wired, map these tabs to backend filters/sorts.
-        // For now, keep a single consistent list across tabs.
+
         if (tab === 'all') return allRooms;
         if (tab === 'popular') return allRooms;
         if (tab === 'new') return allRooms;
@@ -191,9 +191,17 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                         }}
                     >
                         {visibleRooms.length === 0 ? (
-                            <Box sx={{ textAlign: 'center', py: 3, color: '#bdbdbd', fontSize: 14 }}>
-                                No rooms found.
-                            </Box>
+                            <EmptyContent
+                                title="No rooms found"
+                                description="Try a different tab or adjust your filters."
+                                sx={
+                                    {
+                                        py: 8,
+                                        '& h6': { color: '#a5b4fc' },
+                                        '& .MuiTypography-body2': { color: '#9e9e9e' },
+                                    }
+                                }
+                            />
                         ) : (
                             <Stack spacing={0.3} sx={{ mb: 2 }}>
                                 {visibleRooms.map((room) => {

@@ -4,15 +4,18 @@ import Box from '@mui/material/Box';
 import NoSsr from '@mui/material/NoSsr';
 import { useTheme } from '@mui/material/styles';
 
+import { useAuthContext } from 'src/auth/hooks';
 import { RouterLink } from 'src/routes/components';
+import { paths } from 'src/routes/paths';
 
 import { logoClasses } from './classes';
 import { CONFIG } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
-export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false, className, href = '/', sx, ...other }, ref) => {
+export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false, className, href, sx, ...other }, ref) => {
   const theme = useTheme();
+  const { authenticated } = useAuthContext();
 
   const gradientId = useId();
 
@@ -26,6 +29,19 @@ export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false,
    * OR using local (public folder)
    * const logo = ( <Box alt="logo" component="img" src={`${CONFIG.site.basePath}/logo/logo-single.svg`} width={width} height={height} /> );
    */
+
+  const signInPath = {
+    jwt: paths.auth.jwt.signIn,
+    auth0: paths.auth.auth0.signIn,
+    amplify: paths.auth.amplify.signIn,
+    firebase: paths.auth.firebase.signIn,
+    supabase: paths.auth.supabase.signIn,
+  }[CONFIG.auth.method];
+
+  let computedHref = authenticated ? paths.dashboard.root : signInPath;
+
+  // Allow explicit href prop to override
+  if (href) computedHref = href;
 
   const logo = <Box alt="logo" component="img" src={`${CONFIG.site.basePath}/logo/logo-single.svg`} width={width} height={height} />;
 
@@ -84,7 +100,7 @@ export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false,
       <Box
         ref={ref}
         component={RouterLink}
-        href={href}
+        href={computedHref}
         width={width}
         height={height}
         className={logoClasses.root.concat(className ? ` ${className}` : '')}

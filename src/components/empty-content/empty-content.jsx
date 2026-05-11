@@ -2,8 +2,10 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { CONFIG } from 'src/config-global';
-import { varAlpha } from 'src/theme/styles';
+import noDataSvg from 'src/assets/images/noData.svg';
+
+// Brand color used throughout the app
+const BRAND_COLOR = '#4C4EFF';
 
 // ----------------------------------------------------------------------
 
@@ -27,8 +29,8 @@ export function EmptyContent({
         height: 1,
         ...(filled && {
           borderRadius: 2,
-          bgcolor: (theme) => varAlpha(theme.vars.palette.grey['500Channel'], 0.04),
-          border: (theme) => `dashed 1px ${varAlpha(theme.vars.palette.grey['500Channel'], 0.08)}`,
+          bgcolor: 'rgba(76, 78, 255, 0.04)',
+          border: `dashed 1px rgba(76, 78, 255, 0.15)`,
         }),
         ...sx,
       }}
@@ -36,9 +38,9 @@ export function EmptyContent({
     >
       <Box
         component="img"
-        alt="empty content"
-        src={imgUrl ?? `${CONFIG.site.basePath}/assets/icons/empty/ic-content.svg`}
-        sx={{ width: 1, maxWidth: 160, ...slotProps?.img }}
+        alt="no data"
+        src={imgUrl ?? noDataSvg}
+        sx={{ width: 1, maxWidth: 140, opacity: 0.85, ...slotProps?.img }}
       />
 
       {title && (
@@ -46,10 +48,11 @@ export function EmptyContent({
           variant="h6"
           component="span"
           sx={{
-            mt: 1,
+            mt: 2,
             textAlign: 'center',
+            fontWeight: 700,
+            color: BRAND_COLOR,
             ...slotProps?.title,
-            color: 'text.disabled',
           }}
         >
           {title}
@@ -58,11 +61,12 @@ export function EmptyContent({
 
       {description && (
         <Typography
-          variant="caption"
+          variant="body2"
           sx={{
-            mt: 1,
+            mt: 0.75,
             textAlign: 'center',
-            color: 'text.disabled',
+            color: 'text.secondary',
+            maxWidth: 280,
             ...slotProps?.description,
           }}
         >

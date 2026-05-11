@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useDispatch } from 'react-redux';
 import { toast } from 'src/components/snackbar';
 import { z as zod } from 'zod';
 
@@ -25,11 +26,11 @@ import { useBoolean } from 'src/hooks/use-boolean';
 
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
-
-import { useDispatch } from 'react-redux';
+import { signInWithPassword } from 'src/auth/context/jwt';
+import { useAuthContext } from 'src/auth/hooks';
 import { setUser } from 'src/store/slices/userSlice';
+
 import { handleApiError } from 'src/utils/errorHandler';
-import { getDeviceType } from 'src/utils/getDeviceType';
 
 // ----------------------------------------------------------------------
 
@@ -38,39 +39,9 @@ export const SignInSchema = zod.object({
   password: zod.string().min(1, { message: 'Password is required!' }).min(6, { message: 'Password must be at least 6 characters!' }),
 });
 
-const mockLogin = async (payload) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return {
-    message: 'Login success',
-    data: {
-      basicInfo: {
-        _id: '692c5523e446ec147ce153aa',
-        profileIcon: 'https://dummybucket.s3.us-east-1.amazonaws.com/noimage.png',
-        name: payload.userType === 'admin' ? 'Admin User' : 'Hashir',
-        email: payload.email,
-        phoneNumber: null,
-        language: 'en',
-      },
-      accountState: {
-        userType: payload.userType,
-        status: 'active',
-        verificationStatus: { email: 'verified', phoneNumber: 'pending' },
-      },
-      metadata: {
-        timezone: payload.timezone,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        __v: 0,
-      },
-      token: 'mock-token',
-    },
-  };
-};
-
-// ----------------------------------------------------------------------
-
 export function JwtSignInView() {
   const router = useRouter();
+  const { checkUserSession } = useAuthContext();
   const dispatch = useDispatch();
   const [errorMsg, setErrorMsg] = useState('');
   const password = useBoolean();
@@ -82,30 +53,16 @@ export function JwtSignInView() {
 
   const { reset, handleSubmit, formState: { isSubmitting } } = methods;
 
-  const goTo = (permission) => {
-    if (permission === 1) router.push(paths.adminDashboard.root);
-    else if (permission === 2) router.push(paths.dashboard.root);
-    else router.push('/');
-  };
-
   const onSubmit = handleSubmit(async (data) => {
-    const payload = {
-      email: data.email.trim().toLowerCase(),
-      password: data.password,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      userType: data.email.includes('admin') ? 'admin' : 'user',
-      deviceType: getDeviceType(),
-      deviceId: '123',
-    };
-
     try {
-      const response = await mockLogin(payload);
-      if (!response.data) { toast.error('Login failed'); return; }
-      const user = response.data;
-      if (!user?.accountState?.status) { toast.error('Account inactive.'); return; }
-      const user_type = user.accountState.userType === 'user' ? 2 : 1;
-      dispatch(setUser({ ...user, permission: user_type }));
-      goTo(user_type);
+      const user = await signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      });
+
+      dispatch(setUser(user));
+      await checkUserSession();
+      router.replace(paths.dashboard.root);
       reset();
       toast.success('Login successful!');
     } catch (error) {

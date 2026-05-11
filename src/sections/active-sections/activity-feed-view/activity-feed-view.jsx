@@ -4,6 +4,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 
+import { EmptyContent } from 'src/components/empty-content';
 import CommentDrawer from 'src/sections/active-sections/home-view/components/comment-drawer';
 import OldMessagesLabel from 'src/sections/chat/old-messages-label';
 import PostCard from 'src/sections/active-sections/home-view/components/post-card';
@@ -17,6 +18,7 @@ const TABS = [
   { value: 'all', label: 'All' },
   { value: 'friends', label: 'Friends' },
   { value: 'following', label: 'Following' },
+  { value: 'me', label: 'Me' },
 ];
 
 const CONTENT_MAX_WIDTH = 920;
@@ -73,6 +75,7 @@ export default function ActivityFeedView() {
     const matchesTab = (item) => {
       if (activeTab === 'friends') return item.visibility === 'friends' || item.feedType === 'friends';
       if (activeTab === 'following') return item.feedType === 'following';
+      if (activeTab === 'me') return item.authorId === 'currentUserId';
       return true;
     };
 
@@ -95,6 +98,8 @@ export default function ActivityFeedView() {
 
     return out;
   }, [activeTab]);
+
+  const hasPostItems = filteredPosts.some((item) => item.type !== 'date');
 
   return (
     <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
@@ -171,13 +176,21 @@ export default function ActivityFeedView() {
                 '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
               }}
             >
-              {filteredPosts.map((item, index) =>
-                item.type === 'date' ? (
-                  <OldMessagesLabel key={index} label={item.label} />
-                ) : (
-                  <Box key={item.id} sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto' }}>
-                    <PostCard post={item} onCommentClick={handleOpenComments} />
-                  </Box>
+              {!hasPostItems ? (
+                <EmptyContent
+                  title="No posts yet"
+                  description="There's nothing to show for this tab."
+                  sx={{ py: 10 }}
+                />
+              ) : (
+                filteredPosts.map((item, index) =>
+                  item.type === 'date' ? (
+                    <OldMessagesLabel key={index} label={item.label} />
+                  ) : (
+                    <Box key={item.id} sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto' }}>
+                      <PostCard post={item} onCommentClick={handleOpenComments} />
+                    </Box>
+                  )
                 )
               )}
             </Box>

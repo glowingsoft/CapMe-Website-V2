@@ -20,7 +20,8 @@ export const activityPosts = [
     id: 102,
     type: 'message',
     user: { name: 'Ryan Lewis', username: '@ryanl', avatar: '' },
-    image: '',
+    image:
+      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1600&q=80',
     content: 'Just wrapped up a super productive study on AI/ML. Feeling more confident for the exams ahead!',
     hashtags: '#studytime #focusmode #examprep',
     stats: { likes: 240, comments: 54, shares: 11, capme: 2 },
@@ -44,7 +45,8 @@ export const activityPosts = [
     type: 'message',
     feedType: 'following',
     user: { name: 'Mia Carter', username: '@miac', avatar: '' },
-    image: '',
+    image:
+      'https://images.unsplash.com/photo-1461344577544-4e5dc9487184?auto=format&fit=crop&w=1600&q=80',
     content: "If youâ€™re struggling with consistency, try reducing the scope. Small wins compound.",
     hashtags: '#mindset #growth',
     stats: { likes: 144, comments: 31, shares: 9, capme: 3 },
@@ -59,7 +61,8 @@ export const activityPosts = [
     id: 105,
     type: 'message',
     user: { name: 'Alexa Hales', username: '@alexa9123', avatar: '' },
-    image: '',
+    image:
+      'https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1600&q=80',
     content: 'Good morning everyone! Ready for another productive day.',
     hashtags: '#morning #productivity',
     stats: { likes: 98, comments: 44, shares: 10, capme: 0 },
@@ -83,7 +86,8 @@ export const activityPosts = [
     id: 107,
     type: 'message',
     user: { name: 'Max Henry', username: '@max56', avatar: '' },
-    image: '',
+    image:
+      'https://images.unsplash.com/photo-1526498460520-4c246339dccb?auto=format&fit=crop&w=1600&q=80',
     content: "Hot take: your calendar is your strategy. Protect focus time like itâ€™s a meeting.",
     hashtags: '#deepwork #focus',
     stats: { likes: 176, comments: 39, shares: 7, capme: 2 },
@@ -95,7 +99,7 @@ export const activityPosts = [
     type: 'message',
     user: { name: 'Liam Park', username: '@liamp', avatar: '' },
     image:
-      'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1600&q=80',
     content: "Quick reminder: if itâ€™s important, write it down. Then break it into the next action.",
     hashtags: '#planning #execution',
     stats: { likes: 133, comments: 22, shares: 5, capme: 1 },
@@ -124,7 +128,8 @@ export const activityPosts = [
     type: 'message',
     feedType: 'following',
     user: { name: 'Noah Smith', username: '@noah', avatar: '' },
-    image: '',
+    image:
+      'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=1600&q=80',
     content: 'Small UI tweaks can make a huge difference. Always test on wide screens too.',
     hashtags: '#ui #ux',
     stats: { likes: 112, comments: 26, shares: 8, capme: 2 },

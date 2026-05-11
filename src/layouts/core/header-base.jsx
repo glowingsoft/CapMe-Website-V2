@@ -14,10 +14,14 @@ import {
   closeChatHistoryDrawer,
   emitChatHistoryChange,
   DRAWER_EVENTS,
+  closeOverlayDrawers,
+  closeCommentDrawer,
+  closeFilterDrawer,
+  closeRoomRequestDrawer,
+  closeDownloadedMediaDrawer,
 } from 'src/utils/drawer-events';
 
 import { Logo } from 'src/components/logo';
-
 import { HeaderSection } from './header-section';
 import CustomSearchBar from 'src/components/custom-search-bar';
 import { Icon } from '@iconify/react';
@@ -29,6 +33,7 @@ import { LanguagePopover } from '../components/language-popover';
 import { ContactsPopover } from '../components/contacts-popover';
 import { WorkspacesPopover } from '../components/workspaces-popover';
 import { NotificationsDrawer } from '../components/notifications-drawer';
+import AnnouncementModal from '../components/announcement-modal';
 
 
 
@@ -92,6 +97,15 @@ const StyledDivider = styled('span')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
+const GARAGE_ROOM = {
+  id: 'garage',
+  name: 'My Garage',
+  color: '#4C4EFF',
+  isGarage: true,
+};
+
+// ----------------------------------------------------------------------
+
 export function HeaderBase({
   sx,
   data,
@@ -120,6 +134,15 @@ export function HeaderBase({
   const location = useLocation();
   const navigate = useNavigate();
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+
+  const handleOpenGarage = () => {
+    if (location.pathname.startsWith('/home')) {
+      window.dispatchEvent(new CustomEvent('openRoom', { detail: GARAGE_ROOM }));
+    } else {
+      navigate('/home', { state: { pendingRoom: GARAGE_ROOM } });
+    }
+  };
   const params = new URLSearchParams(location.search);
   const chatMeTab = params.get('tab') || 'prompts';
   const showChatMeActions = (location.pathname === '/home/chat-me' || location.pathname === '/home/banking') && chatMeTab === 'prompts';
@@ -133,7 +156,11 @@ export function HeaderBase({
   useEffect(() => {
     emitChatHistoryChange(chatHistoryOpen);
     if (chatHistoryOpen) {
-      closeAllDrawers();
+      closeOverlayDrawers();
+      closeCommentDrawer();
+      closeFilterDrawer();
+      closeRoomRequestDrawer();
+      closeDownloadedMediaDrawer();
     }
   }, [chatHistoryOpen]);
 
@@ -296,6 +323,40 @@ export function HeaderBase({
                   </Box>
                 )}
 
+                {/* -- Announcement button -- */}
+                <IconButton
+                  size="small"
+                  onClick={() => setAnnouncementOpen(true)}
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(255,255,255,0.06)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
+                  }}
+                  aria-label="Announcements"
+                >
+                  <Icon icon="solar:danger-circle-bold" width={20} />
+                </IconButton>
+
+                {/* -- Garage room button -- */}
+                <IconButton
+                  size="small"
+                  onClick={handleOpenGarage}
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(255,255,255,0.06)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
+                  }}
+                  aria-label="Garage Room"
+                >
+                  <Icon icon="solar:garage-bold" width={20} />
+                </IconButton>
+
                 {/* -- Account drawer -- */}
                 {account && <AccountDrawer data-slot="account" data={data?.account} />}
 
@@ -336,6 +397,11 @@ export function HeaderBase({
       <ChatHistoryDrawer
         open={chatHistoryOpen}
         onClose={() => setChatHistoryOpen(false)}
+      />
+
+      <AnnouncementModal
+        open={announcementOpen}
+        onClose={() => setAnnouncementOpen(false)}
       />
     </>
   );

@@ -6,8 +6,13 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 
-// Expects: open, onClose, hashtag, messages
-export default function HashtagModal({ open, onClose, hashtag, messages = [] }) {
+import PostCard from './post-card';
+
+// Expects: open, onClose, hashtag, messages, onMessageClick
+export default function HashtagModal({ open, onClose, hashtag, messages = [], onMessageClick }) {
+    const handleMessageCardClick = (msg) => {
+        onMessageClick?.(msg);
+    };
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>
@@ -19,10 +24,18 @@ export default function HashtagModal({ open, onClose, hashtag, messages = [] }) 
                         <Typography color="text.secondary">No messages found for this hashtag.</Typography>
                     ) : (
                         messages.map((msg) => (
-                            <Box key={msg.id} sx={{ p: 2, bgcolor: '#f5f7ff', borderRadius: 2 }}>
-                                <Typography fontWeight={700}>{msg.user?.name || msg.user}</Typography>
-                                <Typography fontSize={13} sx={{ color: '#222', mt: 0.5 }}>{msg.content || msg.text}</Typography>
-                                <Typography fontSize={12} sx={{ color: '#888', mt: 0.5 }}>{msg.time}</Typography>
+                            <Box
+                                key={msg.id}
+                                onClick={() => handleMessageCardClick(msg)}
+                                sx={{
+                                    cursor: 'pointer',
+                                    transition: 'opacity 0.18s ease',
+                                    '&:hover': {
+                                        opacity: 0.85,
+                                    },
+                                }}
+                            >
+                                <PostCard post={msg} onCommentClick={() => handleMessageCardClick(msg)} />
                             </Box>
                         ))
                     )}

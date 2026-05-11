@@ -4,7 +4,23 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
-import ImagePreviewDialog from './image-preview-dialog';
+import ImagePreviewDialog, { PdfPreviewDialog } from './image-preview-dialog';
+
+// ─── Per-type icon / colour for the generic file card ────────────────────────
+function getFileStyle(type, name) {
+  const ext = name?.split('.').pop()?.toLowerCase();
+  if (type === 'application/pdf' || ext === 'pdf')
+    return { icon: 'solar:file-text-bold', color: '#e53935', canPreview: true };
+  if (['doc', 'docx'].includes(ext))
+    return { icon: 'solar:file-text-bold', color: '#1565c0', canPreview: false };
+  if (['xls', 'xlsx', 'csv'].includes(ext))
+    return { icon: 'solar:file-bold', color: '#2e7d32', canPreview: false };
+  if (['ppt', 'pptx'].includes(ext))
+    return { icon: 'solar:file-bold', color: '#e65100', canPreview: false };
+  if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext))
+    return { icon: 'solar:archive-bold', color: '#f57c00', canPreview: false };
+  return { icon: 'solar:file-bold', color: '#9e9e9e', canPreview: false };
+}
 
 const formatBytes = (bytes) => {
   if (!bytes) return '';
@@ -262,9 +278,10 @@ export function AudioPlayer({ url, sx }) {
   );
 }
 
-export default function FileMessage({ file }) {
+export default function FileMessage({ file, imageSx }) {
   const { url, type, name, size } = file;
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [filePreviewOpen, setFilePreviewOpen] = useState(false);
 
   if (type?.startsWith('image/')) {
     return (
@@ -275,12 +292,13 @@ export default function FileMessage({ file }) {
           alt={name}
           onClick={() => setImagePreviewOpen(true)}
           sx={{
-            maxWidth: '100%',
-            maxHeight: 300,
+            width: '100%',
+            height: 480,
             borderRadius: 2,
             objectFit: 'cover',
             display: 'block',
             cursor: 'pointer',
+            ...imageSx,
           }}
         />
 
@@ -309,48 +327,75 @@ export default function FileMessage({ file }) {
     return <AudioPlayer url={url} />;
   }
 
-  // Generic file card
+  // Generic file card (PDF, Office docs, archives, etc.)
+  const { icon, color, canPreview } = getFileStyle(type, name);
+
+  const handleClick = () => {
+    if (canPreview) {
+      setFilePreviewOpen(true);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1.5}
-      sx={{
-        px: 2,
-        py: 1.5,
-        bgcolor: '#f5f6ff',
-        border: '1px solid #e0e0ff',
-        borderRadius: 2.5,
-        cursor: 'pointer',
-        '&:hover': { bgcolor: '#eceeff' },
-      }}
-      onClick={() => window.open(url, '_blank')}
-    >
-      <Box
+    <>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1.5}
         sx={{
-          width: 40,
-          height: 40,
-          borderRadius: 2,
-          bgcolor: '#4C4EFF',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
+          px: 2,
+          py: 1.5,
+          bgcolor: '#f5f6ff',
+          border: '1px solid #e0e0ff',
+          borderRadius: 2.5,
+          cursor: 'pointer',
+          '&:hover': { bgcolor: '#eceeff' },
         }}
+        onClick={handleClick}
       >
-        <Iconify icon="solar:file-bold" width={22} style={{ color: '#fff' }} />
-      </Box>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: 2,
+            bgcolor: `${color}18`,
+            border: `1.5px solid ${color}44`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Iconify icon={icon} width={22} style={{ color }} />
+        </Box>
 
-      <Box sx={{ minWidth: 0 }}>
-        <Typography fontSize={13} fontWeight={600} noWrap color="text.primary">
-          {name}
-        </Typography>
-        <Typography fontSize={11} color="text.secondary">
-          {formatBytes(size)}
-        </Typography>
-      </Box>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography fontSize={13} fontWeight={600} noWrap color="text.primary">
+            {name}
+          </Typography>
+          <Typography fontSize={11} color="text.secondary">
+            {formatBytes(size)}
+          </Typography>
+        </Box>
 
-      <Iconify icon="solar:download-minimalistic-bold" width={18} style={{ color: '#4C4EFF', flexShrink: 0 }} />
-    </Stack>
+        <Iconify
+          icon={canPreview ? 'solar:eye-bold' : 'solar:download-minimalistic-bold'}
+          width={18}
+          style={{ color: '#4C4EFF', flexShrink: 0 }}
+        />
+      </Stack>
+
+      {/* PDF / previewable file dialog */}
+      {canPreview && (
+        <PdfPreviewDialog
+          open={filePreviewOpen}
+          url={url}
+          name={name}
+          onClose={() => setFilePreviewOpen(false)}
+        />
+      )}
+    </>
   );
 }
