@@ -1,5 +1,6 @@
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
@@ -10,10 +11,14 @@ import FileMessage from './file-message';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
+import { selectUser } from 'src/store/slices/userSlice';
 import { Iconify } from 'src/components/iconify';
+import { toast } from 'src/components/snackbar';
 import DrawerHeader from './drawer-header';
 import ImagePreviewDialog from './image-preview-dialog';
 import AttachedFileChip from './attached-file-chip';
+import { useGetCommentsQuery, useLikeMessageMutation } from 'src/store/Reducer/rooms-api';
 
 function renderWithHashtags(text) {
   const parts = text.split(/(#[\p{L}\p{N}_]+)/u);
@@ -39,6 +44,9 @@ function getAttachments(item) {
 }
 
 export default function CommentDrawer({ open, onClose, selectedPost, commentsData }) {
+  const currentUser = useSelector(selectUser);
+  const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
+
   const [commentText, setCommentText] = useState('');
   const [localComments, setLocalComments] = useState([]);
   const [postLiked, setPostLiked] = useState(false);
@@ -51,6 +59,13 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   const uploadTimerRef = useRef(null);
   const selectedPostAttachments = getAttachments(selectedPost);
   const drawerFileImageSx = { height: 220, borderRadius: 2, objectFit: 'cover' };
+
+  const messageId = selectedPost?.id ?? selectedPost?._id;
+
+  const { data: commentsApiData, isLoading: commentsLoading } = useGetCommentsQuery(
+    { messageId, page: 1, limit: 50 },
+    { skip: !open || !messageId }
+  );
 
   const handleFileSelected = (file) => {
     const url = URL.createObjectURL(file);
@@ -82,17 +97,47 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   };
 
   useEffect(() => {
-    setLocalComments(commentsData[selectedPost?.id] ?? []);
+    if (commentsApiData?.comments) {
+      setLocalComments(commentsApiData.comments);
+    } else {
+      setLocalComments(commentsData?.[selectedPost?.id] ?? []);
+    }
     setCommentText('');
-    setPostLiked(false);
-    setPostLikeCount(selectedPost?.stats?.likes ?? 0);
-  }, [selectedPost?.id, commentsData]);
-
-  const handlePostLike = () => {
-    setPostLiked((prev) => {
-      setPostLikeCount((count) => (prev ? Math.max(0, count - 1) : count + 1));
-      return !prev;
+    // Derive liked state from the post's likes array (same logic as PostCard)
+    const isLiked = Array.isArray(selectedPost?.likes) && selectedPost.likes.some((item) => {
+      const id = typeof item === 'object' ? (item?._id ?? item?.id ?? item?.userId) : item;
+      return String(id) === String(currentUserId);
     });
+    setPostLiked(isLiked);
+    setPostLikeCount(selectedPost?.stats?.likes ?? 0);
+  }, [selectedPost?.id, commentsApiData, currentUserId]);
+
+  const [likeMessageApi] = useLikeMessageMutation();
+
+  const handlePostLike = async () => {
+    if (!messageId) return;
+    try {
+      const res = await likeMessageApi(messageId).unwrap();
+      const newCount = res?.body?.likeCount ?? res?.likeCount ?? res?.body?.likesCount ?? res?.likesCount;
+      const rawMsg = res?.body?.message ?? res?.message ?? '';
+      let isNowLiked = res?.body?.liked ?? res?.liked;
+      if (isNowLiked === undefined) {
+        const lower = rawMsg.toLowerCase();
+        if (lower.includes('unlike')) isNowLiked = false;
+        else if (lower.includes('like')) isNowLiked = true;
+      }
+      const resolvedLiked = isNowLiked !== undefined ? isNowLiked : !postLiked;
+      const resolvedCount = newCount !== undefined ? newCount : (resolvedLiked ? postLikeCount + 1 : Math.max(0, postLikeCount - 1));
+
+      setPostLiked(resolvedLiked);
+      setPostLikeCount(resolvedCount);
+
+      if (rawMsg) toast.success(rawMsg);
+
+      window.dispatchEvent(new CustomEvent('likeMessage', { detail: { messageId, liked: resolvedLiked, likeCount: resolvedCount } }));
+    } catch {
+      toast.error('Could not update like. Please try again.');
+    }
   };
 
   const handleCommentLike = (commentId) => {
@@ -274,87 +319,93 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
             </Stack>
 
             <Typography sx={{ mb: 1, mt: 2, color: '#888', fontSize: 13 }}>
-              {localComments.length} Replies
+              {commentsApiData?.totalComments ?? localComments.length} Replies
             </Typography>
             <Box sx={{ borderBottom: '1px solid #eee', mb: 2 }} />
 
             {/* Comments list */}
-            <Stack spacing={2}>
-              {localComments.map((comment) => {
-                const commentAttachments = getAttachments(comment);
+            {commentsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress size={28} sx={{ color: '#4C4EFF' }} />
+              </Box>
+            ) : (
+              <Stack spacing={2}>
+                {localComments.map((comment) => {
+                  const commentAttachments = getAttachments(comment);
 
-                return (
-                  <Stack key={comment.id} direction="row" spacing={2} alignItems="flex-start">
-                    <Avatar
-                      src={comment.avatar || undefined}
-                      sx={{
-                        bgcolor: '#4C4EFF',
-                        color: '#fff',
-                        fontWeight: 700,
-                        width: 40,
-                        height: 40,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {comment.user?.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between">
-                        <Typography fontWeight={700}>{comment.user}</Typography>
-                        <Typography variant="caption" color="text.secondary">{comment.time}</Typography>
-                      </Stack>
-
-                      <Typography sx={{ mt: 0.5, fontSize: 13, whiteSpace: 'pre-wrap' }}>{renderWithHashtags(comment.text)}</Typography>
-
-                      {!!commentAttachments.length && (
-                        <Stack spacing={1.25} sx={{ mt: 1 }}>
-                          {commentAttachments.map((file, index) => (
-                            <FileMessage
-                              key={`${comment.id}-attachment-${index}`}
-                              file={file}
-                              imageSx={drawerFileImageSx}
-                            />
-                          ))}
+                  return (
+                    <Stack key={comment.id} direction="row" spacing={2} alignItems="flex-start">
+                      <Avatar
+                        src={comment.avatar || undefined}
+                        sx={{
+                          bgcolor: '#4C4EFF',
+                          color: '#fff',
+                          fontWeight: 700,
+                          width: 40,
+                          height: 40,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {comment.user?.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between">
+                          <Typography fontWeight={700}>{comment.user}</Typography>
+                          <Typography variant="caption" color="text.secondary">{comment.time}</Typography>
                         </Stack>
-                      )}
 
-                      <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
-                        <Stack
-                          direction="row"
-                          spacing={0.6}
-                          alignItems="center"
-                          sx={{ cursor: 'pointer', userSelect: 'none' }}
-                          onClick={() => handleCommentLike(comment.id)}
-                        >
-                          <Iconify
-                            icon={comment.isLiked ? 'ic:round-favorite' : 'ic:round-favorite-border'}
-                            width={18}
-                            style={{
-                              color: comment.isLiked ? '#e53935' : '#9e9e9e',
-                              transition: 'color 0.15s, transform 0.15s',
-                              transform: comment.isLiked ? 'scale(1.2)' : 'scale(1)',
-                            }}
-                          />
-                          <Typography
-                            variant="caption"
-                            fontWeight={500}
-                            color={comment.isLiked ? '#e53935' : 'text.secondary'}
+                        <Typography sx={{ mt: 0.5, fontSize: 13, whiteSpace: 'pre-wrap' }}>{renderWithHashtags(comment.text)}</Typography>
+
+                        {!!commentAttachments.length && (
+                          <Stack spacing={1.25} sx={{ mt: 1 }}>
+                            {commentAttachments.map((file, index) => (
+                              <FileMessage
+                                key={`${comment.id}-attachment-${index}`}
+                                file={file}
+                                imageSx={drawerFileImageSx}
+                              />
+                            ))}
+                          </Stack>
+                        )}
+
+                        <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
+                          <Stack
+                            direction="row"
+                            spacing={0.6}
+                            alignItems="center"
+                            sx={{ cursor: 'pointer', userSelect: 'none' }}
+                            onClick={() => handleCommentLike(comment.id)}
                           >
-                            {comment.likes ?? 0}
-                          </Typography>
+                            <Iconify
+                              icon={comment.isLiked ? 'ic:round-favorite' : 'ic:round-favorite-border'}
+                              width={18}
+                              style={{
+                                color: comment.isLiked ? '#e53935' : '#9e9e9e',
+                                transition: 'color 0.15s, transform 0.15s',
+                                transform: comment.isLiked ? 'scale(1.2)' : 'scale(1)',
+                              }}
+                            />
+                            <Typography
+                              variant="caption"
+                              fontWeight={500}
+                              color={comment.isLiked ? '#e53935' : 'text.secondary'}
+                            >
+                              {comment.likes ?? 0}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={0.6} alignItems="center">
+                            <Iconify icon="mingcute:chat-3-line" width={18} style={{ color: '#9e9e9e' }} />
+                            <Typography variant="caption" fontWeight={500} color="text.secondary">
+                              {comment.replies}
+                            </Typography>
+                          </Stack>
                         </Stack>
-                        <Stack direction="row" spacing={0.6} alignItems="center">
-                          <Iconify icon="mingcute:chat-3-line" width={18} style={{ color: '#9e9e9e' }} />
-                          <Typography variant="caption" fontWeight={500} color="text.secondary">
-                            {comment.replies}
-                          </Typography>
-                        </Stack>
-                      </Stack>
-                    </Box>
-                  </Stack>
-                );
-              })}
-            </Stack>
+                      </Box>
+                    </Stack>
+                  );
+                })}
+              </Stack>
+            )}
           </Box>
 
           {/* Pinned message input */}

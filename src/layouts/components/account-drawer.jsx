@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -8,7 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import { useTheme } from '@mui/material/styles';
 import Button from '@mui/material/Button';
-import { stats, following, friends, roomsData } from './account-mockdata';
+import { stats, friends as mockFriends, following as mockFollowing } from './account-mockdata';
 import InputBase from '@mui/material/InputBase';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -26,10 +27,18 @@ import { Label } from 'src/components/label';
 import { Scrollbar } from 'src/components/scrollbar';
 
 import { useMockedUser } from 'src/auth/hooks';
+import { useUserProfileQuery, useConnectionsQuery, useUpdateProfileMutation, useUploadFileMutation } from 'src/store/Reducer/auth';
+import { toast } from 'src/components/snackbar';
+import { setUser } from 'src/store/slices/userSlice';
 
 import { AccountButton } from './account-button';
 import { UpgradeBlock } from './nav-upgrade';
 import AccountEditModal from './account-edit-modal';
+import {
+  AccountConnectionListSkeleton,
+  AccountProfileHeaderSkeleton,
+  AccountStatsSkeleton,
+} from './account-drawer-skeletons';
 import DrawerHeader from 'src/sections/active-sections/home-view/components/drawer-header';
 import ViewAllModal from './view-all';
 import ImagePreviewDialog from 'src/sections/active-sections/home-view/components/image-preview-dialog';
@@ -38,39 +47,174 @@ import ImagePreviewDialog from 'src/sections/active-sections/home-view/component
 
 export function AccountDrawer({ data = [], sx, ...other }) {
   const theme = useTheme();
+  const dispatch = useDispatch();
 
   const router = useRouter();
 
   const pathname = usePathname();
 
-  const { user } = useMockedUser();
-
+  // Initialize state early for use in queries
+  const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState(0); // 0: Rooms, 1: Friends, 2: Following
-  const [search, setSearch] = useState('');
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
-  // Mock data is now imported from account-mockdata.js
   const [editOpen, setEditOpen] = useState(false);
+  const [followedItems, setFollowedItems] = useState({});
+  const [viewAllOpen, setViewAllOpen] = useState(false);
+  const [viewType, setViewType] = useState('rooms');
+  const [viewSearch, setViewSearch] = useState('');
+
+  const { user } = useMockedUser();
+  const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
+  const [uploadFile, { isLoading: isUploading }] = useUploadFileMutation();
+  const {
+    data: profileResponse,
+    isLoading: isProfileLoading,
+    isFetching: isProfileFetching,
+  } = useUserProfileQuery(undefined, {
+    skip: !user?.token || !open,
+    refetchOnMountOrArgChange: true,
+  });
+
+  // Fetch followings and followers (friends)
+  const {
+    data: followingsData,
+    isLoading: isFollowingsLoading,
+    isFetching: isFollowingsFetching,
+  } = useConnectionsQuery(
+    { type: 'followings', page: 1, search },
+    { skip: !user?.token || !open, refetchOnMountOrArgChange: true }
+  );
+
+  const {
+    data: followersData,
+    isLoading: isFollowersLoading,
+    isFetching: isFollowersFetching,
+  } = useConnectionsQuery(
+    { type: 'followers', page: 1, search },
+    { skip: !user?.token || !open, refetchOnMountOrArgChange: true }
+  );
+
+  const isProfileDataLoading = isProfileLoading || isProfileFetching;
+  const isFriendsListLoading = isFollowersLoading || isFollowersFetching;
+  const isFollowingsListLoading = isFollowingsLoading || isFollowingsFetching;
+
+  // Map API responses to drawer data shape
+  // API returns body as array directly, not nested in .data
+  const apiFollowings = Array.isArray(followingsData?.body) ? followingsData.body : [];
+  const apiFollowers = Array.isArray(followersData?.body) ? followersData.body : [];
+
+  // Transform connection data to drawer format, preserving _id and email for navigation
+  const transformedFollowings = apiFollowings.map((item) => ({
+    _id: item._id,
+    name: item.name || item.displayName || 'Unknown',
+    email: item.email || '',
+    icon: item.image || item.photoURL || undefined,
+  }));
+
+  const transformedFollowers = apiFollowers.map((item) => ({
+    _id: item._id,
+    name: item.name || item.displayName || 'Unknown',
+    email: item.email || '',
+    icon: item.image || item.photoURL || undefined,
+  }));
+
+  // Use API data or fall back to mock data
+  const friends = transformedFollowers.length > 0 ? transformedFollowers : mockFriends;
+  const following = transformedFollowings.length > 0 ? transformedFollowings : mockFollowing;
+
+  useEffect(() => {
+    const profileBody = profileResponse?.body;
+    if (!profileBody || !user?.token) return;
+
+    const alreadySynced =
+      user?._id === profileBody?._id &&
+      user?.email === profileBody?.email &&
+      user?.photoURL === profileBody?.image &&
+      user?.mobile === profileBody?.mobile &&
+      user?.updatedAt === profileBody?.updatedAt;
+
+    if (alreadySynced) return;
+
+    const mergedUser = {
+      ...user,
+      ...profileBody,
+      id: profileBody?._id ?? user?.id,
+      email: profileBody?.email ?? user?.email,
+      photoURL: profileBody?.image ?? user?.photoURL,
+      basicInfo: {
+        ...(user?.basicInfo ?? {}),
+        name: profileBody?.name ?? user?.basicInfo?.name,
+        email: profileBody?.email ?? user?.basicInfo?.email,
+      },
+      token: user?.token,
+    };
+
+    dispatch(setUser(mergedUser));
+  }, [dispatch, profileResponse, user]);
+
+  const profileStats = {
+    rooms: profileResponse?.body?.roomCount ?? stats.rooms,
+    friends: profileResponse?.body?.followerCount ?? stats.friends,
+    following: profileResponse?.body?.followingCount ?? stats.following,
+  };
 
   const handleEditOpen = () => setEditOpen(true);
   const handleEditClose = () => setEditOpen(false);
-  const handleEditSave = (form) => {
-    // TODO: Save logic here
-    // e.g., update user profile
+  const handleEditSave = async (form) => {
+    try {
+      let imageUrl = user?.photoURL ?? '';
+      if (form.photo instanceof File) {
+        const uploadRes = await uploadFile(form.photo).unwrap();
+        const rawBody = uploadRes?.body;
+        imageUrl =
+          (typeof rawBody === 'string' ? rawBody : null) ??
+          rawBody?.url ??
+          rawBody?.fileUrl ??
+          rawBody?.imageUrl ??
+          rawBody?.path ??
+          rawBody?.location ??
+          rawBody?.link ??
+          uploadRes?.url ??
+          uploadRes?.fileUrl ??
+          uploadRes?.imageUrl ??
+          uploadRes?.path ??
+          uploadRes?.location ??
+          imageUrl;
+      }
+
+      const payload = {
+        name: form.name,
+        mobile: form.phone,
+        image: imageUrl,
+      };
+      const res = await updateProfile(payload).unwrap();
+      const profileBody = res?.body ?? res;
+      const newPhotoURL = profileBody?.image ?? imageUrl;
+      dispatch(setUser({
+        ...user,
+        photoURL: newPhotoURL,
+        mobile: profileBody?.mobile ?? form.phone,
+        basicInfo: {
+          ...(user?.basicInfo ?? {}),
+          name: profileBody?.name ?? form.name ?? user?.basicInfo?.name,
+          email: profileBody?.email ?? user?.basicInfo?.email,
+        },
+      }));
+      toast.success('Profile updated successfully');
+      handleEditClose();
+    } catch (err) {
+      toast.error(err?.data?.message || 'Failed to update profile');
+    }
   };
 
   // 3-state cycle: undefined → 'requested' → 'active' → undefined
-  const [followedItems, setFollowedItems] = useState({});
   const cycleFollow = (key) =>
     setFollowedItems((prev) => {
       const cur = prev[key];
       const next = cur === undefined ? 'requested' : cur === 'requested' ? 'active' : undefined;
       return { ...prev, [key]: next };
     });
-
-  const [viewAllOpen, setViewAllOpen] = useState(false);
-  const [viewType, setViewType] = useState('rooms');
-  const [viewSearch, setViewSearch] = useState('');
   const handleOpenViewAll = (type) => {
     setViewType(type);
     setViewAllOpen(true);
@@ -80,6 +224,19 @@ export function AccountDrawer({ data = [], sx, ...other }) {
   const handleCloseViewAll = () => {
     setViewAllOpen(false);
   };
+
+  const handleOpenUserProfileDrawer = useCallback((profile) => {
+    setViewAllOpen(false);
+    window.dispatchEvent(
+      new CustomEvent('openUserProfile', {
+        detail: {
+          ...profile,
+          avatar: profile?.icon || profile?.avatar,
+          username: profile?.email ? `@${profile.email.split('@')[0]}` : profile?.username,
+        },
+      })
+    );
+  }, []);
 
 
   useEffect(() => {
@@ -110,6 +267,42 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     [handleCloseDrawer, router]
   );
 
+  const renderFollowingViewAllItem = useCallback(
+    (item, i) => (
+      <Stack
+        key={i}
+        direction="row"
+        spacing={1.5}
+        alignItems="center"
+        onClick={() => handleOpenUserProfileDrawer(item)}
+        sx={{
+          px: 1.5,
+          py: 1,
+          borderRadius: 2.5,
+          cursor: 'pointer',
+          transition: 'background 0.12s',
+          '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' },
+          '&:hover .item-name': { color: '#4C4EFF' },
+        }}
+      >
+        <Avatar
+          src={item.icon || item.avatar || undefined}
+          sx={{ width: 42, height: 42, bgcolor: '#4C4EFF', flexShrink: 0, fontSize: 15, fontWeight: 700 }}
+        >
+          {item.name?.charAt(0).toUpperCase()}
+        </Avatar>
+        <Stack sx={{ minWidth: 0, flexGrow: 1 }}>
+          <Typography className="item-name" fontWeight={600} fontSize={14} noWrap sx={{ transition: 'color 0.15s' }}>
+            {item.name}
+          </Typography>
+          <Typography fontSize={12} color="text.secondary" noWrap>
+            {item.email}
+          </Typography>
+        </Stack>
+      </Stack>
+    ),
+    [handleOpenUserProfileDrawer]
+  );
 
   const renderAvatar = (
     <AnimateAvatar
@@ -142,7 +335,9 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         <Scrollbar>
           {/* Avatar */}
           <Stack alignItems="center" sx={{ pt: 4, pb: 2 }}>
-            {user?.photoURL ? (
+            {isProfileDataLoading ? (
+              <AccountProfileHeaderSkeleton />
+            ) : user?.photoURL ? (
               <Box
                 component="img"
                 src={user?.photoURL}
@@ -181,57 +376,65 @@ export function AccountDrawer({ data = [], sx, ...other }) {
               onClose={() => setAvatarPreviewOpen(false)}
             />
 
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 2 }}>
-              {user?.displayName || 'Alexa Hales'}
-            </Typography>
+            {!isProfileDataLoading && (
+              <Typography variant="h6" fontWeight={700} sx={{ mt: 2 }}>
+                {user?.displayName || 'Alexa Hales'}
+              </Typography>
+            )}
 
             {/* Email + Phone on same row */}
-            <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
-              <Stack direction="row" spacing={0.8} alignItems="center">
-                <Iconify icon="ic:round-email" width={18} sx={{ color: 'text.primary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  {user?.basicInfo?.email || 'alexahales943@gmail.com'}
-                </Typography>
+            {!isProfileDataLoading && (
+              <Stack direction="row" spacing={3} alignItems="center" sx={{ mt: 1 }}>
+                <Stack direction="row" spacing={0.8} alignItems="center">
+                  <Iconify icon="ic:round-email" width={18} sx={{ color: 'text.primary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {user?.basicInfo?.email || 'alexahales943@gmail.com'}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={0.8} alignItems="center">
+                  <Iconify icon="ic:round-phone" width={18} sx={{ color: 'text.primary' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {user?.mobile || 'null'}
+                  </Typography>
+                </Stack>
               </Stack>
-              <Stack direction="row" spacing={0.8} alignItems="center">
-                <Iconify icon="ic:round-phone" width={18} sx={{ color: 'text.primary' }} />
-                <Typography variant="body2" color="text.secondary">
-                  +44 (123) 4512 5623
-                </Typography>
-              </Stack>
-            </Stack>
+            )}
           </Stack>
 
           {/* Stats row with dashed dividers */}
-          <Stack
-            direction="row"
-            justifyContent="space-around"
-            alignItems="center"
-            sx={{ px: 2, pb: 3 }}
-          >
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>{stats.rooms}</Typography>
-              <Typography variant="body2" color="text.secondary">Rooms</Typography>
+          {isProfileDataLoading ? (
+            <AccountStatsSkeleton />
+          ) : (
+            <Stack
+              direction="row"
+              justifyContent="space-around"
+              alignItems="center"
+              sx={{ px: 2, pb: 3 }}
+            >
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>{profileStats.rooms}</Typography>
+                <Typography variant="body2" color="text.secondary">Rooms</Typography>
+              </Stack>
+
+              <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
+
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>
+                  {profileStats.friends}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Friends</Typography>
+              </Stack>
+
+              <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
+
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>
+                  {profileStats.following}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Following</Typography>
+              </Stack>
             </Stack>
-
-            <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
-
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>
-                {stats.friends.toString().padStart(2, '0')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">Friends</Typography>
-            </Stack>
-
-            <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
-
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>
-                {stats.following.toString().padStart(2, '0')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">Following</Typography>
-            </Stack>
-          </Stack>
+          )}
 
           {/* Search bar */}
           <Box sx={{ px: 2, pb: 2 }}>
@@ -274,7 +477,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 0 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Rooms ({stats.rooms.toString().padStart(2, '0')})
+              Rooms ({isProfileDataLoading ? '...' : profileStats.rooms})
             </Button>
 
             <Button
@@ -292,7 +495,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 1 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Friends ({stats.friends.toString().padStart(2, '0')})
+              Friends ({isProfileDataLoading ? '...' : profileStats.friends})
             </Button>
             <Button
               size="small"
@@ -309,7 +512,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 2 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Following ({stats.following.toString().padStart(2, '0')})
+              Following ({isProfileDataLoading ? '...' : profileStats.following})
             </Button>
           </Stack>
 
@@ -318,7 +521,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
             {tab === 0 && (
               <>
                 <Stack spacing={1}>
-                  {following
+                  {transformedFollowings
                     .filter((room) => room.name.toLowerCase().includes(search.toLowerCase()))
                     .slice(0, 3)
                     .map((room, i) => {
@@ -371,7 +574,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                       );
                     })}
                 </Stack>
-                {following.length > 3 && (
+                {transformedFollowings.length > 3 && (
                   <Button
                     fullWidth
                     size="small"
@@ -387,107 +590,108 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                       '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
                     }}
                   >
-                    See All Rooms ({following.length})
+                    See All Rooms ({transformedFollowings.length})
                   </Button>
                 )}
               </>
             )}
             {tab === 1 && (
-              <>
-                <Stack spacing={1}>
-                  {friends
-                    .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
-                    .slice(0, 3)
-                    .map((f, i) => {
-                      const key = `friend-${i}`;
-                      const state = followedItems[key];
-                      const label = state === 'active' ? 'Friends' : state === 'requested' ? 'Cancel request' : 'Add';
-                      const isActive = state === 'active';
-                      const isRequested = state === 'requested';
-                      return (
-                        <Stack
-                          key={i}
-                          direction="row"
-                          alignItems="center"
-                          spacing={1.5}
-                          onClick={() => window.dispatchEvent(new CustomEvent('openUserProfile', { detail: { name: f.name, avatar: f.icon } }))}
-                          sx={{ p: 1, borderRadius: 2, cursor: 'pointer', transition: 'background 0.15s', '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' }, '&:hover .item-name': { color: '#4C4EFF' } }}
-                        >
-                          <Avatar
-                            src={f.icon || undefined}
-                            sx={{ width: 42, height: 42, flexShrink: 0, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, color: '#fff' }}
+              isFriendsListLoading ? (
+                <AccountConnectionListSkeleton showButton />
+              ) : (
+                <>
+                  <Stack spacing={1}>
+                    {transformedFollowers
+                      .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
+                      .slice(0, 3)
+                      .map((f, i) => {
+                        const key = `friend-${i}`;
+                        const state = followedItems[key];
+                        const label = state === 'active' ? 'Friends' : state === 'requested' ? 'Cancel request' : 'Add';
+                        const isActive = state === 'active';
+                        const isRequested = state === 'requested';
+                        return (
+                          <Stack
+                            key={i}
+                            direction="row"
+                            alignItems="center"
+                            spacing={1.5}
+                            onClick={() => window.dispatchEvent(new CustomEvent('openUserProfile', { detail: { name: f.name, avatar: f.icon } }))}
+                            sx={{ p: 1, borderRadius: 2, cursor: 'pointer', transition: 'background 0.15s', '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' }, '&:hover .item-name': { color: '#4C4EFF' } }}
                           >
-                            {f.name?.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ flexGrow: 1, transition: 'color 0.15s' }}>
-                            {f.name}
-                          </Typography>
-                          <Button
-                            size="small"
-                            variant={state ? 'outlined' : 'contained'}
-                            onClick={(e) => { e.stopPropagation(); cycleFollow(key); }}
-                            sx={{
-                              minWidth: 100,
-                              height: 30,
-                              borderRadius: 2,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              flexShrink: 0,
-                              boxShadow: 'none',
-                              ...(isActive
-                                ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                                : isRequested
-                                  ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                  : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                            }}
-                          >
-                            {label}
-                          </Button>
-                        </Stack>
-                      );
-                    })}
-                </Stack>
-                {friends.length > 3 && (
-                  <Button
-                    fullWidth
-                    size="small"
-                    onClick={() => handleOpenViewAll('friends')}
-                    sx={{
-                      mt: 1.5,
-                      borderRadius: 2,
-                      border: '1px dashed rgba(76,78,255,0.4)',
-                      color: '#4C4EFF',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      textTransform: 'none',
-                      '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                    }}
-                  >
-                    See All Friends ({friends.length})
-                  </Button>
-                )}
-              </>
+                            <Avatar
+                              src={f.icon || undefined}
+                              sx={{ width: 42, height: 42, flexShrink: 0, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, color: '#fff' }}
+                            >
+                              {f.name?.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ flexGrow: 1, transition: 'color 0.15s' }}>
+                              {f.name}
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant={state ? 'outlined' : 'contained'}
+                              onClick={(e) => { e.stopPropagation(); cycleFollow(key); }}
+                              sx={{
+                                minWidth: 100,
+                                height: 30,
+                                borderRadius: 2,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                flexShrink: 0,
+                                boxShadow: 'none',
+                                ...(isActive
+                                  ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
+                                  : isRequested
+                                    ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
+                                    : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
+                              }}
+                            >
+                              {label}
+                            </Button>
+                          </Stack>
+                        );
+                      })}
+                  </Stack>
+                  {transformedFollowers.length > 3 && (
+                    <Button
+                      fullWidth
+                      size="small"
+                      onClick={() => handleOpenViewAll('friends')}
+                      sx={{
+                        mt: 1.5,
+                        borderRadius: 2,
+                        border: '1px dashed rgba(76,78,255,0.4)',
+                        color: '#4C4EFF',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+                      }}
+                    >
+                      See All Friends ({transformedFollowers.length})
+                    </Button>
+                  )}
+                </>
+              )
             )}
             {tab === 2 && (
-              <>
-                <Stack spacing={1}>
-                  {following
-                    .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
-                    .slice(0, 3)
-                    .map((f, i) => {
-                      const key = `following-${i}`;
-                      const state = followedItems[key];
-                      const label = state === 'active' ? 'Following' : state === 'requested' ? 'Cancel request' : 'Follow';
-                      const isActive = state === 'active';
-                      const isRequested = state === 'requested';
-                      return (
+              isFollowingsListLoading ? (
+                <AccountConnectionListSkeleton showButton={false} />
+              ) : (
+                <>
+                  <Stack spacing={1}>
+                    {transformedFollowings
+                      .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
+                      .slice(0, 3)
+                      .map((f, i) => (
                         <Stack
                           key={i}
                           direction="row"
                           alignItems="center"
                           spacing={1.5}
-                          onClick={() => { window.dispatchEvent(new CustomEvent('openRoom', { detail: f })); closeOverlayDrawers(); }}
+                          onClick={() => handleOpenUserProfileDrawer(f)}
                           sx={{ p: 1, borderRadius: 2, cursor: 'pointer', transition: 'background 0.15s', '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' }, '&:hover .item-name': { color: '#4C4EFF' } }}
                         >
                           <Avatar
@@ -496,60 +700,43 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                           >
                             {f.name?.charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ flexGrow: 1, transition: 'color 0.15s' }}>
-                            {f.name}
-                          </Typography>
-                          <Button
-                            size="small"
-                            variant={state ? 'outlined' : 'contained'}
-                            onClick={(e) => { e.stopPropagation(); cycleFollow(key); }}
-                            sx={{
-                              minWidth: 100,
-                              height: 30,
-                              borderRadius: 2,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              flexShrink: 0,
-                              boxShadow: 'none',
-                              ...(isActive
-                                ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                                : isRequested
-                                  ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                  : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                            }}
-                          >
-                            {label}
-                          </Button>
+                          <Stack sx={{ flexGrow: 1, minWidth: 0 }}>
+                            <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ transition: 'color 0.15s' }}>
+                              {f.name}
+                            </Typography>
+                            <Typography fontSize={12} color="text.secondary" noWrap>
+                              {f.email}
+                            </Typography>
+                          </Stack>
                         </Stack>
-                      );
-                    })}
-                </Stack>
-                {following.length > 3 && (
-                  <Button
-                    fullWidth
-                    size="small"
-                    onClick={() => handleOpenViewAll('following')}
-                    sx={{
-                      mt: 1.5,
-                      borderRadius: 2,
-                      border: '1px dashed rgba(76,78,255,0.4)',
-                      color: '#4C4EFF',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      textTransform: 'none',
-                      '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                    }}
-                  >
-                    See All Following ({following.length})
-                  </Button>
-                )}
-              </>
+                      ))}
+                  </Stack>
+                  {transformedFollowings.length > 3 && (
+                    <Button
+                      fullWidth
+                      size="small"
+                      onClick={() => handleOpenViewAll('following')}
+                      sx={{
+                        mt: 1.5,
+                        borderRadius: 2,
+                        border: '1px dashed rgba(76,78,255,0.4)',
+                        color: '#4C4EFF',
+                        fontWeight: 600,
+                        fontSize: 13,
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+                      }}
+                    >
+                      See All Following ({transformedFollowings.length})
+                    </Button>
+                  )}
+                </>
+              )
             )}
           </Box>
 
 
-          <AccountEditModal open={editOpen} onClose={handleEditClose} user={user} onSave={handleEditSave} />
+          <AccountEditModal open={editOpen} onClose={handleEditClose} user={user} onSave={handleEditSave} isLoading={isUploading || isUpdating} />
         </Scrollbar>
       </Drawer>
 
@@ -565,6 +752,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         data={viewType === 'friends' ? friends : following}
         search={viewSearch}
         setSearch={setViewSearch}
+        renderItem={viewType === 'following' ? renderFollowingViewAllItem : undefined}
       />
     </>
   );

@@ -1,20 +1,83 @@
 import { setSession } from './utils';
 import { STORAGE_KEY, STORAGE_USER_KEY } from './constant';
 
-function createMockAccessToken(email) {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-  const payload = btoa(
-    JSON.stringify({
-      sub: email,
-      email,
-      exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24,
-    })
-  )
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
+const DEVICE_ID_STORAGE_KEY = 'capme_device_id';
 
-  return `${header}.${payload}.mock-signature`;
+function getClientTimeZone() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return tz || 'UTC';
+  } catch (error) {
+    return 'UTC';
+  }
+}
+
+function createDeviceId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getClientDeviceId() {
+  try {
+    const existingId = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
+    if (existingId) return existingId;
+
+    const newId = createDeviceId();
+    localStorage.setItem(DEVICE_ID_STORAGE_KEY, newId);
+    return newId;
+  } catch (error) {
+    return createDeviceId();
+  }
+}
+
+function findAccessToken(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+
+  // Backend sends token at: response.body.accesstoken (lowercase 'a')
+  const accesstoken = payload?.body?.accesstoken;
+  if (typeof accesstoken === 'string' && accesstoken) {
+    return accesstoken;
+  }
+
+  return null;
+}
+
+function findUserObject(payload) {
+  if (!payload || typeof payload !== 'object') return {};
+
+  // Backend returns entire user object at body level
+  return payload?.body ?? {};
+}
+
+function normalizeLoginResponse(response, fallbackEmail, fallbackUserType) {
+  const payload = response ?? {};
+  const accessToken = findAccessToken(payload);
+
+  if (!accessToken) {
+    console.error('Unexpected login response shape:', payload);
+    throw new Error('Access token not found in login response');
+  }
+
+  const apiUser = findUserObject(payload);
+  const userType = apiUser?.user_type ?? fallbackUserType ?? 2;
+  const displayName = apiUser?.name ?? fallbackEmail?.split('@')?.[0] ?? 'User';
+
+  return {
+    accessToken,
+    userData: {
+      ...apiUser,
+      id: apiUser?.id ?? apiUser?._id ?? fallbackEmail,
+      email: apiUser?.email ?? fallbackEmail,
+      basicInfo: apiUser?.basicInfo ?? { name: displayName },
+      displayName,
+      role: userType === 1 ? 'admin' : 'user',
+      permission: userType,
+      token: accessToken,
+    },
+  };
 }
 
 /** **************************************
@@ -26,14 +89,26 @@ export const signInWithPassword = async ({ email, password, role, user_type }) =
       throw new Error('Email and password are required');
     }
 
-    const accessToken = createMockAccessToken(email);
-    const userData = {
-      id: email,
+    const timezone = getClientTimeZone();
+    const deviceId = getClientDeviceId();
+    const loginPayload = {
       email,
-      basicInfo: { name: email.split('@')[0] },
-      displayName: email.split('@')[0],
-      role: role || (user_type === 1 ? 'admin' : 'user'),
-      permission: user_type === 1 ? 1 : 2,
+      password,
+      timezone,
+      user_type: user_type ?? 2,
+      language: 'de',
+      device_id: deviceId,
+      device_type: 'web',
+    };
+
+    const { authApi } = await import('src/store/Reducer/auth');
+    const { store } = await import('src/store/store');
+    const response = await store.dispatch(authApi.endpoints.login.initiate(loginPayload)).unwrap();
+    const normalized = normalizeLoginResponse(response, email, loginPayload.user_type);
+    const accessToken = normalized.accessToken;
+    const userData = {
+      ...normalized.userData,
+      role: role || normalized.userData.role,
     };
 
     await setSession(accessToken);

@@ -7,19 +7,28 @@ import Box from '@mui/material/Box';
 import Avatar from '@mui/material/Avatar';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
 import { PhoneInput } from 'src/components/phone-input';
 import { Iconify } from 'src/components/iconify';
 
-export default function AccountEditModal({ open, onClose, user, onSave }) {
-    const [form, setForm] = useState({
-        name: user?.displayName || '',
-        phone: user?.basicInfo?.phone || '',
-    });
-    const [previewUrl, setPreviewUrl] = useState(user?.photoURL || null);
+export default function AccountEditModal({ open, onClose, user, onSave, isLoading = false }) {
+    const [form, setForm] = useState({ name: '', phone: '' });
+    const [previewUrl, setPreviewUrl] = useState(null);
+
+    // Sync form fields whenever the modal opens or user data changes
+    useEffect(() => {
+        if (open) {
+            setForm({
+                name: user?.name || user?.displayName || '',
+                phone: user?.mobile || user?.basicInfo?.phone || '',
+            });
+            setPreviewUrl(user?.photoURL || null);
+        }
+    }, [open, user]);
 
     const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const handlePhoneChange = (value) => {
@@ -34,9 +43,9 @@ export default function AccountEditModal({ open, onClose, user, onSave }) {
         setForm((prev) => ({ ...prev, photo: file }));
     };
 
+    // Parent controls close (after API resolves) — modal does not self-close
     const handleSave = () => {
         if (onSave) onSave(form);
-        onClose();
     };
 
     return (
@@ -163,6 +172,8 @@ export default function AccountEditModal({ open, onClose, user, onSave }) {
                     onClick={handleSave}
                     variant="contained"
                     fullWidth
+                    disabled={isLoading}
+                    startIcon={isLoading ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : null}
                     sx={{
                         bgcolor: '#4C4EFF',
                         borderRadius: 3,
@@ -172,9 +183,10 @@ export default function AccountEditModal({ open, onClose, user, onSave }) {
                         boxShadow: 'none',
                         textTransform: 'none',
                         '&:hover': { bgcolor: '#3b3bd6', boxShadow: 'none' },
+                        '&.Mui-disabled': { bgcolor: '#8486ff', color: '#fff' },
                     }}
                 >
-                    Save
+                    {isLoading ? 'Saving…' : 'Save'}
                 </Button>
             </Box>
         </Dialog>

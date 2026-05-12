@@ -8,7 +8,7 @@ import Avatar from '@mui/material/Avatar';
 import { Iconify } from 'src/components/iconify';
 
 export default function PinnedMessagesDisplay({ pinnedMessages = [], onUnpin, onMessageClick }) {
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(false);
 
     if (!pinnedMessages || pinnedMessages.length === 0) {
         return null;

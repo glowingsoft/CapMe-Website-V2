@@ -12,7 +12,7 @@ export function jwtDecode(token) {
 
     const parts = token.split('.');
     if (parts.length < 2) {
-      throw new Error('Invalid token!');
+      return null;
     }
 
     const base64Url = parts[1];
@@ -21,8 +21,8 @@ export function jwtDecode(token) {
 
     return decoded;
   } catch (error) {
-    console.error('Error decoding token:', error);
-    throw error;
+    console.warn('Token decode error:', error.message);
+    return null;
   }
 }
 
@@ -36,15 +36,20 @@ export function isValidToken(accessToken) {
   try {
     const decoded = jwtDecode(accessToken);
 
-    if (!decoded || !('exp' in decoded)) {
+    if (!decoded) {
       return false;
     }
 
-    const currentTime = Date.now() / 1000;
+    // If JWT has exp field, validate expiration
+    if ('exp' in decoded) {
+      const currentTime = Date.now() / 1000;
+      return decoded.exp > currentTime;
+    }
 
-    return decoded.exp > currentTime;
+    // Backend JWT doesn't include exp, accept as valid
+    return true;
   } catch (error) {
-    console.error('Error during token validation:', error);
+    console.warn('Token validation error:', error.message);
     return false;
   }
 }
@@ -76,12 +81,11 @@ export async function setSession(accessToken) {
 
       axios.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
 
-      const decodedToken = jwtDecode(accessToken); // ~3 days by minimals server
+      const decodedToken = jwtDecode(accessToken);
 
+      // If JWT has exp field, set up expiration timeout
       if (decodedToken && 'exp' in decodedToken) {
         tokenExpired(decodedToken.exp);
-      } else {
-        throw new Error('Invalid access token!');
       }
     } else {
       sessionStorage.removeItem(STORAGE_KEY);

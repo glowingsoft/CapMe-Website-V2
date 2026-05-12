@@ -458,7 +458,7 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
           <RoomHashtagList
             open={showHashtagList}
             onClose={() => setShowHashtagList(false)}
-            messages={messages}
+            roomId={room?._id ?? room?.id}
             onHashtagClick={(tag) => {
               setSelectedHashtag(tag);
               setShowHashtagModal(true);
@@ -473,10 +473,11 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
           open={showHashtagModal}
           onClose={() => setShowHashtagModal(false)}
           hashtag={selectedHashtag}
-          messages={selectedHashtag ? getMessagesWithHashtag(selectedHashtag) : []}
+          roomId={room?._id ?? room?.id}
           onMessageClick={(message) => {
-            onMessageSelect?.(message);
+            // Close modal first, then scroll after animation finishes (~300ms)
             setShowHashtagModal(false);
+            setTimeout(() => onMessageSelect?.(message), 350);
           }}
         />
       )}

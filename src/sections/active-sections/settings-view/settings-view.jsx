@@ -8,6 +8,8 @@ import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'src/auth/context/jwt';
+import { useAuthContext } from 'src/auth/hooks';
 import { Iconify } from 'src/components/iconify';
 import { paths } from 'src/routes/paths';
 import { logout } from 'src/store/slices/userSlice';
@@ -186,6 +188,7 @@ export default function SettingsView() {
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { checkUserSession } = useAuthContext();
 
   useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -203,9 +206,11 @@ export default function SettingsView() {
 
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     dispatch(logout());
-    navigate('/');
+    await checkUserSession?.();
+    navigate(paths.auth.jwt.signIn, { replace: true });
   };
 
   return (

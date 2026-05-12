@@ -1,10 +1,22 @@
 import axios from 'axios';
 
 import { CONFIG } from 'src/config-global';
+import { STORAGE_KEY } from 'src/auth/context/jwt/constant';
 
 // ----------------------------------------------------------------------
 
 const axiosInstance = axios.create({ baseURL: CONFIG.site.serverUrl });
+
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = sessionStorage.getItem(STORAGE_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 axiosInstance.interceptors.response.use(
   (response) => response,

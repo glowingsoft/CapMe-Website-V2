@@ -12,9 +12,7 @@ import PostCard from './components/post-card';
 import RoomChannelHeader from './components/room-channel-header';
 import SuggestedRooms from './components/suggested-rooms';
 import NoDataIllustration from '../../../assets/illustrations/no-data-illustration';
-import { commentsData, posts, suggestedRooms } from './mock';
-import { roomsData } from './data';
-import OldMessagesLabel from 'src/sections/chat/old-messages-label';
+import { commentsData, suggestedRooms } from './mock';
 import SelectFile from './components/select-file';
 import FileUploadProgress from './components/file-upload-progress';
 import AudioRecorder from './components/audio-recorder';
@@ -23,10 +21,45 @@ import HashtagSuggestions from 'src/components/hashtags/hashtag-suggestions';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
 import { HASHTAGS } from './hashtags-mock';
 import PinnedMessagesDisplay from './components/pinned-messages-display';
+import CircularProgress from '@mui/material/CircularProgress';
+import OldMessagesLabel from 'src/sections/chat/old-messages-label';
+import { useGetRoomMessagesQuery, useGetRoomPinnedMessagesQuery, useGetRoomTagsQuery, usePinMessageMutation } from 'src/store/Reducer/rooms-api';
 
-// Must match LeftDrawer's drawerWidth when open
 const DRAWER_WIDTH = 420;
+const MESSAGES_LIMIT = 10;
+
+function formatDateLabel(isoString) {
+  const d = new Date(isoString);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
+
+function withDateSeparators(messages) {
+  const result = [];
+  let lastDateStr = null;
+  messages.forEach((msg) => {
+    if (!msg.createdAt) { result.push(msg); return; }
+    const dateStr = new Date(msg.createdAt).toDateString();
+    if (dateStr !== lastDateStr) {
+      lastDateStr = dateStr;
+      result.push({ type: 'date', id: `date-${dateStr}`, label: formatDateLabel(msg.createdAt) });
+    }
+    result.push(msg);
+  });
+  return result;
+}
 export default function HomeView() {
+  const location = useLocation();
+  const showLeftDrawer = /^\/(home|dashboard)(\/|$)/.test(location.pathname);
 
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [createRoomOpen, setCreateRoomOpen] = React.useState(false);
@@ -41,6 +74,7 @@ export default function HomeView() {
   const [audioRecorderOpen, setAudioRecorderOpen] = React.useState(false);
   const uploadTimerRef = React.useRef(null);
   const [pinnedMessages, setPinnedMessages] = React.useState([]);
+  const [pinMessageApi] = usePinMessageMutation();
 
   const handleFileSelected = (file) => {
     const url = URL.createObjectURL(file);
@@ -80,7 +114,89 @@ export default function HomeView() {
   const [highlightedMessageId, setHighlightedMessageId] = React.useState(null);
   const postsContainerRef = React.useRef(null);
   const highlightTimerRef = React.useRef(null);
-  const [localPosts, setLocalPosts] = React.useState(posts);
+  const [localPosts, setLocalPosts] = React.useState([]);
+  const [messagesPage, setMessagesPage] = React.useState(1);
+  const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
+  // Refs for scroll management (stable across renders)
+  const prevScrollHeightRef = React.useRef(0);   // saved before prepend
+  const isPrependingRef = React.useRef(false);    // skip scroll-to-bottom during prepend
+  const scrollGuardRef = React.useRef(false);     // prevents duplicate page increments
+  const isInitialLoadRef = React.useRef(false);   // marks first page load for a room → instant scroll to bottom
+  const suppressScrollToBottomRef = React.useRef(false); // skip one scroll-to-bottom after targeted scroll
+
+  const normalizeMessage = React.useCallback((msg) => ({
+    id: msg._id,
+    type: 'message',
+    user: {
+      name: msg.sendername ?? msg.sender?.name ?? 'Unknown',
+      username: `@${msg.sender?.email?.split('@')[0] ?? msg.sendername?.split(' ')[0]?.toLowerCase() ?? 'user'}`,
+      avatar: msg.senderImage ?? msg.sender?.image ?? '',
+    },
+    content: msg.content ?? '',
+    hashtags: '',
+    likes: msg.likes ?? [],
+    stats: {
+      likes: msg.likeCount ?? 0,
+      comments: msg.commentCount ?? 0,
+      shares: msg.shareCount ?? 0,
+    },
+    time: msg.createdAt
+      ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '',
+    createdAt: msg.createdAt ?? null,
+    image: msg.meta?.image ?? '',
+    isPinned: !!msg.is_pin,
+  }), []);
+
+  const messagesQuery = useGetRoomMessagesQuery(
+    { roomId: activeRoom?.id, page: messagesPage, limit: MESSAGES_LIMIT },
+    { skip: !activeRoom?.id, refetchOnMountOrArgChange: true }
+  );
+
+  const tagsQuery = useGetRoomTagsQuery(
+    { roomId: activeRoom?.id, page: 1, limit: 10 },
+    { skip: !activeRoom?.id }
+  );
+
+  const pinnedQuery = useGetRoomPinnedMessagesQuery(
+    { roomId: activeRoom?.id },
+    { skip: !activeRoom?.id, refetchOnMountOrArgChange: true }
+  );
+
+  // Populate pinned messages from dedicated API
+  React.useEffect(() => {
+    if (!pinnedQuery.isSuccess || pinnedQuery.isFetching) return;
+    setPinnedMessages(pinnedQuery.data ?? []);
+  }, [pinnedQuery.data, pinnedQuery.isSuccess, pinnedQuery.isFetching]);
+
+  // Populate / accumulate messages when API responds
+  React.useEffect(() => {
+    if (!messagesQuery.isSuccess || messagesQuery.isFetching) return;
+    const raw = messagesQuery.data?.body?.messages ?? [];
+    // API returns newest-first — reverse to show oldest at top
+    const normalized = [...raw].reverse().map(normalizeMessage);
+    setHasMoreMessages(raw.length >= MESSAGES_LIMIT);
+    if (messagesPage === 1) {
+      isPrependingRef.current = false;
+      isInitialLoadRef.current = true; // first batch → scroll instantly to bottom
+      setLocalPosts(normalized);
+    } else {
+      isPrependingRef.current = true;
+      setLocalPosts((prev) => [...normalized, ...prev]);
+    }
+    scrollGuardRef.current = false;
+  }, [messagesQuery.data, messagesQuery.isSuccess, messagesQuery.isFetching, messagesPage, normalizeMessage]);
+
+  // Restore scroll position after prepending older messages (runs synchronously before paint)
+  React.useLayoutEffect(() => {
+    if (prevScrollHeightRef.current > 0 && postsContainerRef.current) {
+      const el = postsContainerRef.current;
+      el.scrollTop = el.scrollHeight - prevScrollHeightRef.current;
+      prevScrollHeightRef.current = 0;
+    }
+    // NOTE: do NOT reset isPrependingRef here — useLayoutEffect fires before useEffect,
+    // so the scroll-to-bottom effect would always see false. It resets there instead.
+  }, [localPosts]);
 
   const onPinMessage = React.useCallback((e) => {
     const { messageId, isPinned, message: detailMessage } = e.detail;
@@ -138,9 +254,31 @@ export default function HomeView() {
     window.addEventListener('profileDrawerChange', onProfileChange);
     window.addEventListener('notificationsDrawerChange', onNotificationsChange);
     window.addEventListener(DRAWER_EVENTS.commentClose, onCloseComment);
+    const onLikeMessage = (e) => {
+      const { messageId, likeCount, liked } = e.detail || {};
+      if (!messageId) return;
+      setLocalPosts((prev) =>
+        prev.map((p) => {
+          if (String(p.id) !== String(messageId)) return p;
+          return {
+            ...p,
+            stats: { ...p.stats, likes: likeCount ?? p.stats.likes },
+            // keep existing likes array if present; optionally adjust isLiked if consumed elsewhere
+          };
+        })
+      );
+      setPinnedMessages((prev) =>
+        prev.map((p) => {
+          if (String(p.id) !== String(messageId)) return p;
+          return { ...p, stats: { ...p.stats, likes: likeCount ?? p.stats.likes } };
+        })
+      );
+    };
+
     window.addEventListener('pinMessage', onPinMessage);
     window.addEventListener('deleteMessage', onDeleteMessage);
     window.addEventListener('editMessage', onEditMessage);
+    window.addEventListener('likeMessage', onLikeMessage);
 
     return () => {
       window.removeEventListener('accountDrawerChange', onAccountChange);
@@ -152,31 +290,39 @@ export default function HomeView() {
       window.removeEventListener('pinMessage', onPinMessage);
       window.removeEventListener('deleteMessage', onDeleteMessage);
       window.removeEventListener('editMessage', onEditMessage);
+      window.removeEventListener('likeMessage', onLikeMessage);
     };
   }, [onDeleteMessage, onEditMessage, onPinMessage]);
 
   const anyRightDrawerOpen = drawerOpen || roomInfoOpen || accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
-  const location = useLocation();
 
   // Sentinel ref — always sits below the last post
   const postsEndRef = React.useRef(null);
   // Track previous room to distinguish room-switch (instant) vs new message (smooth)
   const prevRoomRef = React.useRef(null);
 
-  const showLeftDrawer = /^\/(home|dashboard)(\/|$)/.test(location.pathname);
-
-  const handleUnpinMessage = React.useCallback((messageId) => {
+  const handleUnpinMessage = React.useCallback(async (messageId) => {
+    try {
+      await pinMessageApi({ messageId, is_pin: false }).unwrap();
+    } catch {
+      // API call failed, but still update local state
+    }
     window.dispatchEvent(
       new CustomEvent('pinMessage', {
         detail: { messageId, isPinned: false },
       })
     );
-  }, []);
+  }, [pinMessageApi]);
 
   const handleRoomSelect = (room) => {
     setActiveRoom(room);
-    setLocalPosts(posts);
+    setLocalPosts([]);
     setPinnedMessages([]);
+    setMessagesPage(1);
+    setHasMoreMessages(false);
+    prevScrollHeightRef.current = 0;
+    scrollGuardRef.current = false;
+    isPrependingRef.current = false;
   };
 
   // Open a room passed via navigation state (e.g. from activity feed)
@@ -232,7 +378,29 @@ export default function HomeView() {
 
   const handleMessageSelect = React.useCallback((selectedMessage) => {
     if (!selectedMessage?.id) return;
-    setTargetMessageId(String(selectedMessage.id));
+    const id = String(selectedMessage.id);
+
+    // If message isn't loaded yet, inject it into the feed so the DOM element exists
+    setLocalPosts((prev) => {
+      const exists = prev.some((p) => String(p.id) === id);
+      if (exists) return prev;
+      // Insert in chronological order by createdAt
+      const normalized = {
+        ...selectedMessage,
+        id,
+        type: 'message',
+        _injected: true,
+      };
+      const insertIdx = prev.findIndex(
+        (p) => p.createdAt && normalized.createdAt && new Date(p.createdAt) > new Date(normalized.createdAt)
+      );
+      if (insertIdx === -1) return [...prev, normalized];
+      const next = [...prev];
+      next.splice(insertIdx, 0, normalized);
+      return next;
+    });
+
+    setTargetMessageId(id);
   }, []);
 
   React.useEffect(() => {
@@ -243,6 +411,8 @@ export default function HomeView() {
     if (messageElement) {
       messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setHighlightedMessageId(targetMessageId);
+      // Suppress the next scroll-to-bottom that fires when targetMessageId → null
+      suppressScrollToBottomRef.current = true;
       setTargetMessageId(null);
 
       if (highlightTimerRef.current) {
@@ -253,6 +423,7 @@ export default function HomeView() {
         setHighlightedMessageId(null);
       }, 1800);
     }
+    // Do NOT clear targetMessageId here if not found — the inject may still be rendering
   }, [targetMessageId, localPosts]);
 
   React.useEffect(() => () => {
@@ -261,13 +432,32 @@ export default function HomeView() {
     }
   }, []);
 
-  // Scroll to bottom: instant on room switch, smooth on new message
+  // Scroll to bottom: instant on room switch or initial load, smooth on new message
   React.useEffect(() => {
-    if (!activeRoom || !postsEndRef.current) return;
+    if (!activeRoom) return;
+    if (targetMessageId) return;
+    if (suppressScrollToBottomRef.current) {
+      suppressScrollToBottomRef.current = false;
+      return;
+    }
+    if (isPrependingRef.current) {
+      isPrependingRef.current = false;
+      return;
+    }
     const roomChanged = activeRoom !== prevRoomRef.current;
     prevRoomRef.current = activeRoom;
-    postsEndRef.current.scrollIntoView({ behavior: roomChanged ? 'instant' : 'smooth' });
-  }, [activeRoom, localPosts]);
+    const isInitial = isInitialLoadRef.current;
+    isInitialLoadRef.current = false;
+    const el = postsContainerRef.current;
+    if (!el) return;
+    if (roomChanged || isInitial) {
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
+  }, [activeRoom, localPosts, targetMessageId]);
+
+  const postsWithDates = React.useMemo(() => withDateSeparators(localPosts), [localPosts]);
 
   const leftDrawerWidth = showLeftDrawer && leftDrawerOpen ? DRAWER_WIDTH : 0;
 
@@ -279,7 +469,6 @@ export default function HomeView() {
         <LeftDrawer
           open={leftDrawerOpen}
           onToggle={handleToggleLeftDrawer}
-          roomsData={roomsData}
           activeRoomId={activeRoom?.id}
           onRoomSelect={handleRoomSelect}
           onCreateRoom={() => setCreateRoomOpen(true)}
@@ -345,6 +534,17 @@ export default function HomeView() {
                 {/* Scrollable posts — only this scrolls */}
                 <Box
                   ref={postsContainerRef}
+                  onScroll={() => {
+                    const el = postsContainerRef.current;
+                    if (!el) return;
+                    // Reset guard when user scrolls away from top
+                    if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
+                    // Near top — load older messages
+                    if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
+                    scrollGuardRef.current = true;
+                    prevScrollHeightRef.current = el.scrollHeight;
+                    setMessagesPage((p) => p + 1);
+                  }}
                   sx={{
                     flex: 1,
                     minHeight: 0,
@@ -356,9 +556,23 @@ export default function HomeView() {
                     '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
                   }}
                 >
-                  {localPosts.map((item, index) =>
+                  {/* Spinner at top when loading older pages */}
+                  {messagesQuery.isFetching && messagesPage > 1 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
+                    </Box>
+                  )}
+
+                  {/* Spinner for initial room load */}
+                  {messagesQuery.isFetching && messagesPage === 1 && localPosts.length === 0 && (
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+                      <CircularProgress sx={{ color: '#4C4EFF' }} />
+                    </Box>
+                  )}
+
+                  {postsWithDates.map((item) =>
                     item.type === 'date' ? (
-                      <OldMessagesLabel key={`date-${index}`} label={item.label} />
+                      <OldMessagesLabel key={item.id} label={item.label} />
                     ) : (
                       <Box
                         key={`post-${item.id}`}
@@ -376,6 +590,7 @@ export default function HomeView() {
                       </Box>
                     )
                   )}
+
                   {/* Sentinel — scrollIntoView targets this to reach the bottom */}
                   <div ref={postsEndRef} />
                 </Box>

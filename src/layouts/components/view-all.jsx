@@ -7,10 +7,13 @@ import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import InputBase from '@mui/material/InputBase';
-import { useRef, useState, useEffect } from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { closeOverlayDrawers } from 'src/utils/drawer-events';
 
 import { Iconify } from 'src/components/iconify';
+
+const PAGE_SIZE = 8;
 
 // type: 'rooms' | 'friends' | 'following'
 const LABELS = {
@@ -31,14 +34,56 @@ export default function ViewAllModal({
     setSearch,
     showImportExport = false,
     renderItem,
+    hasMore = false,
+    isLoading = false,
+    onLoadMore,
 }) {
     const fileInputRef = useRef();
+    const listRef = useRef(null);
     const [itemStates, setItemStates] = useState({});
+    const [page, setPage] = useState(1);
 
-    // reset button states when modal reopens
+    // Stable refs so the scroll handler never goes stale
+    const stateRef = useRef({});
+    const onLoadMoreRef = useRef(onLoadMore);
+    useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
+
     useEffect(() => {
-        if (open) setItemStates({});
+        if (open) {
+            setPage(1);
+            setItemStates({});
+            // Scroll list back to top when reopened
+            if (listRef.current) listRef.current.scrollTop = 0;
+        }
     }, [open]);
+
+    // Reset to first batch when search changes
+    useEffect(() => {
+        setPage(1);
+        if (listRef.current) listRef.current.scrollTop = 0;
+    }, [search]);
+
+    const filtered = data.filter((item) =>
+        item.name?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    stateRef.current = { page, hasMore, isLoading, filteredLength: filtered.length };
+
+    const displayItems = filtered.slice(0, page * PAGE_SIZE);
+
+    // Stable scroll handler — reads latest values via ref
+    const handleScroll = useCallback(() => {
+        const el = listRef.current;
+        if (!el) return;
+        if (el.scrollHeight - el.scrollTop - el.clientHeight > 60) return;
+
+        const { page: p, hasMore: hm, isLoading: loading, filteredLength } = stateRef.current;
+        if (p * PAGE_SIZE < filteredLength) {
+            setPage((prev) => prev + 1);
+        } else if (hm && !loading) {
+            onLoadMoreRef.current?.();
+        }
+    }, []);
 
     const cycleItem = (key) =>
         setItemStates((prev) => {
@@ -74,10 +119,6 @@ export default function ViewAllModal({
         };
         reader.readAsText(file);
     };
-
-    const filtered = data.filter((item) =>
-        item.name?.toLowerCase().includes(search.toLowerCase())
-    );
 
     const labels = LABELS[type] || LABELS.rooms;
 
@@ -163,15 +204,19 @@ export default function ViewAllModal({
                     </Stack>
                 )}
 
-                {/* List */}
+                {/* Scrollable list */}
                 <Box
+                    ref={listRef}
+                    onScroll={handleScroll}
                     sx={{
                         px: 2,
-                        pb: 3,
+                        pb: 2,
                         maxHeight: 420,
                         overflowY: 'auto',
                         scrollbarWidth: 'thin',
                         scrollbarColor: '#e0e0e0 transparent',
+                        '&::-webkit-scrollbar': { width: '4px' },
+                        '&::-webkit-scrollbar-thumb': { bgcolor: '#e0e0e0', borderRadius: '10px' },
                     }}
                 >
                     {filtered.length === 0 ? (
@@ -181,7 +226,7 @@ export default function ViewAllModal({
                         </Stack>
                     ) : (
                         <Stack spacing={0.5}>
-                            {filtered.map((item, i) => {
+                            {displayItems.map((item, i) => {
                                 if (renderItem) return renderItem(item, i);
 
                                 const key = `item-${i}`;
@@ -203,7 +248,7 @@ export default function ViewAllModal({
 
                                 return (
                                     <Stack
-                                        key={i}
+                                        key={key}
                                         direction="row"
                                         spacing={1.5}
                                         alignItems="center"
@@ -255,6 +300,13 @@ export default function ViewAllModal({
                                     </Stack>
                                 );
                             })}
+
+                            {/* Bottom loader — shown while fetching next API page */}
+                            {isLoading && (
+                                <Stack alignItems="center" sx={{ py: 1.5 }}>
+                                    <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
+                                </Stack>
+                            )}
                         </Stack>
                     )}
                 </Box>

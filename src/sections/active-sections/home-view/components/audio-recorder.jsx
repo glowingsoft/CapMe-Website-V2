@@ -21,7 +21,7 @@ const MIME_TYPE = (() => {
     'audio/mp4',
   ];
   const chosen = candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
-  console.log('[AudioRecorder] selected MIME_TYPE:', chosen || '(browser default)');
+  // console.log('[AudioRecorder] selected MIME_TYPE:', chosen || '(browser default)');
   return chosen;
 })();
 

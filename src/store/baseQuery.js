@@ -1,13 +1,19 @@
 import { fetchBaseQuery } from '@reduxjs/toolkit/query';
 import { handleApiError } from './handleApiError';
 import { logout } from './slices/userSlice';
+import { STORAGE_KEY } from 'src/auth/context/jwt/constant';
 
 export const createCustomFetchBaseQuery = () => {
   const baseQuery = fetchBaseQuery({
     baseUrl: import.meta.env.VITE_BASE_URL,
     prepareHeaders: (headers, { getState }) => {
       const state = getState();
-      const token = state?.user?.user?.token;
+      let token = state?.user?.user?.token;
+
+      // Fallback to sessionStorage if token not in Redux
+      if (!token) {
+        token = sessionStorage.getItem(STORAGE_KEY);
+      }
 
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
@@ -31,13 +37,18 @@ export const createCustomFetchBaseQuery = () => {
         const isOnLoginPage =
           isBrowser &&
           (window.location.pathname === '/' ||
-            window.location.pathname === '/auth/jwt/sign-in');
+            window.location.pathname === '/auth/sign-in');
 
         if (!isOnLoginPage) {
+          if (isBrowser) {
+            sessionStorage.removeItem('jwt_access_token');
+            sessionStorage.removeItem('jwt_user');
+          }
+
           api.dispatch(logout());
 
           if (isBrowser) {
-            window.location.replace('/');
+            window.location.replace('/auth/sign-in');
           }
         }
       }

@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import Button from '@mui/material/Button';
 
 import { useRouter } from 'src/routes/hooks';
+import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/config-global';
 
@@ -39,6 +40,9 @@ export function SignOutButton({ onClose, ...other }) {
 
   const handleLogout = useCallback(async () => {
     try {
+      await signOut();
+      await checkUserSession?.();
+
       // Clear all RTK Query caches
       dispatch(walletsApi.util.resetApiState());
       dispatch(categoriesApi.util.resetApiState());
@@ -54,14 +58,14 @@ export function SignOutButton({ onClose, ...other }) {
       onClose?.();
 
       // Redirect to login
-      router.replace('/');
+      router.replace(paths.auth.jwt.signIn);
 
       toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
       toast.error('Unable to logout!');
     }
-  }, [dispatch, onClose, router]);
+  }, [checkUserSession, dispatch, onClose, router]);
 
   const handleLogoutAuth0 = useCallback(async () => {
     try {
@@ -69,7 +73,6 @@ export function SignOutButton({ onClose, ...other }) {
 
       // Clear all RTK Query caches
       dispatch(walletsApi.util.resetApiState());
-      dispatch(transactionsApi.util.resetApiState());
       dispatch(categoriesApi.util.resetApiState());
       dispatch(authApi.util.resetApiState());
 

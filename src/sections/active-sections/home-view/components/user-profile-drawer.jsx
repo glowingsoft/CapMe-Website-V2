@@ -1,50 +1,135 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import InputBase from '@mui/material/InputBase';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import {
+  useFollowUnfollowUserMutation,
+  useOtherUserProfileQuery,
+  useOtherUserRoomsQuery,
+} from 'src/store/Reducer/auth';
 import DrawerHeader from './drawer-header';
-import ViewAllModal from 'src/layouts/components/view-all';
 import ImagePreviewDialog from './image-preview-dialog';
-
-const MOCK_USER_ROOMS = [
-  { name: 'Creative Rooms', icon: '' },
-  { name: 'Finance Mania', icon: '' },
-  { name: 'Travel Lovers', icon: '' },
-];
-
-const MOCK_USER_FRIENDS = [
-  { name: 'John Doe', icon: 'https://i.pravatar.cc/46?img=11' },
-  { name: 'Jane Smith', icon: 'https://i.pravatar.cc/46?img=12' },
-  { name: 'Alice Brown', icon: 'https://i.pravatar.cc/46?img=13' },
-];
-
-const MOCK_USER_FOLLOWING = [
-  { name: 'Music Mania', icon: '' },
-  { name: 'Friendship Goals', icon: '' },
-];
+import {
+  UserProfileHeaderSkeleton,
+  UserProfileListSkeleton,
+  UserProfileStatsSkeleton,
+} from './user-profile-drawer-skeletons';
 
 export default function UserProfileDrawer({ open, onClose, user }) {
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
-  const [friendState, setFriendState] = useState(undefined);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [createdPage, setCreatedPage] = useState(1);
+  const [followingPage, setFollowingPage] = useState(1);
+  const [createdRooms, setCreatedRooms] = useState([]);
+  const [followingRooms, setFollowingRooms] = useState([]);
+  const [isFollowerOverride, setIsFollowerOverride] = useState(undefined);
+  const [followerCountOverride, setFollowerCountOverride] = useState(undefined);
+  const profileUserId = user?._id || user?.id;
+  const [followUnfollowUser, { isLoading: isFollowActionLoading }] = useFollowUnfollowUserMutation();
 
-  const cycleFriend = () =>
-    setFriendState((cur) =>
-      cur === undefined ? 'requested' : cur === 'requested' ? 'active' : undefined
-    );
+  const {
+    data: otherUserProfileResponse,
+    isLoading: isOtherUserProfileLoading,
+    isFetching: isOtherUserProfileFetching,
+  } = useOtherUserProfileQuery(
+    { userId: profileUserId },
+    { skip: !open || !profileUserId, refetchOnMountOrArgChange: true }
+  );
+  const isProfileLoading = !!profileUserId && (isOtherUserProfileLoading || isOtherUserProfileFetching);
 
-  const friendLabel = friendState === 'active' ? 'Friends' : friendState === 'requested' ? 'Cancel request' : 'Add Friend';
+  const apiProfile = otherUserProfileResponse?.body;
+  const profileUser = {
+    ...user,
+    ...apiProfile,
+    _id: apiProfile?._id ?? user?._id ?? user?.id,
+    name: apiProfile?.name ?? user?.name,
+    email: apiProfile?.email ?? user?.email,
+    avatar: apiProfile?.image ?? user?.avatar,
+    username: apiProfile?.email ? `@${apiProfile.email.split('@')[0]}` : user?.username,
+  };
 
-  const lists = [MOCK_USER_ROOMS, MOCK_USER_FRIENDS, MOCK_USER_FOLLOWING];
+  const {
+    data: createdRoomsResponse,
+    isLoading: isCreatedRoomsLoading,
+    isFetching: isCreatedRoomsFetching,
+  } = useOtherUserRoomsQuery(
+    { userId: profileUserId, type: 'created', pageno: createdPage },
+    { skip: !open || !profileUserId, refetchOnMountOrArgChange: true }
+  );
+
+  const {
+    data: followingRoomsResponse,
+    isLoading: isFollowingRoomsLoading,
+    isFetching: isFollowingRoomsFetching,
+  } = useOtherUserRoomsQuery(
+    { userId: profileUserId, type: 'following', pageno: followingPage },
+    { skip: !open || !profileUserId, refetchOnMountOrArgChange: true }
+  );
+
+  const mapRooms = (rooms = []) =>
+    rooms.map((room) => ({
+      _id: room._id,
+      name: room.name || 'Untitled Room',
+      icon: room.image || undefined,
+      follow: !!room.follow,
+      visibility: room.visibility,
+      createdby: room.createdby,
+    }));
+
+  const mergeRooms = (previous, incoming) => {
+    const map = new Map(previous.map((room) => [room._id, room]));
+    incoming.forEach((room) => map.set(room._id, room));
+    return Array.from(map.values());
+  };
+
+  useEffect(() => {
+    if (!open || !profileUserId) return;
+    setCreatedPage(1);
+    setFollowingPage(1);
+    setCreatedRooms([]);
+    setFollowingRooms([]);
+    setIsFollowerOverride(undefined);
+    setFollowerCountOverride(undefined);
+  }, [open, profileUserId]);
+
+  useEffect(() => {
+    if (!open || !Array.isArray(createdRoomsResponse?.body)) return;
+    const incoming = mapRooms(createdRoomsResponse.body);
+    setCreatedRooms((prev) => (createdPage === 1 ? incoming : mergeRooms(prev, incoming)));
+  }, [createdRoomsResponse, createdPage, open]);
+
+  useEffect(() => {
+    if (!open || !Array.isArray(followingRoomsResponse?.body)) return;
+    const incoming = mapRooms(followingRoomsResponse.body);
+    setFollowingRooms((prev) => (followingPage === 1 ? incoming : mergeRooms(prev, incoming)));
+  }, [followingRoomsResponse, followingPage, open]);
+
+  const createdTotalPages = createdRoomsResponse?.total_pages ?? 1;
+  const followingTotalPages = followingRoomsResponse?.total_pages ?? 1;
+  const hasMoreCreated = createdPage < createdTotalPages;
+  const hasMoreFollowing = followingPage < followingTotalPages;
+  const hasMoreForActiveTab = tab === 0 ? hasMoreCreated : hasMoreFollowing;
+
+  const isRoomsLoading =
+    !!profileUserId &&
+    (isCreatedRoomsLoading || isCreatedRoomsFetching || isFollowingRoomsLoading || isFollowingRoomsFetching);
+
+  const isFollower = typeof isFollowerOverride === 'boolean' ? isFollowerOverride : !!apiProfile?.isFollower;
+  const followerCount = followerCountOverride ?? apiProfile?.followerCount ?? 0;
+  const friendLabel = isFollower ? 'Friends' : 'Add Friend';
+
+  // Only two lists: Created rooms and followings
+  const lists = [createdRooms, followingRooms];
   const filtered = lists[tab].filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -54,34 +139,31 @@ export default function UserProfileDrawer({ open, onClose, user }) {
     onClose();
   };
 
-  const handleFriendClick = (friend) => {
-    window.dispatchEvent(new CustomEvent('openUserProfile', { detail: { name: friend.name, avatar: friend.icon } }));
+  const handleFollowToggle = async () => {
+    if (!profileUserId || isFollowActionLoading) return;
+
+    const nextIsFollower = !isFollower;
+    setIsFollowerOverride(nextIsFollower);
+    setFollowerCountOverride((current) => {
+      const baseCount = current ?? apiProfile?.followerCount ?? 0;
+      return Math.max(0, baseCount + (nextIsFollower ? 1 : -1));
+    });
+
+    try {
+      await followUnfollowUser({ userId: profileUserId }).unwrap();
+    } catch {
+      setIsFollowerOverride(isFollower);
+      setFollowerCountOverride(apiProfile?.followerCount ?? 0);
+    }
   };
 
   const [roomFollowStates, setRoomFollowStates] = useState({});
-  const cycleRoomFollow = (e, key) => {
+  const cycleRoomFollow = (e, roomId) => {
     e.stopPropagation();
-    setRoomFollowStates((prev) => {
-      const cur = prev[key];
-      const next = cur === undefined ? 'requested' : cur === 'requested' ? 'active' : undefined;
-      return { ...prev, [key]: next };
-    });
+    setRoomFollowStates((prev) => ({ ...prev, [roomId]: true }));
   };
 
-  const [friendStates, setFriendStates] = useState({});
-  const cycleFriendState = (e, key) => {
-    e.stopPropagation();
-    setFriendStates((prev) => {
-      const cur = prev[key];
-      const next = cur === undefined ? 'requested' : cur === 'requested' ? 'active' : undefined;
-      return { ...prev, [key]: next };
-    });
-  };
-
-  const tabLabels = ['Rooms', 'Friends', 'Following'];
-  const tabTypes = ['rooms', 'friends', 'following'];
-
-  const [viewAll, setViewAll] = useState({ open: false, search: '' });
+  const tabLabels = ['Created Rooms', 'Followings'];
 
   if (!user) return null;
 
@@ -109,87 +191,122 @@ export default function UserProfileDrawer({ open, onClose, user }) {
           },
         }}
       >
-        <DrawerHeader title={user.name || 'Profile'} onBack={onClose} showEdit={false} showShare={false} />
+        <DrawerHeader title={profileUser.name || 'Profile'} onBack={onClose} showEdit={false} showShare={false} />
 
         <Scrollbar>
           {/* Avatar */}
-          <Stack alignItems="center" sx={{ pt: 4, pb: 2 }}>
-            <Avatar
-              src={user.avatar || undefined}
-              onClick={user.avatar ? () => setAvatarPreviewOpen(true) : undefined}
-              sx={{
-                width: 200,
-                height: 200,
-                borderRadius: 4,
-                bgcolor: '#4C4EFF',
-                fontSize: 64,
-                fontWeight: 700,
-                color: '#fff',
-                cursor: user.avatar ? 'pointer' : 'default',
-              }}
-            >
-              {user.name?.charAt(0).toUpperCase()}
-            </Avatar>
+          {isProfileLoading ? (
+            <UserProfileHeaderSkeleton />
+          ) : (
+            <Stack alignItems="center" sx={{ pt: 4, pb: 2 }}>
+              <Avatar
+                src={profileUser.avatar || undefined}
+                onClick={profileUser.avatar ? () => setAvatarPreviewOpen(true) : undefined}
+                sx={{
+                  width: 200,
+                  height: 200,
+                  borderRadius: 4,
+                  bgcolor: '#4C4EFF',
+                  fontSize: 64,
+                  fontWeight: 700,
+                  color: '#fff',
+                  cursor: profileUser.avatar ? 'pointer' : 'default',
+                }}
+              >
+                {profileUser.name?.charAt(0).toUpperCase()}
+              </Avatar>
 
-            <ImagePreviewDialog
-              open={avatarPreviewOpen}
-              src={user.avatar}
-              alt={`${user.name || 'User'} avatar`}
-              onClose={() => setAvatarPreviewOpen(false)}
-            />
+              <ImagePreviewDialog
+                open={avatarPreviewOpen}
+                src={profileUser.avatar}
+                alt={`${profileUser.name || 'User'} avatar`}
+                onClose={() => setAvatarPreviewOpen(false)}
+              />
 
-            <Typography variant="h6" fontWeight={700} sx={{ mt: 2 }}>
-              {user.name}
-            </Typography>
-
-            {user.username && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
-                {user.username}
+              <Typography variant="h6" fontWeight={700} sx={{ mt: 2 }}>
+                {profileUser.name}
               </Typography>
-            )}
-          </Stack>
+
+              {profileUser.email && (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
+                  {profileUser.email}
+                </Typography>
+              )}
+            </Stack>
+          )}
 
           {/* Add Friend button */}
           <Stack sx={{ px: 3, pb: 3 }}>
-            <Button
-              fullWidth
-              variant={friendState ? 'outlined' : 'contained'}
-              onClick={cycleFriend}
-              sx={{
-                height: 40,
-                borderRadius: 2,
-                fontWeight: 700,
-                fontSize: 14,
-                textTransform: 'none',
-                boxShadow: 'none',
-                ...(friendState === 'active'
-                  ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                  : friendState === 'requested'
-                    ? { borderColor: '#bbb', color: '#888', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }
-                    : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-              }}
-            >
-              {friendLabel}
-            </Button>
+            {isProfileLoading ? (
+              <Skeleton variant="rounded" width="100%" height={40} sx={{ borderRadius: 2 }} />
+            ) : (
+              isFollower ? (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleFollowToggle}
+                  disabled={isFollowActionLoading}
+                  sx={{
+                    height: 40,
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    textTransform: 'none',
+                    boxShadow: 'none',
+                    borderColor: '#4C4EFF',
+                    color: '#4C4EFF',
+                    bgcolor: 'rgba(76,78,255,0.06)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Friends
+                </Button>
+              ) : (
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleFollowToggle}
+                  disabled={isFollowActionLoading}
+                  sx={{
+                    height: 40,
+                    borderRadius: 2,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    textTransform: 'none',
+                    boxShadow: 'none',
+                    bgcolor: '#4C4EFF',
+                    color: '#fff',
+                    border: '1px solid #4C4EFF',
+                    '&:hover': { bgcolor: '#3739b7' },
+                  }}
+                >
+                  {friendLabel}
+                </Button>
+              )
+            )}
           </Stack>
 
           {/* Stats */}
-          <Stack direction="row" justifyContent="space-around" alignItems="center" sx={{ px: 2, pb: 3 }}>
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>{MOCK_USER_ROOMS.length}</Typography>
-              <Typography variant="body2" color="text.secondary">Rooms</Typography>
+          {isProfileLoading ? (
+            <UserProfileStatsSkeleton />
+          ) : (
+            <Stack direction="row" justifyContent="space-around" alignItems="center" sx={{ px: 2, pb: 3 }}>
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{apiProfile?.roomCount ?? createdRooms.length}</Typography>
+                <Typography variant="body2" color="text.secondary">Rooms</Typography>
+              </Stack>
+              <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{String(followerCount).padStart(2, '0')}</Typography>
+                <Typography variant="body2" color="text.secondary">Followers</Typography>
+              </Stack>
+              <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
+              <Stack alignItems="center" sx={{ flex: 1 }}>
+                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{String(apiProfile?.followingCount ?? followingRooms.length).padStart(2, '0')}</Typography>
+                <Typography variant="body2" color="text.secondary">Following</Typography>
+              </Stack>
             </Stack>
-            <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>{MOCK_USER_FRIENDS.length.toString().padStart(2, '0')}</Typography>
-              <Typography variant="body2" color="text.secondary">Friends</Typography>
-            </Stack>
-            <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
-            <Stack alignItems="center" sx={{ flex: 1 }}>
-              <Typography variant="h6" fontWeight={700}>{MOCK_USER_FOLLOWING.length.toString().padStart(2, '0')}</Typography>
-              <Typography variant="body2" color="text.secondary">Following</Typography>
-            </Stack>
-          </Stack>
+          )}
 
           {/* Search */}
           <Box sx={{ px: 2, pb: 2 }}>
@@ -231,142 +348,142 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                   '&:hover': { bgcolor: tab === i ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
                 }}
               >
-                {label} ({lists[i].length.toString().padStart(2, '0')})
+                {label}
               </Button>
             ))}
           </Stack>
 
           {/* List */}
           <Box sx={{ px: 2, pb: 3 }}>
-            <Stack spacing={1}>
-              {filtered.length === 0 ? (
-                <Typography color="text.secondary" fontSize={14} sx={{ textAlign: 'center', py: 3 }}>
-                  No results found.
-                </Typography>
-              ) : (
-                filtered.map((item, i) => {
-                  const rKey = `room-${i}`;
-                  const fKey = `friend-${i}`;
-                  const isRoomTab = tab === 0 || tab === 2;
-                  const rState = isRoomTab ? roomFollowStates[rKey] : undefined;
-                  const rLabel = rState === 'active' ? 'Following' : rState === 'requested' ? 'Cancel request' : 'Follow';
-                  const fState = tab === 1 ? friendStates[fKey] : undefined;
-                  const fLabel = fState === 'active' ? 'Friends' : fState === 'requested' ? 'Cancel request' : 'Add';
+            {isProfileLoading || isRoomsLoading ? (
+              <UserProfileListSkeleton showAction={true} />
+            ) : (
+              <Stack spacing={1}>
+                {filtered.length === 0 ? (
+                  <Typography color="text.secondary" fontSize={14} sx={{ textAlign: 'center', py: 3 }}>
+                    No results found.
+                  </Typography>
+                ) : (
+                  filtered.map((item, i) => {
+                    const isRoomTab = tab === 0 || tab === 1;
+                    const effectiveFollow = roomFollowStates[item._id] ?? item.follow;
 
-                  const handleClick = () => {
-                    if (tab === 0 || tab === 2) handleRoomClick(item);
-                    else if (tab === 1) handleFriendClick(item);
-                  };
+                    const handleClick = () => {
+                      handleRoomClick(item);
+                    };
 
-                  return (
-                    <Stack
-                      key={i}
-                      direction="row"
-                      alignItems="center"
-                      spacing={1.5}
-                      onClick={handleClick}
-                      sx={{
-                        p: 1,
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        transition: 'background 0.15s',
-                        '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' },
-                        '&:hover .item-name': { color: '#4C4EFF' },
-                      }}
-                    >
-                      <Avatar
-                        src={item.icon || undefined}
-                        sx={{ width: 42, height: 42, flexShrink: 0, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, color: '#fff' }}
+                    return (
+                      <Stack
+                        key={item._id || i}
+                        direction="row"
+                        alignItems="center"
+                        spacing={1.5}
+                        onClick={handleClick}
+                        sx={{
+                          p: 1,
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          transition: 'background 0.15s',
+                          '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' },
+                          '&:hover .item-name': { color: '#4C4EFF' },
+                        }}
                       >
-                        {item.name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ flexGrow: 1, transition: 'color 0.15s' }}>
-                        {item.name}
-                      </Typography>
-                      {isRoomTab && (
-                        <Button
-                          size="small"
-                          variant={rState ? 'outlined' : 'contained'}
-                          onClick={(e) => cycleRoomFollow(e, rKey)}
-                          sx={{
-                            minWidth: 100,
-                            height: 30,
-                            borderRadius: 2,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            flexShrink: 0,
-                            boxShadow: 'none',
-                            ...(rState === 'active'
-                              ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                              : rState === 'requested'
-                                ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                          }}
+                        <Avatar
+                          src={item.icon || undefined}
+                          sx={{ width: 42, height: 42, flexShrink: 0, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, color: '#fff' }}
                         >
-                          {rLabel}
-                        </Button>
-                      )}
-                      {tab === 1 && (
-                        <Button
-                          size="small"
-                          variant={fState ? 'outlined' : 'contained'}
-                          onClick={(e) => cycleFriendState(e, fKey)}
-                          sx={{
-                            minWidth: 100,
-                            height: 30,
-                            borderRadius: 2,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            textTransform: 'none',
-                            flexShrink: 0,
-                            boxShadow: 'none',
-                            ...(fState === 'active'
-                              ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                              : fState === 'requested'
-                                ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                          }}
-                        >
-                          {fLabel}
-                        </Button>
-                      )}
-                    </Stack>
-                  );
-                })
-              )}
-            </Stack>
-            {lists[tab].length > 0 && (
-              <Button
-                fullWidth
-                onClick={() => setViewAll({ open: true, search: '' })}
-                sx={{
-                  mt: 1.5,
-                  borderRadius: 2,
-                  border: '1px dashed rgba(76,78,255,0.4)',
-                  color: '#4C4EFF',
-                  fontWeight: 600,
-                  fontSize: 13,
-                  textTransform: 'none',
-                  '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                }}
-              >
-                See All {tabLabels[tab]} ({lists[tab].length.toString().padStart(2, '0')})
-              </Button>
+                          {item.name?.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Box sx={{ flexGrow: 1 }}>
+                          <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ transition: 'color 0.15s' }}>
+                            {item.name}
+                          </Typography>
+                          {isRoomTab && (
+                            <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.2 }}>
+                              {item.visibility ? (item.visibility === 'private' ? 'Private' : 'Public') : 'Public'}
+                            </Typography>
+                          )}
+                        </Box>
+                        {isRoomTab && (
+                          effectiveFollow === false ? (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={(e) => cycleRoomFollow(e, item._id)}
+                              sx={{
+                                minWidth: 100,
+                                height: 30,
+                                borderRadius: 2,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                flexShrink: 0,
+                                boxShadow: 'none',
+                                bgcolor: '#4C4EFF',
+                                color: '#fff',
+                                border: '1px solid #4C4EFF',
+                                '&:hover': { bgcolor: '#3739b7' },
+                              }}
+                            >
+                              Follow
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled
+                              sx={{
+                                minWidth: 100,
+                                height: 30,
+                                borderRadius: 2,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                flexShrink: 0,
+                                boxShadow: 'none',
+                                borderColor: '#4C4EFF',
+                                color: '#4C4EFF',
+                                bgcolor: 'rgba(76,78,255,0.06)',
+                              }}
+                            >
+                              Following
+                            </Button>
+                          )
+                        )}
+                      </Stack>
+                    );
+                  })
+                )}
+              </Stack>
+            )}
+            {!isProfileLoading && !isRoomsLoading && lists[tab].length > 0 && (
+              <>
+                {hasMoreForActiveTab && (
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      if (tab === 0) setCreatedPage((prev) => prev + 1);
+                      else setFollowingPage((prev) => prev + 1);
+                    }}
+                    sx={{
+                      mt: 1.5,
+                      borderRadius: 2,
+                      border: '1px solid rgba(76,78,255,0.4)',
+                      color: '#4C4EFF',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+                    }}
+                  >
+                    Load More
+                  </Button>
+                )}
+              </>
             )}
           </Box>
         </Scrollbar>
       </Drawer>
-
-      <ViewAllModal
-        open={viewAll.open}
-        onClose={() => setViewAll((prev) => ({ ...prev, open: false }))}
-        title={tabLabels[tab]}
-        type={tabTypes[tab]}
-        data={lists[tab]}
-        search={viewAll.search}
-        setSearch={(s) => setViewAll((prev) => ({ ...prev, search: s }))}
-      />
     </>
   );
 }

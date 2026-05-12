@@ -10,15 +10,19 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 
 import { Iconify } from 'src/components/iconify';
 import HashtagAction from 'src/components/hashtags/hashtag-action';
 import { toast } from 'src/components/snackbar';
+import { useLikeMessageMutation, useShareMessageMutation, usePinMessageMutation, useEditMessageMutation } from 'src/store/Reducer/rooms-api';
+import { selectUser } from 'src/store/slices/userSlice';
 
 import FileMessage from './file-message';
 import ImagePreviewDialog from './image-preview-dialog';
 import MessageDeleteModal from './message-delete-modal';
 import MessageEditModal from './message-edit-modal';
+import ShareMessageModal from './share-message-modal';
 
 function renderWithHashtags(text) {
     const parts = text.split(/(#[\p{L}\p{N}_]+)/u);
@@ -63,12 +67,35 @@ function PostCardSubheader({ time, visibility }) {
 }
 
 function PostCard({ post, onCommentClick, onMenuAction }) {
+    const currentUser = useSelector(selectUser);
+    const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
+
+    const isLikedByMe = useMemo(
+        () => Array.isArray(post.likes) && post.likes.some((item) => {
+            const id = typeof item === 'object' ? (item?._id ?? item?.id ?? item?.userId) : item;
+            return String(id) === String(currentUserId);
+        }),
+        [post.likes, currentUserId]
+    );
+
     const [anchor, setAnchor] = useState(null);
-    const [liked, setLiked] = useState(false);
+    const [liked, setLiked] = useState(isLikedByMe);
     const [likeCount, setLikeCount] = useState(post.stats?.likes ?? 0);
     const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
+    const [shareOpen, setShareOpen] = useState(false);
+
+    // Sync whenever parent post data changes (room switch, backend refetch, or likeMessage event update)
+    React.useEffect(() => {
+        setLiked(isLikedByMe);
+        setLikeCount(post.stats?.likes ?? 0);
+    }, [post.id, post.stats?.likes, isLikedByMe]);
+
+    const [likeMessageApi] = useLikeMessageMutation();
+    const [shareMessageApi] = useShareMessageMutation();
+    const [pinMessageApi] = usePinMessageMutation();
+    const [editMessageApi] = useEditMessageMutation();
 
     const isPinned = Boolean(post.isPinned);
 
@@ -86,12 +113,49 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
         window.dispatchEvent(new CustomEvent('openUserProfile', { detail: post.user }));
     }, [post.user]);
 
-    const handleLike = useCallback(() => {
-        setLiked((prev) => {
-            setLikeCount((c) => (prev ? c - 1 : c + 1));
-            return !prev;
-        });
-    }, []);
+    const [likeLoading, setLikeLoading] = useState(false);
+
+    const handleLike = useCallback(async () => {
+        if (likeLoading) return;
+        setLikeLoading(true);
+        try {
+            const res = await likeMessageApi(post.id ?? post._id).unwrap();
+
+            // API returns { status, message, body: { likesCount } }
+            const newCount = res?.body?.likeCount ?? res?.likeCount ?? res?.body?.likesCount ?? res?.likesCount;
+            // Derive liked from explicit field OR from the message string
+            const rawMsg = res?.body?.message ?? res?.message ?? '';
+            let isNowLiked = res?.body?.liked ?? res?.liked;
+            if (isNowLiked === undefined) {
+                const lower = rawMsg.toLowerCase();
+                if (lower.includes('unlike')) isNowLiked = false;
+                else if (lower.includes('like')) isNowLiked = true;
+            }
+            // Final fallback: toggle
+            const resolvedLiked = isNowLiked !== undefined ? isNowLiked : !liked;
+            const resolvedCount = newCount !== undefined ? newCount : (resolvedLiked ? likeCount + 1 : Math.max(0, likeCount - 1));
+
+            setLiked(resolvedLiked);
+            setLikeCount(resolvedCount);
+
+            if (rawMsg) toast.success(rawMsg);
+
+            // Broadcast to parent (home-view) so localPosts stays in sync
+            window.dispatchEvent(
+                new CustomEvent('likeMessage', {
+                    detail: {
+                        messageId: post.id ?? post._id,
+                        liked: resolvedLiked,
+                        likeCount: resolvedCount,
+                    },
+                })
+            );
+        } catch {
+            toast.error('Could not update like. Please try again.');
+        } finally {
+            setLikeLoading(false);
+        }
+    }, [likeLoading, likeMessageApi, liked, likeCount, post.id, post._id]);
 
     const handleComment = useCallback(() => {
         onCommentClick?.(post);
@@ -122,6 +186,7 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
 
                 case 'pin': {
                     const nextPinned = !isPinned;
+                    pinMessageApi({ messageId: post.id ?? post._id, is_pin: nextPinned });
                     window.dispatchEvent(
                         new CustomEvent('pinMessage', {
                             detail: {
@@ -157,10 +222,11 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
     const handleSaveEdit = useCallback(
         (newContent) => {
             setEditOpen(false);
+            editMessageApi({ messageId: post.id ?? post._id, content: newContent });
             window.dispatchEvent(new CustomEvent('editMessage', { detail: { messageId: post.id, content: newContent } }));
             toast.success('Message updated');
         },
-        [post.id]
+        [editMessageApi, post.id, post._id]
     );
 
     const openImagePreview = useCallback((e) => {
@@ -354,7 +420,7 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                             </Typography>
                         </Stack>
 
-                        <Stack direction="row" spacing={0.7} alignItems="center">
+                        <Stack direction="row" spacing={0.7} alignItems="center" onClick={() => setShareOpen(true)} sx={{ cursor: 'pointer' }}>
                             <Iconify icon="mdi-light:share" width={18} style={{ color: '#43a047' }} />
                             <Typography variant="body2" fontWeight={600} color="text.secondary">
                                 {post.stats?.shares}
@@ -384,6 +450,13 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                 onClose={() => setEditOpen(false)}
                 onConfirm={handleSaveEdit}
                 initialContent={post.content || ''}
+            />
+
+            <ShareMessageModal
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                messageId={post.id ?? post._id}
+                shareApi={shareMessageApi}
             />
         </>
     );
