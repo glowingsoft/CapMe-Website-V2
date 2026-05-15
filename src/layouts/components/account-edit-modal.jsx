@@ -20,7 +20,7 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
     useEffect(() => {
         if (open) {
             setForm({
-                name: user?.name || user?.displayName || '',
+                name: user?.basicInfo?.name || user?.displayName || '',
                 phone: user?.mobile || user?.basicInfo?.phone || '',
             });
             setPreviewUrl(user?.photoURL || null);
@@ -62,8 +62,15 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                 },
             }}
         >
+            {/* Close button */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2, px: 2 }}>
+                <IconButton size="small" onClick={onClose}>
+                    <Iconify icon="mingcute:close-line" width={20} />
+                </IconButton>
+            </Box>
+
             {/* Avatar section */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 5, pb: 1 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
                 <Box sx={{ position: 'relative' }}>
                     {/* Animated ring effect */}
                     {[14, 28, 46, 66, 88].map((size, i) => (

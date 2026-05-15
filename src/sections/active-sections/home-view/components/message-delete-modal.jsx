@@ -10,6 +10,8 @@ export default function MessageDeleteModal({
     onClose,
     onConfirm,
     loading = false,
+    title = 'Delete Message',
+    description = 'Are you sure you want to delete this message? This action cannot be undone.',
 }) {
     return (
         <Dialog
@@ -49,11 +51,11 @@ export default function MessageDeleteModal({
                 </Box>
 
                 <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}>
-                    Delete Message
+                    {title}
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 2.5 }}>
-                    Are you sure you want to delete this message? This action cannot be undone.
+                    {description}
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>

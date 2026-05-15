@@ -278,8 +278,28 @@ export function AudioPlayer({ url, sx }) {
   );
 }
 
+const EXT_MIME = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+  webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+  mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime', avi: 'video/x-msvideo',
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+  pdf: 'application/pdf',
+};
+
+function resolveType(rawType, fileName) {
+  if (rawType && rawType.includes('/')) return rawType;
+  const t = rawType?.toLowerCase() ?? '';
+  const ext = (fileName ?? '').split('.').pop()?.toLowerCase();
+  if (ext && EXT_MIME[ext]) return EXT_MIME[ext];
+  if (t === 'image') return 'image/jpeg';
+  if (t === 'video') return 'video/mp4';
+  if (t === 'audio' || t === 'voice') return 'audio/mpeg';
+  return rawType ?? '';
+}
+
 export default function FileMessage({ file, imageSx }) {
-  const { url, type, name, size } = file;
+  const { url, name, size } = file;
+  const type = resolveType(file.type, name);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [filePreviewOpen, setFilePreviewOpen] = useState(false);
 
@@ -318,7 +338,7 @@ export default function FileMessage({ file, imageSx }) {
         component="video"
         src={url}
         controls
-        sx={{ maxWidth: '100%', maxHeight: 280, borderRadius: 2, display: 'block', bgcolor: '#000' }}
+        sx={{ width: '100%', maxHeight: 480, borderRadius: 2, display: 'block', bgcolor: '#000' }}
       />
     );
   }

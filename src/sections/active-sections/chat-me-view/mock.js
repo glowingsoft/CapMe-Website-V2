@@ -101,9 +101,10 @@ export const CHAT_HISTORY = [
   { id: 18, text: 'who am i what kind of person please give all information a…', group: 'today' },
 ];
 
-export const CHAT_HISTORY_GROUP_ORDER = ['today', 'yesterday', 'this_week', 'older'];
+export const CHAT_HISTORY_GROUP_ORDER = ['prompts', 'today', 'yesterday', 'this_week', 'older'];
 
 export const CHAT_HISTORY_GROUP_LABELS = {
+  prompts:   'Prompts',
   today:     'Today',
   yesterday: 'Yesterday',
   this_week: 'This Week',

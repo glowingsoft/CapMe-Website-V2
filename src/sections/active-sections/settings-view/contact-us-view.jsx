@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
+import { selectUser } from 'src/store/slices/userSlice';
+import { useContactSupportMutation } from 'src/store/Reducer/auth';
+
 
 const CARD_SX = {
   bgcolor: '#fff',
@@ -15,32 +20,42 @@ const CARD_SX = {
   boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
 };
 
-const CONTACT_CHANNELS = [
-  {
-    icon: 'mingcute:mail-line',
-    label: 'Email Support',
-    value: 'support@capme.app',
-    sub: 'We reply within 24 hours',
-  },
-  {
-    icon: 'mingcute:chat-2-line',
-    label: 'Live Chat',
-    value: 'Available in-app',
-    sub: 'Mon–Fri, 9 AM – 6 PM',
-  },
-  {
-    icon: 'mingcute:twitter-line',
-    label: 'Twitter / X',
-    value: '@capmeapp',
-    sub: 'Quick questions & updates',
-  },
-];
+const FieldLabel = ({ children }) => (
+  <Typography fontSize={12} fontWeight={700} color="text.secondary" sx={{ mb: 0.8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+    {children}
+  </Typography>
+);
+
+const FieldBox = ({ children, disabled }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      px: 1.5,
+      py: 1,
+      mb: 2,
+      bgcolor: disabled ? 'rgba(0,0,0,0.03)' : '#fafafa',
+      borderRadius: 2,
+      border: '1px solid rgba(145,145,145,0.2)',
+      transition: 'border-color 0.2s',
+      '&:focus-within': { borderColor: '#4C4EFF' },
+    }}
+  >
+    {children}
+  </Box>
+);
 
 export default function ContactUsView() {
   const navigate = useNavigate();
+  const currentUser = useSelector(selectUser);
+  const [contactSupport, { isLoading }] = useContactSupportMutation();
+
+  const userName = currentUser?.name ?? currentUser?.displayName ?? currentUser?.basicInfo?.name ?? '';
+  const userEmail = currentUser?.email ?? currentUser?.basicInfo?.email ?? '';
+
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [sent, setSent] = useState(false);
+  const [status, setStatus] = useState(null); // 'success' | 'error'
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
@@ -61,12 +76,23 @@ export default function ContactUsView() {
 
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!subject.trim() || !message.trim()) return;
-    setSent(true);
-    setSubject('');
-    setMessage('');
-    setTimeout(() => setSent(false), 4000);
+    try {
+      await contactSupport({
+        name: userName,
+        email: userEmail,
+        subject: subject.trim(),
+        message: message.trim(),
+      }).unwrap();
+      setStatus('success');
+      setSubject('');
+      setMessage('');
+      setTimeout(() => setStatus(null), 4000);
+    } catch {
+      setStatus('error');
+      setTimeout(() => setStatus(null), 4000);
+    }
   };
 
   return (
@@ -107,7 +133,7 @@ export default function ContactUsView() {
 
         <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: 'flex-start' }}>
 
-          {/* Left — message form */}
+          {/* Form card */}
           <Box sx={{ flex: 1, minWidth: 0, ...CARD_SX, overflow: 'hidden' }}>
             <Box sx={{ px: 3, pt: 3, pb: 1 }}>
               <Typography fontSize={15} fontWeight={700} sx={{ mb: 2 }}>
@@ -115,33 +141,44 @@ export default function ContactUsView() {
                 {' a Message'}
               </Typography>
 
-              <Typography fontSize={12} fontWeight={600} color="text.secondary" sx={{ mb: 0.8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                Subject
-              </Typography>
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  px: 1.5,
-                  py: 1,
-                  mb: 2,
-                  bgcolor: '#fafafa',
-                  borderRadius: 2,
-                  border: '1px solid rgba(145,145,145,0.2)',
-                }}
-              >
+              {/* Name — auto-filled, disabled */}
+              <FieldLabel>Name</FieldLabel>
+              <FieldBox disabled>
+                <Iconify icon="mingcute:user-2-line" width={16} sx={{ mr: 1, color: 'text.disabled', flexShrink: 0 }} />
+                <InputBase
+                  fullWidth
+                  value={userName}
+                  disabled
+                  sx={{ fontSize: 14, '& input': { p: 0, color: '#111', WebkitTextFillColor: '#111' } }}
+                />
+              </FieldBox>
+
+              {/* Email — auto-filled, disabled */}
+              <FieldLabel>Email</FieldLabel>
+              <FieldBox disabled>
+                <Iconify icon="mingcute:mail-line" width={16} sx={{ mr: 1, color: 'text.disabled', flexShrink: 0 }} />
+                <InputBase
+                  fullWidth
+                  value={userEmail}
+                  disabled
+                  sx={{ fontSize: 14, '& input': { p: 0, color: '#111', WebkitTextFillColor: '#111' } }}
+                />
+              </FieldBox>
+
+              {/* Subject */}
+              <FieldLabel>Subject</FieldLabel>
+              <FieldBox>
                 <InputBase
                   fullWidth
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   placeholder="What's this about?"
-                  sx={{ fontSize: 14, '& input': { p: 0 } }}
+                  sx={{ fontSize: 14, '& input': { p: 0, color: '#111' } }}
                 />
-              </Box>
+              </FieldBox>
 
-              <Typography fontSize={12} fontWeight={600} color="text.secondary" sx={{ mb: 0.8, textTransform: 'uppercase', letterSpacing: 0.6 }}>
-                Message
-              </Typography>
+              {/* Message */}
+              <FieldLabel>Message</FieldLabel>
               <Box
                 sx={{
                   px: 1.5,
@@ -151,6 +188,8 @@ export default function ContactUsView() {
                   borderRadius: 2,
                   border: '1px solid rgba(145,145,145,0.2)',
                   minHeight: 140,
+                  transition: 'border-color 0.2s',
+                  '&:focus-within': { borderColor: '#4C4EFF' },
                 }}
               >
                 <InputBase
@@ -160,7 +199,7 @@ export default function ContactUsView() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Describe your issue or question..."
-                  sx={{ fontSize: 14, '& textarea': { p: 0 }, alignItems: 'flex-start' }}
+                  sx={{ fontSize: 14, '& textarea': { p: 0, color: '#111' }, alignItems: 'flex-start' }}
                 />
               </Box>
             </Box>
@@ -168,19 +207,27 @@ export default function ContactUsView() {
             <Divider />
 
             <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              {sent ? (
+              {status === 'success' && (
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Iconify icon="solar:check-circle-bold" width={20} sx={{ color: '#22c55e' }} />
                   <Typography fontSize={14} color="#22c55e" fontWeight={600}>
                     Message sent! We&apos;ll get back to you soon.
                   </Typography>
                 </Stack>
-              ) : (
-                <Box />
               )}
+              {status === 'error' && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Iconify icon="solar:danger-circle-bold" width={20} sx={{ color: '#ef4444' }} />
+                  <Typography fontSize={14} color="#ef4444" fontWeight={600}>
+                    Failed to send. Please try again.
+                  </Typography>
+                </Stack>
+              )}
+              {!status && <Box />}
+
               <Button
                 onClick={handleSend}
-                disabled={!subject.trim() || !message.trim()}
+                disabled={isLoading || !subject.trim() || !message.trim()}
                 sx={{
                   px: 3,
                   py: 1,
@@ -190,53 +237,15 @@ export default function ContactUsView() {
                   textTransform: 'none',
                   bgcolor: '#4C4EFF',
                   color: '#fff',
+                  minWidth: 140,
                   '&:hover': { bgcolor: '#3739b7' },
                   '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.3)' },
                 }}
               >
-                Send Message
+                {isLoading ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : 'Send Message'}
               </Button>
             </Box>
           </Box>
-
-          {/* Right — contact channels */}
-          {/* <Box sx={{ flex: '0 0 260px', width: { xs: '100%', md: 260 }, ...CARD_SX, overflow: 'hidden' }}>
-            <Box sx={{ px: 3, pt: 3, pb: 1 }}>
-              <Typography fontSize={15} fontWeight={700} sx={{ mb: 2 }}>
-                <Box component="span" sx={{ color: '#4C4EFF' }}>Other</Box>
-                {' Ways to Reach Us'}
-              </Typography>
-            </Box>
-
-            {CONTACT_CHANNELS.map((ch, i) => (
-              <Box key={ch.label}>
-                <Box sx={{ px: 3, py: 1.8, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 2,
-                      bgcolor: '#4C4EFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Iconify icon={ch.icon} width={20} sx={{ color: '#fff' }} />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography fontSize={13} fontWeight={700} color="#111">{ch.label}</Typography>
-                    <Typography fontSize={13} color="text.secondary" noWrap>{ch.value}</Typography>
-                    <Typography fontSize={11} color="text.disabled">{ch.sub}</Typography>
-                  </Box>
-                </Box>
-                {i < CONTACT_CHANNELS.length - 1 && <Divider sx={{ mx: 3 }} />}
-              </Box>
-            ))}
-
-            <Box sx={{ pb: 2 }} />
-          </Box> */}
         </Box>
       </Box>
     </Box>

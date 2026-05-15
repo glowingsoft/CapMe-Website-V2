@@ -20,6 +20,7 @@ import { logout } from 'src/store/slices/userSlice';
 import { walletsApi } from 'src/store/Reducer/wallets-api';
 import { categoriesApi } from 'src/store/Reducer/categories-api';
 import { authApi } from 'src/store/Reducer/auth';
+import { aiApi } from 'src/store/Reducer/ai-api';
 
 // ----------------------------------------------------------------------
 
@@ -47,6 +48,7 @@ export function SignOutButton({ onClose, ...other }) {
       dispatch(walletsApi.util.resetApiState());
       dispatch(categoriesApi.util.resetApiState());
       dispatch(authApi.util.resetApiState());
+      dispatch(aiApi.util.resetApiState());
 
       // Logout user
       dispatch(logout());
@@ -75,6 +77,7 @@ export function SignOutButton({ onClose, ...other }) {
       dispatch(walletsApi.util.resetApiState());
       dispatch(categoriesApi.util.resetApiState());
       dispatch(authApi.util.resetApiState());
+      dispatch(aiApi.util.resetApiState());
 
       onClose?.();
       router.refresh();

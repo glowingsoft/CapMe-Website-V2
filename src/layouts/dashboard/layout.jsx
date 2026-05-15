@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 import Alert from '@mui/material/Alert';
 import { useTheme } from '@mui/material/styles';
@@ -14,6 +14,7 @@ import { bulletColor } from 'src/components/nav-section';
 import { useSettingsContext } from 'src/components/settings';
 
 import { useSelector } from 'react-redux';
+import { connectSocket, disconnectSocket } from 'src/socket/socket';
 
 import { Main } from './main';
 import GlobalDrawers from '../components/global-drawers';
@@ -42,6 +43,15 @@ export function DashboardLayout({ sx, children, data }) {
   const navColorVars = useNavColorVars(theme, settings);
 
   const layoutQuery = 'lg';
+
+  const userId = user?._id ?? user?.id;
+  useEffect(() => {
+    if (userId) {
+      connectSocket(userId);
+    } else {
+      disconnectSocket();
+    }
+  }, [userId]);
 
   // const navData = data?.nav ?? dashboardNavDataAdmin;
 

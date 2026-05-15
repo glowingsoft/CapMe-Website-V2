@@ -1,45 +1,158 @@
 import React from 'react';
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardHeader from '@mui/material/CardHeader';
+import InputBase from '@mui/material/InputBase';
+import Skeleton from '@mui/material/Skeleton';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
+import { Iconify } from 'src/components/iconify';
 
 import { EmptyContent } from 'src/components/empty-content';
 import CommentDrawer from 'src/sections/active-sections/home-view/components/comment-drawer';
-import OldMessagesLabel from 'src/sections/chat/old-messages-label';
 import PostCard from 'src/sections/active-sections/home-view/components/post-card';
 import SuggestedRooms from 'src/sections/active-sections/home-view/components/suggested-rooms';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
+import { useLazyGetActivityFeedsQuery } from 'src/store/Reducer/rooms-api';
+import { getSocket } from 'src/socket/socket';
 
 import { suggestedRooms } from 'src/sections/active-sections/home-view/mock';
-import { activityCommentsData, activityPosts } from './mock';
+import { activityCommentsData } from './mock';
+
+// ----------------------------------------------------------------------
 
 const TABS = [
-  { value: 'all', label: 'All' },
-  { value: 'friends', label: 'Friends' },
+  { value: 'all',       label: 'All' },
+  { value: 'myrooms',   label: 'My Rooms' },
   { value: 'following', label: 'Following' },
-  { value: 'me', label: 'Me' },
+  { value: 'me',        label: 'Me' },
 ];
 
 const CONTENT_MAX_WIDTH = 920;
+const LIMIT = 10;
+
+// ----------------------------------------------------------------------
+
+function PostCardSkeleton() {
+  return (
+    <Card sx={{ mb: 2.5, borderRadius: 4, boxShadow: '0px 2px 16px rgba(0,0,0,0.08)', border: '1px solid #f0f0f0' }}>
+      <CardHeader
+        sx={{ px: 2.5, pt: 2.5, pb: 1.5 }}
+        avatar={<Skeleton variant="circular" width={44} height={44} />}
+        title={<Skeleton variant="text" width="35%" height={16} sx={{ mb: 0.5 }} />}
+        subheader={<Skeleton variant="text" width="50%" height={13} />}
+        action={<Skeleton variant="circular" width={30} height={30} sx={{ mt: 1, mr: 0.5 }} />}
+      />
+      <Skeleton variant="rectangular" width="100%" height={320} />
+      <CardContent sx={{ px: 2.5 }}>
+        <Skeleton variant="text" width="90%" height={14} />
+        <Skeleton variant="text" width="60%" height={14} sx={{ mt: 0.5 }} />
+      </CardContent>
+      <Box sx={{ px: 2.5, pb: 2, display: 'flex', gap: 3 }}>
+        <Skeleton variant="text" width={40} height={20} />
+        <Skeleton variant="text" width={40} height={20} />
+        <Skeleton variant="text" width={40} height={20} />
+      </Box>
+    </Card>
+  );
+}
+
+function PostCardSkeletonList({ count = 3 }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <Box key={i} sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto' }}>
+          <PostCardSkeleton />
+        </Box>
+      ))}
+    </>
+  );
+}
+
+// ----------------------------------------------------------------------
 
 export default function ActivityFeedView() {
   const [activeTab, setActiveTab] = React.useState('all');
+  const [searchInput, setSearchInput] = React.useState('');
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [page, setPage] = React.useState(1);
+  const [allPosts, setAllPosts] = React.useState([]);
+  const [hasMore, setHasMore] = React.useState(false);
+  const shouldReplaceRef = React.useRef(true);
+  const scrollRef = React.useRef(null);
+
   const [commentDrawerOpen, setCommentDrawerOpen] = React.useState(false);
   const [selectedPost, setSelectedPost] = React.useState(null);
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = React.useState(false);
 
+  const [triggerFeed, { data, isFetching }] = useLazyGetActivityFeedsQuery();
+  // true from mount so skeleton always shows before first data arrives
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Debounce the raw input so the API fires 400 ms after the user stops typing
+  React.useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(searchInput), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Reset on tab / search change
+  React.useEffect(() => {
+    shouldReplaceRef.current = true;
+    setAllPosts([]);
+    setPage(1);
+    setHasMore(false);
+    setIsLoading(true);
+  }, [activeTab, searchQuery]);
+
+  // Fetch whenever page/tab/search changes
+  React.useEffect(() => {
+    triggerFeed({ type: activeTab, search: searchQuery, page, limit: LIMIT });
+  }, [activeTab, searchQuery, page, triggerFeed]);
+
+  // Accumulate results
+  React.useEffect(() => {
+    if (isFetching || !data) return;
+    const incoming = data.data ?? [];
+    if (shouldReplaceRef.current) {
+      setAllPosts(incoming);
+      shouldReplaceRef.current = false;
+    } else {
+      setAllPosts((prev) => {
+        const seen = new Set(prev.map((p) => String(p.id ?? p._id)));
+        return [...prev, ...incoming.filter((p) => !seen.has(String(p.id ?? p._id)))];
+      });
+    }
+    setHasMore((data.currentPage ?? 1) < (data.totalPages ?? 1));
+    setIsLoading(false);
+  }, [data, isFetching]);
+
+  // Infinite scroll
+  const handleScroll = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || isFetching || !hasMore) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 120) {
+      shouldReplaceRef.current = false;
+      setPage((p) => p + 1);
+    }
+  }, [isFetching, hasMore]);
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   React.useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
     const onAccountOpened = () => { setCommentDrawerOpen(false); setSelectedPost(null); setProfileDrawerOpen(false); };
     const onProfileChange = (e) => setProfileDrawerOpen(e.detail);
     const onNotificationsChange = (e) => setNotificationsDrawerOpen(e.detail);
-    const onCloseComment = () => {
-      setCommentDrawerOpen(false);
-      setSelectedPost(null);
-    };
+    const onCloseComment = () => { setCommentDrawerOpen(false); setSelectedPost(null); };
     window.addEventListener('accountDrawerChange', onAccountChange);
     window.addEventListener('accountDrawerOpened', onAccountOpened);
     window.addEventListener('profileDrawerChange', onProfileChange);
@@ -51,6 +164,60 @@ export default function ActivityFeedView() {
       window.removeEventListener('profileDrawerChange', onProfileChange);
       window.removeEventListener(DRAWER_EVENTS.notificationsChange, onNotificationsChange);
       window.removeEventListener(DRAWER_EVENTS.commentClose, onCloseComment);
+    };
+  }, []);
+
+  // Socket: update like counts when server confirms a like
+  React.useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onMessageLiked = ({ messageId, likesCount, action }) => {
+      setAllPosts((prev) =>
+        prev.map((p) =>
+          String(p.id ?? p._id) === String(messageId)
+            ? { ...p, stats: { ...p.stats, likes: likesCount }, likeAction: action }
+            : p
+        )
+      );
+      setSelectedPost((prev) =>
+        prev && String(prev.id ?? prev._id) === String(messageId)
+          ? { ...prev, stats: { ...prev.stats, likes: likesCount }, likeAction: action }
+          : prev
+      );
+    };
+    socket.on('messageLiked', onMessageLiked);
+    return () => socket.off('messageLiked', onMessageLiked);
+  }, []);
+
+  // Window events: update comment counts when comments are added/removed
+  React.useEffect(() => {
+    const onCommentAdded = (e) => {
+      const { messageId } = e.detail || {};
+      if (!messageId) return;
+      setAllPosts((prev) =>
+        prev.map((p) =>
+          String(p.id ?? p._id) === String(messageId)
+            ? { ...p, stats: { ...p.stats, comments: (p.stats?.comments ?? 0) + 1 } }
+            : p
+        )
+      );
+    };
+    const onCommentRemoved = (e) => {
+      const { messageId } = e.detail || {};
+      if (!messageId) return;
+      setAllPosts((prev) =>
+        prev.map((p) =>
+          String(p.id ?? p._id) === String(messageId)
+            ? { ...p, stats: { ...p.stats, comments: Math.max(0, (p.stats?.comments ?? 0) - 1) } }
+            : p
+        )
+      );
+    };
+    window.addEventListener('commentAdded', onCommentAdded);
+    window.addEventListener('commentRemoved', onCommentRemoved);
+    return () => {
+      window.removeEventListener('commentAdded', onCommentAdded);
+      window.removeEventListener('commentRemoved', onCommentRemoved);
     };
   }, []);
 
@@ -69,37 +236,7 @@ export default function ActivityFeedView() {
     setSelectedPost(null);
   }, []);
 
-  // Filter posts by active tab (wire up to your real logic as needed)
-  const filteredPosts = React.useMemo(() => {
-    if (activeTab === 'all') return activityPosts;
-    const matchesTab = (item) => {
-      if (activeTab === 'friends') return item.visibility === 'friends' || item.feedType === 'friends';
-      if (activeTab === 'following') return item.feedType === 'following';
-      if (activeTab === 'me') return item.authorId === 'currentUserId';
-      return true;
-    };
-
-    const out = [];
-    let pendingDate = null;
-
-    activityPosts.forEach((item) => {
-      if (item.type === 'date') {
-        pendingDate = item;
-        return;
-      }
-
-      if (!matchesTab(item)) return;
-      if (pendingDate) {
-        out.push(pendingDate);
-        pendingDate = null;
-      }
-      out.push(item);
-    });
-
-    return out;
-  }, [activeTab]);
-
-  const hasPostItems = filteredPosts.some((item) => item.type !== 'date');
+  const isPaginating = isFetching && !isLoading;
 
   return (
     <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
@@ -128,14 +265,49 @@ export default function ActivityFeedView() {
               transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)',
             }}
           >
-            {/* Header: title + tabs */}
+            {/* Header */}
             <Box sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto', mb: 2 }}>
-              <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, mb: 1.5 }}>
-                <Box component="span" sx={{ color: '#4C4EFF' }}>Activity</Box>
-                {' Feed'}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, gap: 2 }}>
+                <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, flexShrink: 0 }}>
+                  <Box component="span" sx={{ color: '#4C4EFF' }}>Activity</Box>
+                  {' Feed'}
+                </Typography>
 
-              {/* Tabs (match Chat Me) */}
+                {/* Inline search field */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    px: 1.5,
+                    height: 38,
+                    bgcolor: '#fff',
+                    border: '1.5px solid',
+                    borderColor: searchInput ? '#4C4EFF' : 'rgba(0,0,0,0.12)',
+                    borderRadius: 2,
+                    width: 260,
+                    flexShrink: 0,
+                    transition: 'border-color 0.15s',
+                  }}
+                >
+                  <Iconify icon="eva:search-fill" width={18} style={{ color: searchInput ? '#4C4EFF' : '#9e9e9e', flexShrink: 0 }} />
+                  <InputBase
+                    placeholder="Search posts..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    sx={{ flex: 1, fontSize: 13, '& input': { p: 0 } }}
+                  />
+                  {searchInput && (
+                    <Iconify
+                      icon="eva:close-fill"
+                      width={16}
+                      onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                      style={{ color: '#9e9e9e', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                  )}
+                </Box>
+              </Box>
+
               <Tabs
                 value={activeTab}
                 onChange={(_, v) => setActiveTab(v)}
@@ -164,7 +336,9 @@ export default function ActivityFeedView() {
               </Tabs>
             </Box>
 
+            {/* Scrollable feed */}
             <Box
+              ref={scrollRef}
               sx={{
                 flex: 1,
                 minHeight: 0,
@@ -176,22 +350,30 @@ export default function ActivityFeedView() {
                 '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
               }}
             >
-              {!hasPostItems ? (
+              {isLoading ? (
+                <PostCardSkeletonList count={4} />
+              ) : allPosts.length === 0 ? (
                 <EmptyContent
                   title="No posts yet"
                   description="There's nothing to show for this tab."
                   sx={{ py: 10 }}
                 />
               ) : (
-                filteredPosts.map((item, index) =>
-                  item.type === 'date' ? (
-                    <OldMessagesLabel key={index} label={item.label} />
-                  ) : (
-                    <Box key={item.id} sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto' }}>
-                      <PostCard post={item} onCommentClick={handleOpenComments} />
+                <>
+                  {allPosts.map((item, index) => (
+                    <Box key={item._id ?? item.id ?? index} sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto' }}>
+                      <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch menuActions={['copy']} />
                     </Box>
-                  )
-                )
+                  ))}
+
+                  {isPaginating && <PostCardSkeletonList count={2} />}
+
+                  {!hasMore && allPosts.length > 0 && !isFetching && (
+                    <Typography fontSize={12} align="center" sx={{ color: 'rgba(0,0,0,0.3)', py: 2 }}>
+                      No more posts
+                    </Typography>
+                  )}
+                </>
               )}
             </Box>
           </Box>
@@ -206,6 +388,7 @@ export default function ActivityFeedView() {
           onClose={handleCloseComments}
           selectedPost={selectedPost}
           commentsData={activityCommentsData}
+          roomId={selectedPost?.roomId}
         />
       </Box>
     </Box>

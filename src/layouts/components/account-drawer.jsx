@@ -34,6 +34,7 @@ import { setUser } from 'src/store/slices/userSlice';
 import { AccountButton } from './account-button';
 import { UpgradeBlock } from './nav-upgrade';
 import AccountEditModal from './account-edit-modal';
+import ChangePasswordModal from './change-password-modal';
 import {
   AccountConnectionListSkeleton,
   AccountProfileHeaderSkeleton,
@@ -56,9 +57,10 @@ export function AccountDrawer({ data = [], sx, ...other }) {
   // Initialize state early for use in queries
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState(0); // 0: Rooms, 1: Friends, 2: Following
+  const [tab, setTab] = useState(0); // 0: Friends, 1: Following
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [followedItems, setFollowedItems] = useState({});
   const [viewAllOpen, setViewAllOpen] = useState(false);
   const [viewType, setViewType] = useState('rooms');
@@ -183,10 +185,11 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           imageUrl;
       }
 
+      const imageName = imageUrl ? imageUrl.split('/').pop() : '';
       const payload = {
         name: form.name,
         mobile: form.phone,
-        image: imageUrl,
+        image: imageName,
       };
       const res = await updateProfile(payload).unwrap();
       const profileBody = res?.body ?? res;
@@ -239,20 +242,25 @@ export function AccountDrawer({ data = [], sx, ...other }) {
   }, []);
 
 
-  useEffect(() => {
-    const handler = () => {
-      setOpen(false);
-      window.dispatchEvent(new CustomEvent('accountDrawerChange', { detail: false }));
-    };
-    window.addEventListener('closeAccountDrawer', handler);
-    return () => window.removeEventListener('closeAccountDrawer', handler);
-  }, []);
-
   const handleOpenDrawer = useCallback(() => {
     setOpen(true);
     window.dispatchEvent(new CustomEvent('accountDrawerChange', { detail: true }));
     window.dispatchEvent(new Event('accountDrawerOpened'));
   }, []);
+
+  useEffect(() => {
+    const closeHandler = () => {
+      setOpen(false);
+      window.dispatchEvent(new CustomEvent('accountDrawerChange', { detail: false }));
+    };
+    const openHandler = () => handleOpenDrawer();
+    window.addEventListener('closeAccountDrawer', closeHandler);
+    window.addEventListener('openAccountDrawer', openHandler);
+    return () => {
+      window.removeEventListener('closeAccountDrawer', closeHandler);
+      window.removeEventListener('openAccountDrawer', openHandler);
+    };
+  }, [handleOpenDrawer]);
 
   const handleCloseDrawer = useCallback(() => {
     setOpen(false);
@@ -308,7 +316,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     <AnimateAvatar
       width={120}
       slotProps={{
-        avatar: { src: user?.photoURL, alt: user?.displayName },
+        avatar: { src: user?.photoURL?.includes('noImg') ? undefined : user?.photoURL, alt: user?.displayName },
         overlay: {
           border: 2,
           spacing: 3,
@@ -329,6 +337,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           title="Profile"
           onBack={handleCloseDrawer}
           onEdit={handleEditOpen}
+          onChangePassword={() => setChangePasswordOpen(true)}
           editIcon="fluent:edit-20-regular"
           showShare={false}
         />
@@ -461,7 +470,6 @@ export function AccountDrawer({ data = [], sx, ...other }) {
 
 
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, px: 2 }}>
-
             <Button
               size="small"
               onClick={() => setTab(0)}
@@ -477,9 +485,8 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 0 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Rooms ({isProfileDataLoading ? '...' : profileStats.rooms})
+              Friends ({isProfileDataLoading ? '...' : profileStats.friends})
             </Button>
-
             <Button
               size="small"
               onClick={() => setTab(1)}
@@ -495,23 +502,6 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 1 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Friends ({isProfileDataLoading ? '...' : profileStats.friends})
-            </Button>
-            <Button
-              size="small"
-              onClick={() => setTab(2)}
-              sx={{
-                borderRadius: 10,
-                fontWeight: tab === 2 ? 700 : 500,
-                fontSize: 13,
-                px: 2.5,
-                py: 0.8,
-                bgcolor: tab === 2 ? '#4C4EFF' : 'transparent',
-                color: tab === 2 ? '#fff' : 'text.secondary',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: tab === 2 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
-              }}
-            >
               Following ({isProfileDataLoading ? '...' : profileStats.following})
             </Button>
           </Stack>
@@ -519,83 +509,6 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           {/* Tab content */}
           <Box sx={{ px: 2, pb: 2 }}>
             {tab === 0 && (
-              <>
-                <Stack spacing={1}>
-                  {transformedFollowings
-                    .filter((room) => room.name.toLowerCase().includes(search.toLowerCase()))
-                    .slice(0, 3)
-                    .map((room, i) => {
-                      const key = `room-${i}`;
-                      const state = followedItems[key]; // undefined | 'requested' | 'active'
-                      const label = state === 'active' ? 'Following' : state === 'requested' ? 'Cancel request' : 'Follow';
-                      const isActive = state === 'active';
-                      const isRequested = state === 'requested';
-                      return (
-                        <Stack
-                          key={i}
-                          direction="row"
-                          alignItems="center"
-                          spacing={1.5}
-                          onClick={() => { window.dispatchEvent(new CustomEvent('openRoom', { detail: room })); closeOverlayDrawers(); }}
-                          sx={{ p: 1, borderRadius: 2, cursor: 'pointer', transition: 'background 0.15s', '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' }, '&:hover .item-name': { color: '#4C4EFF' } }}
-                        >
-                          <Avatar
-                            src={room.icon || undefined}
-                            sx={{ width: 42, height: 42, flexShrink: 0, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, color: '#fff' }}
-                          >
-                            {room.name?.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ flexGrow: 1, transition: 'color 0.15s' }}>
-                            {room.name}
-                          </Typography>
-                          <Button
-                            size="small"
-                            variant={state ? 'outlined' : 'contained'}
-                            onClick={(e) => { e.stopPropagation(); cycleFollow(key); }}
-                            sx={{
-                              minWidth: 100,
-                              height: 30,
-                              borderRadius: 2,
-                              fontSize: 12,
-                              fontWeight: 700,
-                              textTransform: 'none',
-                              flexShrink: 0,
-                              boxShadow: 'none',
-                              ...(isActive
-                                ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                                : isRequested
-                                  ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                  : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                            }}
-                          >
-                            {label}
-                          </Button>
-                        </Stack>
-                      );
-                    })}
-                </Stack>
-                {transformedFollowings.length > 3 && (
-                  <Button
-                    fullWidth
-                    size="small"
-                    onClick={() => handleOpenViewAll('rooms')}
-                    sx={{
-                      mt: 1.5,
-                      borderRadius: 2,
-                      border: '1px dashed rgba(76,78,255,0.4)',
-                      color: '#4C4EFF',
-                      fontWeight: 600,
-                      fontSize: 13,
-                      textTransform: 'none',
-                      '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                    }}
-                  >
-                    See All Rooms ({transformedFollowings.length})
-                  </Button>
-                )}
-              </>
-            )}
-            {tab === 1 && (
               isFriendsListLoading ? (
                 <AccountConnectionListSkeleton showButton />
               ) : (
@@ -616,7 +529,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                             direction="row"
                             alignItems="center"
                             spacing={1.5}
-                            onClick={() => window.dispatchEvent(new CustomEvent('openUserProfile', { detail: { name: f.name, avatar: f.icon } }))}
+                            onClick={() => handleOpenUserProfileDrawer(f)}
                             sx={{ p: 1, borderRadius: 2, cursor: 'pointer', transition: 'background 0.15s', '&:hover': { bgcolor: 'rgba(76,78,255,0.07)' }, '&:hover .item-name': { color: '#4C4EFF' } }}
                           >
                             <Avatar
@@ -676,7 +589,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 </>
               )
             )}
-            {tab === 2 && (
+            {tab === 1 && (
               isFollowingsListLoading ? (
                 <AccountConnectionListSkeleton showButton={false} />
               ) : (
@@ -737,6 +650,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
 
 
           <AccountEditModal open={editOpen} onClose={handleEditClose} user={user} onSave={handleEditSave} isLoading={isUploading || isUpdating} />
+          <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
         </Scrollbar>
       </Drawer>
 

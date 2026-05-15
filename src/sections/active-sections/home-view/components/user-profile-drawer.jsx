@@ -24,6 +24,8 @@ import {
   UserProfileStatsSkeleton,
 } from './user-profile-drawer-skeletons';
 
+const getRealAvatar = (url) => (url && !url.includes('noImg') ? url : undefined);
+
 export default function UserProfileDrawer({ open, onClose, user }) {
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
@@ -200,8 +202,8 @@ export default function UserProfileDrawer({ open, onClose, user }) {
           ) : (
             <Stack alignItems="center" sx={{ pt: 4, pb: 2 }}>
               <Avatar
-                src={profileUser.avatar || undefined}
-                onClick={profileUser.avatar ? () => setAvatarPreviewOpen(true) : undefined}
+                src={getRealAvatar(profileUser.avatar)}
+                onClick={getRealAvatar(profileUser.avatar) ? () => setAvatarPreviewOpen(true) : undefined}
                 sx={{
                   width: 200,
                   height: 200,
@@ -210,7 +212,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                   fontSize: 64,
                   fontWeight: 700,
                   color: '#fff',
-                  cursor: profileUser.avatar ? 'pointer' : 'default',
+                  cursor: getRealAvatar(profileUser.avatar) ? 'pointer' : 'default',
                 }}
               >
                 {profileUser.name?.charAt(0).toUpperCase()}
@@ -218,7 +220,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
 
               <ImagePreviewDialog
                 open={avatarPreviewOpen}
-                src={profileUser.avatar}
+                src={getRealAvatar(profileUser.avatar)}
                 alt={`${profileUser.name || 'User'} avatar`}
                 onClose={() => setAvatarPreviewOpen(false)}
               />
@@ -297,12 +299,12 @@ export default function UserProfileDrawer({ open, onClose, user }) {
               </Stack>
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
               <Stack alignItems="center" sx={{ flex: 1 }}>
-                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{String(followerCount).padStart(2, '0')}</Typography>
+                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{followerCount}</Typography>
                 <Typography variant="body2" color="text.secondary">Followers</Typography>
               </Stack>
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
               <Stack alignItems="center" sx={{ flex: 1 }}>
-                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{String(apiProfile?.followingCount ?? followingRooms.length).padStart(2, '0')}</Typography>
+                <Typography variant="h6" fontWeight={700} color="#4C4EFF">{apiProfile?.followingCount ?? followingRooms.length}</Typography>
                 <Typography variant="body2" color="text.secondary">Following</Typography>
               </Stack>
             </Stack>

@@ -9,46 +9,64 @@ import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { Iconify } from 'src/components/iconify';
 import { toast } from 'src/components/snackbar';
-import { useGetHomeRoomsQuery } from 'src/store/Reducer/rooms-api';
+import { useGetHomeRoomsQuery, useShareMessageMutation } from 'src/store/Reducer/rooms-api';
 
-export default function ShareMessageModal({ open, onClose, messageId, shareApi }) {
-  const [sharing, setSharing] = useState(null); // roomId being shared to
+export default function ShareMessageModal({ open, onClose, messageId }) {
+  const [sharing, setSharing] = useState(null); // roomId currently being shared to
+  const [sharedRooms, setSharedRooms] = useState(new Set()); // rooms already shared in this session
 
   const { data: roomsData, isLoading } = useGetHomeRoomsQuery(
-    { page: 1, limit: 30 },
+    { page: 1, limit: 50, type: 'all' },
     { skip: !open }
   );
 
-  const rooms = React.useMemo(() => {
-    const raw = roomsData?.body?.data ?? roomsData?.data ?? roomsData ?? [];
+  const [shareMessageApi] = useShareMessageMutation();
+
+  const rooms = useMemo(() => {
+    const raw = roomsData?.body?.rooms ?? roomsData?.body?.data ?? roomsData?.data ?? [];
     if (!Array.isArray(raw)) return [];
     return raw.map((r) => ({
       id: r._id ?? r.id,
-      name: r.name ?? r.roomName ?? 'Room',
-      avatar: r.image ?? r.avatar ?? '',
+      name: r.name ?? 'Room',
+      avatar: r.image ?? r.icon ?? '',
       color: r.color ?? '#4C4EFF',
     }));
   }, [roomsData]);
+
+  const handleClose = () => {
+    setSharedRooms(new Set());
+    onClose();
+  };
 
   const handleCopyLink = () => {
     const link = `${window.location.origin}/message/${messageId}`;
     navigator.clipboard.writeText(link);
     toast.success('Link copied to clipboard');
-    onClose();
+    handleClose();
   };
 
   const handleShareToRoom = async (roomId) => {
+    if (sharing || sharedRooms.has(roomId)) return;
     setSharing(roomId);
     try {
-      await shareApi(messageId).unwrap();
+      const res = await shareMessageApi({ messageId, roomId }).unwrap();
+      const newCount =
+        res?.body?.shareCount ?? res?.shareCount ?? res?.body?.sharesCount ?? res?.sharesCount;
+
+      setSharedRooms((prev) => new Set([...prev, roomId]));
       toast.success('Shared successfully');
-      onClose();
+
+      window.dispatchEvent(
+        new CustomEvent('shareMessage', {
+          detail: { messageId, shareCount: newCount },
+        })
+      );
     } catch {
-      toast.error('Failed to share');
+      toast.error('Failed to share. Please try again.');
     } finally {
       setSharing(null);
     }
@@ -57,16 +75,18 @@ export default function ShareMessageModal({ open, onClose, messageId, shareApi }
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       maxWidth="xs"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: 4, overflow: 'hidden' },
-      }}
+      PaperProps={{ sx: { borderRadius: 4, overflow: 'hidden' } }}
     >
-      <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography fontWeight={700} fontSize={16}>Share Message</Typography>
-        <IconButton size="small" onClick={onClose}>
+      <DialogTitle
+        sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <Typography fontWeight={700} fontSize={16}>
+          Share Message
+        </Typography>
+        <IconButton size="small" onClick={handleClose}>
           <Iconify icon="mdi:close" width={20} />
         </IconButton>
       </DialogTitle>
@@ -92,50 +112,65 @@ export default function ShareMessageModal({ open, onClose, messageId, shareApi }
         </Button>
 
         <Divider sx={{ mb: 1.5 }}>
-          <Typography variant="caption" color="text.secondary">or share to a room</Typography>
+          <Typography variant="caption" color="text.secondary">
+            or share to a room
+          </Typography>
         </Divider>
 
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-            <CircularProgress size={28} />
+            <CircularProgress size={28} sx={{ color: '#4C4EFF' }} />
           </Box>
         ) : rooms.length === 0 ? (
           <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
             No rooms found
           </Typography>
         ) : (
-          <Stack spacing={0.5} sx={{ maxHeight: 300, overflowY: 'auto' }}>
-            {rooms.map((room) => (
-              <Box
-                key={room.id}
-                onClick={() => handleShareToRoom(room.id)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1.5,
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 2,
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' },
-                }}
-              >
-                <Avatar
-                  src={room.avatar || undefined}
-                  sx={{ width: 36, height: 36, bgcolor: room.color, fontWeight: 700, fontSize: 14 }}
+          <Stack spacing={0.5} sx={{ maxHeight: 320, overflowY: 'auto' }}>
+            {rooms.map((room) => {
+              const done = sharedRooms.has(room.id);
+              const loading = sharing === room.id;
+              return (
+                <Box
+                  key={room.id}
+                  onClick={() => handleShareToRoom(room.id)}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 2,
+                    cursor: done ? 'default' : 'pointer',
+                    opacity: done ? 0.6 : 1,
+                    '&:hover': { bgcolor: done ? 'transparent' : 'rgba(76,78,255,0.06)' },
+                  }}
                 >
-                  {room.name?.charAt(0).toUpperCase()}
-                </Avatar>
-                <Typography fontWeight={600} fontSize={14} sx={{ flex: 1 }}>
-                  {room.name}
-                </Typography>
-                {sharing === room.id ? (
-                  <CircularProgress size={18} />
-                ) : (
-                  <Iconify icon="mingcute:send-line" width={18} sx={{ color: '#9e9e9e' }} />
-                )}
-              </Box>
-            ))}
+                  <Avatar
+                    src={room.avatar || undefined}
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      bgcolor: room.color,
+                      fontWeight: 700,
+                      fontSize: 14,
+                    }}
+                  >
+                    {room.name?.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Typography fontWeight={600} fontSize={14} sx={{ flex: 1 }} noWrap>
+                    {room.name}
+                  </Typography>
+                  {loading ? (
+                    <CircularProgress size={18} sx={{ color: '#4C4EFF' }} />
+                  ) : done ? (
+                    <Iconify icon="mdi:check-circle" width={18} sx={{ color: '#43a047' }} />
+                  ) : (
+                    <Iconify icon="mingcute:send-line" width={18} sx={{ color: '#9e9e9e' }} />
+                  )}
+                </Box>
+              );
+            })}
           </Stack>
         )}
       </DialogContent>

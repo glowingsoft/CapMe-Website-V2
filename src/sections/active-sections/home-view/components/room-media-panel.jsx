@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Modal from '@mui/material/Modal';
@@ -11,10 +12,10 @@ import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { useGetRoomDownloadedFilesQuery } from 'src/store/Reducer/rooms-api';
 import DrawerHeader from './drawer-header';
 import { AudioPlayer } from './file-message';
 import ImagePreviewDialog from './image-preview-dialog';
-import { MOCK_ROOM_MEDIA } from '../mock';
 
 const formatBytes = (bytes) => {
   if (!bytes) return '';
@@ -312,10 +313,20 @@ function FilesList({ items }) {
 }
 
 // ── Root component ────────────────────────────────────────────────────────────
-export default function RoomMediaPanel({ open, onBack, media = MOCK_ROOM_MEDIA }) {
+export default function RoomMediaPanel({ open, onBack, roomId }) {
   const [activeTab, setActiveTab] = useState(0);
 
-  const tabItems = [media.images, media.videos, media.audio, media.files].map((t) => t || []);
+  const { data: files = [], isFetching } = useGetRoomDownloadedFilesQuery(roomId, {
+    skip: !roomId || !open,
+    refetchOnMountOrArgChange: true,
+  });
+
+  const tabItems = [
+    files.filter((f) => f.type.startsWith('image/')),
+    files.filter((f) => f.type.startsWith('video/')),
+    files.filter((f) => f.type.startsWith('audio/')),
+    files.filter((f) => !f.type.startsWith('image/') && !f.type.startsWith('video/') && !f.type.startsWith('audio/')),
+  ];
 
   return (
     <Drawer
@@ -382,12 +393,18 @@ export default function RoomMediaPanel({ open, onBack, media = MOCK_ROOM_MEDIA }
 
       {/* Scrollable content */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        <Scrollbar sx={{ height: '100%' }}>
-          {activeTab === 0 && <ImagesGrid items={tabItems[0]} />}
-          {activeTab === 1 && <VideosGrid items={tabItems[1]} />}
-          {activeTab === 2 && <AudioList items={tabItems[2]} />}
-          {activeTab === 3 && <FilesList items={tabItems[3]} />}
-        </Scrollbar>
+        {isFetching ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <CircularProgress size={32} sx={{ color: '#4C4EFF' }} />
+          </Box>
+        ) : (
+          <Scrollbar sx={{ height: '100%' }}>
+            {activeTab === 0 && <ImagesGrid items={tabItems[0]} />}
+            {activeTab === 1 && <VideosGrid items={tabItems[1]} />}
+            {activeTab === 2 && <AudioList items={tabItems[2]} />}
+            {activeTab === 3 && <FilesList items={tabItems[3]} />}
+          </Scrollbar>
+        )}
       </Box>
     </Drawer>
   );

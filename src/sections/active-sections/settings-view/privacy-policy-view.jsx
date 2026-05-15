@@ -1,56 +1,26 @@
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Iconify } from 'src/components/iconify';
-
-const SECTIONS = [
-  {
-    title: 'Information We Collect',
-    body: `We collect information you provide when you create an account (name, email address, profile photo), content you post on the platform, and usage data such as pages visited, features used, and interactions with other users.`,
-  },
-  {
-    title: 'How We Use Your Information',
-    body: `We use your information to operate and improve the Capme platform, personalise your experience, send service-related communications, analyse usage patterns to enhance features, and comply with legal obligations.`,
-  },
-  {
-    title: 'Sharing of Information',
-    body: `We do not sell your personal data. We may share information with trusted third-party service providers who assist in operating the platform (hosting, analytics, customer support) under strict confidentiality agreements.`,
-  },
-  {
-    title: 'Cookies & Tracking',
-    body: `We use cookies and similar technologies to maintain sessions, remember preferences, and gather analytics. You can manage cookie preferences through your browser settings, though some features may be affected.`,
-  },
-  {
-    title: 'Data Retention',
-    body: `We retain your data for as long as your account is active or as needed to provide services. You may request deletion of your account and associated data at any time by contacting our support team.`,
-  },
-  {
-    title: 'Security',
-    body: `We implement industry-standard security measures including encryption in transit (TLS) and at rest, access controls, and regular security audits. However, no method of transmission over the internet is 100% secure.`,
-  },
-  {
-    title: 'Your Rights',
-    body: `Depending on your location, you may have rights to access, correct, or delete your personal data; restrict or object to processing; and data portability. To exercise these rights, contact us at privacy@capme.app.`,
-  },
-  {
-    title: "Children's Privacy",
-    body: `Capme is not directed at children under 13. We do not knowingly collect personal information from children. If you believe a child has provided us with personal data, please contact us immediately.`,
-  },
-  {
-    title: 'Changes to This Policy',
-    body: `We may update this Privacy Policy periodically. We will notify you of material changes via email or an in-app notice. Your continued use of the platform constitutes acceptance of the updated policy.`,
-  },
-];
+import { usePrivacyPolicyQuery } from 'src/store/Reducer/auth';
 
 export default function PrivacyPolicyView() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
+
+  const { data: content, isFetching } = usePrivacyPolicyQuery();
+
+  useEffect(() => {
+    if (!isFetching) setIsLoading(false);
+  }, [isFetching]);
 
   useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -67,6 +37,7 @@ export default function PrivacyPolicyView() {
   }, []);
 
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
+  const isHtml = typeof content === 'string' && /<[a-z][\s\S]*>/i.test(content);
 
   return (
     <Box
@@ -98,9 +69,6 @@ export default function PrivacyPolicyView() {
               <Box component="span" sx={{ color: '#4C4EFF' }}>Privacy</Box>
               {' Policy'}
             </Typography>
-            <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.3 }}>
-              Last updated: January 2025
-            </Typography>
           </Box>
         </Stack>
 
@@ -113,29 +81,42 @@ export default function PrivacyPolicyView() {
             overflow: 'hidden',
           }}
         >
-          <Box sx={{ px: { xs: 3, md: 4 }, pt: 3.5, pb: 1 }}>
-            <Typography fontSize={14} color="text.secondary" lineHeight={1.8}>
-              Your privacy matters to us. This policy explains what data we collect, how we use it, and the choices you have regarding your information when you use the Capme platform.
-            </Typography>
-          </Box>
-
-          <Divider sx={{ mx: { xs: 3, md: 4 }, my: 2 }} />
-
-          {SECTIONS.map((section, i) => (
-            <Box key={section.title}>
-              <Box sx={{ px: { xs: 3, md: 4 }, py: 2 }}>
-                <Typography fontSize={15} fontWeight={700} sx={{ mb: 1 }}>
-                  <Box component="span" sx={{ color: '#4C4EFF' }}>{i + 1}.</Box>
-                  {` ${section.title}`}
-                </Typography>
-                <Typography fontSize={14} color="text.secondary" lineHeight={1.85}>
-                  {section.body}
-                </Typography>
-              </Box>
-              {i < SECTIONS.length - 1 && <Divider sx={{ mx: { xs: 3, md: 4 } }} />}
+          {isLoading ? (
+            <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
+              <Skeleton variant="text" width="60%" height={24} sx={{ mb: 2 }} />
+              <Divider sx={{ my: 2 }} />
+              {[...Array(6)].map((_, i) => (
+                <Box key={i} sx={{ mb: 3 }}>
+                  <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="100%" />
+                  <Skeleton variant="text" width="100%" />
+                  <Skeleton variant="text" width="80%" />
+                </Box>
+              ))}
             </Box>
-          ))}
-
+          ) : (
+            <Box sx={{ px: { xs: 3, md: 4 }, py: 3.5 }}>
+              {isHtml ? (
+                <Box
+                  sx={{
+                    fontSize: 14,
+                    color: 'text.secondary',
+                    lineHeight: 1.85,
+                    '& h1, & h2, & h3': { color: 'text.primary', fontWeight: 700, mt: 2, mb: 1 },
+                    '& p': { mb: 1.5 },
+                    '& ul, & ol': { pl: 3, mb: 1.5 },
+                    '& li': { mb: 0.5 },
+                    '& a': { color: '#4C4EFF' },
+                  }}
+                  dangerouslySetInnerHTML={{ __html: content }}
+                />
+              ) : (
+                <Typography fontSize={14} color="text.secondary" lineHeight={1.85} whiteSpace="pre-wrap">
+                  {content || ''}
+                </Typography>
+              )}
+            </Box>
+          )}
           <Box sx={{ pb: 3 }} />
         </Box>
       </Box>

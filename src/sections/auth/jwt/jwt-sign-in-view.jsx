@@ -26,7 +26,8 @@ import { useBoolean } from 'src/hooks/use-boolean';
 
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
-import { signInWithPassword } from 'src/auth/context/jwt';
+import { useGoogleLogin } from '@react-oauth/google';
+import { signInWithPassword, signInWithGoogle } from 'src/auth/context/jwt';
 import { useAuthContext } from 'src/auth/hooks';
 import { setUser } from 'src/store/slices/userSlice';
 
@@ -44,7 +45,33 @@ export function JwtSignInView() {
   const { checkUserSession } = useAuthContext();
   const dispatch = useDispatch();
   const [errorMsg, setErrorMsg] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
   const password = useBoolean();
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    try {
+      setGoogleLoading(true);
+      // Fetch user profile from Google
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+      });
+      const googleUser = await res.json();
+      const user = await signInWithGoogle(googleUser);
+      dispatch(setUser(user));
+      await checkUserSession();
+      router.replace(paths.dashboard.root);
+      toast.success('Login successful!');
+    } catch (err) {
+      toast.error(err?.data?.message ?? 'Google login failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => toast.error('Google login failed'),
+  });
 
   const methods = useForm({
     resolver: zodResolver(SignInSchema),
@@ -66,6 +93,13 @@ export function JwtSignInView() {
       reset();
       toast.success('Login successful!');
     } catch (error) {
+      if (error?.status === 403) {
+        const msg = error?.data?.message ?? error?.data?.error ?? 'Please verify your email before signing in.';
+        toast.error(msg);
+        sessionStorage.setItem('otp_email', data.email.trim().toLowerCase());
+        router.push(paths.auth.jwt.verifyOtp);
+        return;
+      }
       setErrorMsg(typeof error === 'string' ? error : error.message);
       handleApiError(error);
     }
@@ -236,7 +270,9 @@ export function JwtSignInView() {
           <Button
             fullWidth
             variant="outlined"
-            startIcon={<Iconify icon="logos:google-icon" width={18} />}
+            onClick={() => googleLogin()}
+            disabled={googleLoading}
+            startIcon={googleLoading ? <CircularProgress size={16} /> : <Iconify icon="logos:google-icon" width={18} />}
             sx={{
               borderRadius: 2,
               borderColor: '#e8e8e8',

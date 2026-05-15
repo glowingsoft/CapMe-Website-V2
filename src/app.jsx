@@ -2,6 +2,7 @@ import 'src/global.css';
 
 // ----------------------------------------------------------------------
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Router } from 'src/routes/sections';
 
 import { useScrollToTop } from 'src/hooks/use-scroll-to-top';
@@ -38,6 +39,7 @@ export default function App() {
   useScrollToTop();
 
   return (
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
     <I18nProvider>
       <LocalizationProvider>
         <AuthProvider>
@@ -56,5 +58,6 @@ export default function App() {
         </AuthProvider>
       </LocalizationProvider>
     </I18nProvider>
+    </GoogleOAuthProvider>
   );
 }

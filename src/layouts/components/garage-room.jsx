@@ -40,8 +40,8 @@ export default function GarageRoomDrawer({ open, onClose }) {
 
   const filtered = searchValue.trim()
     ? messages.filter((m) =>
-        m.content.toLowerCase().includes(searchValue.toLowerCase())
-      )
+      m.content.toLowerCase().includes(searchValue.toLowerCase())
+    )
     : messages;
 
   const handleSend = () => {
@@ -110,7 +110,7 @@ export default function GarageRoomDrawer({ open, onClose }) {
           </Box>
           <Box>
             <Typography sx={{ fontSize: 15, fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
-              My Garage
+              Garage
             </Typography>
             <Typography sx={{ fontSize: 11, color: '#6B7280' }}>Personal · Only you</Typography>
           </Box>
@@ -197,10 +197,45 @@ export default function GarageRoomDrawer({ open, onClose }) {
         }}
       >
         {filtered.length === 0 ? (
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography sx={{ fontSize: 14, color: '#6B7280', textAlign: 'center' }}>
-              {searchValue ? 'No messages match your search.' : 'Your garage is empty.\nSend your first note!'}
-            </Typography>
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 6,
+              gap: 2,
+            }}
+          >
+            <Box
+              sx={{
+                width: 72,
+                height: 72,
+                borderRadius: 4,
+                bgcolor: 'rgba(76,78,255,0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon
+                icon={searchValue ? 'eva:search-fill' : 'solar:garage-bold'}
+                width={34}
+                color="#4C4EFF"
+                style={{ opacity: 0.7 }}
+              />
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 15, fontWeight: 700, color: '#E5E7EB', mb: 0.5 }}>
+                {searchValue ? 'No results found' : 'Your garage is empty'}
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+                {searchValue
+                  ? `No notes match "${searchValue}"`
+                  : 'This is your private space.\nJot down notes, ideas, or reminders.'}
+              </Typography>
+            </Box>
           </Box>
         ) : (
           filtered.map((msg) => (

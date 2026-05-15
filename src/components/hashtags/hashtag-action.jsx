@@ -8,29 +8,17 @@ import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 import { extractHashtags } from './hashtag-utils';
 
-import HashtagModal from 'src/sections/active-sections/home-view/components/hashtag-modal';
-import { posts, commentsData } from 'src/sections/active-sections/home-view/mock';
-
-export default function HashtagAction({ text }) {
+export default function HashtagAction({ text, roomId, onHashtagOpen }) {
   const hashtags = React.useMemo(() => extractHashtags(text), [text]);
   if (hashtags.length === 0) return null;
 
   const [anchorEl, setAnchorEl] = useState(null);
-  const [modalTag, setModalTag] = useState(null);
   const open = Boolean(anchorEl);
 
-  // Find all messages (posts/comments) with the selected hashtag
-  const getMessagesWithHashtag = (tag) => {
-    const tagNoHash = tag.startsWith('#') ? tag : `#${tag}`;
-    // Search posts
-    const postMatches = posts.filter(
-      (p) => p.type === 'message' && (p.hashtags || '').includes(tagNoHash)
-    );
-    // Search comments
-    const commentMatches = Object.values(commentsData).flat().filter(
-      (c) => (c.text || '').includes(tagNoHash)
-    );
-    return [...postMatches, ...commentMatches];
+  const handleTagClick = (tag) => {
+    setAnchorEl(null);
+    const tagNoHash = tag.startsWith('#') ? tag.slice(1) : tag;
+    onHashtagOpen?.(tagNoHash);
   };
 
   return (
@@ -54,7 +42,7 @@ export default function HashtagAction({ text }) {
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        PaperProps={{ sx: { borderRadius: 3, p: 1.5, minWidth: 220 } }}
+        slotProps={{ paper: { sx: { borderRadius: 3, p: 1.5, minWidth: 220 } } }}
       >
         <Typography fontSize={13} fontWeight={800} sx={{ mb: 1 }}>
           Hashtags ({hashtags.length})
@@ -72,22 +60,11 @@ export default function HashtagAction({ text }) {
                 cursor: 'pointer',
                 '&:hover': { opacity: 0.85 },
               }}
-              onClick={() => {
-                setModalTag(tag);
-                setAnchorEl(null);
-              }}
+              onClick={() => handleTagClick(tag)}
             />
           ))}
         </Box>
       </Popover>
-
-      <HashtagModal
-        open={!!modalTag}
-        onClose={() => setModalTag(null)}
-        hashtag={modalTag}
-        messages={modalTag ? getMessagesWithHashtag(modalTag) : []}
-      />
     </>
   );
 }
-

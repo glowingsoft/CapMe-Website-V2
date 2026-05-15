@@ -9,9 +9,9 @@ import { Iconify } from 'src/components/iconify';
 
 const DATE_OPTIONS = [
   { value: 'today', label: 'Today' },
-  { value: 'this_week', label: 'This Week' },
-  { value: 'this_month', label: 'This Month' },
-  { value: 'this_year', label: 'This Year' },
+  { value: 'thisWeek', label: 'This Week' },
+  { value: 'thisMonth', label: 'This Month' },
+  { value: 'thisYear', label: 'This Year' },
 ];
 
 const MEMBER_OPTIONS = [
@@ -24,7 +24,7 @@ const CONTENT_OPTIONS = [
   { value: 'image', label: 'Image' },
   { value: 'video', label: 'Video' },
   { value: 'audio', label: 'Audio' },
-  { value: 'text', label: 'Text' },
+  { value: 'file', label: 'File' },
 ];
 
 function FilterChipGroup({ label, options, value, onChange }) {

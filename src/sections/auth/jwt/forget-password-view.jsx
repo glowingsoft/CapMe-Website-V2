@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
 
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
@@ -16,6 +18,7 @@ import { paths } from 'src/routes/paths';
 
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
+import { useForgotPasswordMutation } from 'src/store/Reducer/auth';
 
 // ----------------------------------------------------------------------
 
@@ -27,6 +30,8 @@ export const ForgotPasswordSchema = zod.object({
 
 export function JwtForgetPasswordView() {
   const router = useRouter();
+  const [errorMsg, setErrorMsg] = useState('');
+  const [forgotPassword] = useForgotPasswordMutation();
 
   const methods = useForm({
     resolver: zodResolver(ForgotPasswordSchema),
@@ -35,8 +40,15 @@ export function JwtForgetPasswordView() {
 
   const { handleSubmit, formState: { isSubmitting } } = methods;
 
-  const onSubmit = handleSubmit(async () => {
-    router.push(paths.auth.jwt.verifyPassword);
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      await forgotPassword({ email: data.email.trim().toLowerCase() }).unwrap();
+      sessionStorage.setItem('forgot_email', data.email.trim().toLowerCase());
+      router.push(paths.auth.jwt.verifyPassword);
+    } catch (error) {
+      const msg = error?.data?.message ?? error?.data?.error ?? error?.message ?? 'Failed to send OTP. Please try again.';
+      setErrorMsg(typeof msg === 'string' ? msg : 'Failed to send OTP. Please try again.');
+    }
   });
 
   return (
@@ -61,7 +73,7 @@ export function JwtForgetPasswordView() {
           py: 4,
         }}
       >
-        {/* Logos */}
+        {/* Logo + icon */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2, gap: 1 }}>
           <Box
             component="img"
@@ -80,6 +92,13 @@ export function JwtForgetPasswordView() {
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5 }}>
           No worries, We&apos;ll send you reset instructions.
         </Typography>
+
+        {/* Error */}
+        {!!errorMsg && (
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
+            {errorMsg}
+          </Alert>
+        )}
 
         {/* Form */}
         <Form methods={methods} onSubmit={onSubmit}>

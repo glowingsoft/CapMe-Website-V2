@@ -5,36 +5,73 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
 import Snackbar from '@mui/material/Snackbar';
 import { Alert } from '@mui/material';
 import { Iconify } from 'src/components/iconify';
 import ViewAllModal from 'src/layouts/components/view-all';
-import { useGetHomeRoomsQuery } from 'src/store/Reducer/rooms-api';
+import { useGetHomeRoomsQuery, useToggleFavouriteRoomMutation } from 'src/store/Reducer/rooms-api';
+import LeftDrawerSkeleton from './left-drawer-skeleton';
 
 const LIMIT = 10;
 const DRAWER_PREVIEW = 5;
 
+function getLastMessageDesc(lastMessage) {
+  const text = lastMessage?.text_representation ?? lastMessage?.content ?? '';
+  if (text) return { text, isFile: false };
+  const att = lastMessage?.attachments?.[0];
+  if (!att) return { text: '', isFile: false };
+  const ft = att.fileType ?? '';
+  const name = att.originalFileName ?? att.originalName ?? att.fileName ?? 'File';
+  if (ft === 'image' || ft.startsWith('image/')) return { text: name, isFile: true, icon: 'solar:gallery-bold' };
+  if (ft === 'video' || ft.startsWith('video/')) return { text: name, isFile: true, icon: 'solar:video-frame-bold' };
+  if (ft === 'audio' || ft.startsWith('audio/')) return { text: name, isFile: true, icon: 'solar:music-note-bold' };
+  return { text: name, isFile: true, icon: 'solar:paperclip-bold' };
+}
+
 function normalizeRoom(room) {
+  const roomSource = room?.room && typeof room.room === 'object' ? room.room : room;
+  const actualRoomId =
+    (typeof room?.roomId === 'object' ? room.roomId?._id : room?.roomId)
+    ?? roomSource?._id
+    ?? roomSource?.id
+    ?? room?._id;
+  const descData = getLastMessageDesc(room?.last_message);
   return {
-    id: room?._id,
-    name: room?.name ?? 'Untitled Room',
-    desc: room?.last_message?.text_representation ?? room?.last_message?.content ?? '',
-    icon: room?.image ?? '',
+    id: actualRoomId,
+    roomId: actualRoomId,
+    membershipId: room?._id,
+    name: roomSource?.name ?? room?.name ?? 'Untitled Room',
+    desc: descData.text,
+    descIsFile: descData.isFile,
+    descIcon: descData.icon ?? null,
+    icon: roomSource?.image ?? room?.image ?? '',
     unread: room?.unreadCount ?? 0,
-    favorite: !!room?.is_favorite,
+    favorite: !!(room?.isFavorite ?? room?.is_favorite),
+    visibility: roomSource?.visibility?.toLowerCase() ?? room?.visibility?.toLowerCase() ?? null,
     lastMessage: room?.last_message ?? null,
+    lastMessageAt: room?.last_message?.createdAt ?? roomSource?.updatedAt ?? room?.updatedAt ?? roomSource?.createdAt ?? room?.createdAt ?? '',
   };
 }
+
+const sortByLastMessage = (list) =>
+  [...list].sort((a, b) => {
+    if (!a.lastMessageAt && !b.lastMessageAt) return 0;
+    if (!a.lastMessageAt) return 1;
+    if (!b.lastMessageAt) return -1;
+    return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+  });
 
 export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect, onCreateRoom }) {
   const [tab, setTab] = useState('all');
   const [visitedTabs, setVisitedTabs] = useState({ myRooms: false, following: false });
   const [pages, setPages] = useState({ all: 1, myRooms: 1, following: 1 });
   const [accRooms, setAccRooms] = useState({ all: [], myRooms: [], following: [] });
+  // 'all' starts true — it fetches immediately on mount
+  const [loadingTabs, setLoadingTabs] = useState({ all: true, myRooms: false, following: false });
   // section: 'favourite' | 'other' | 'myRooms' | 'following'
   const [viewAll, setViewAll] = useState({ open: false, label: '', section: null, tabKey: 'all', search: '' });
   const [toast, setToast] = useState({ open: false, message: '' });
+  const [toggleFavouriteRoom] = useToggleFavouriteRoomMutation();
 
   // "all" always active; myRooms/following are lazy — only fire once the tab is first visited
   const allQuery = useGetHomeRoomsQuery({ page: pages.all, limit: LIMIT, type: 'all' });
@@ -47,14 +84,15 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     { skip: !visitedTabs.following }
   );
 
-  // Accumulate pages — replace on page 1, append on subsequent pages
+  // Accumulate pages — replace on page 1, append on subsequent pages, always sort
   useEffect(() => {
     if (allQuery.isSuccess && !allQuery.isFetching) {
       const rooms = (allQuery.data?.body?.rooms ?? []).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
-        all: pages.all === 1 ? rooms : [...prev.all, ...rooms],
+        all: sortByLastMessage(pages.all === 1 ? rooms : [...prev.all, ...rooms]),
       }));
+      if (pages.all === 1) setLoadingTabs((prev) => ({ ...prev, all: false }));
     }
   }, [allQuery.data, allQuery.isSuccess, allQuery.isFetching, pages.all]);
 
@@ -63,8 +101,9 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
       const rooms = (myRoomsQuery.data?.body?.rooms ?? []).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
-        myRooms: pages.myRooms === 1 ? rooms : [...prev.myRooms, ...rooms],
+        myRooms: sortByLastMessage(pages.myRooms === 1 ? rooms : [...prev.myRooms, ...rooms]),
       }));
+      if (pages.myRooms === 1) setLoadingTabs((prev) => ({ ...prev, myRooms: false }));
     }
   }, [myRoomsQuery.data, myRoomsQuery.isSuccess, myRoomsQuery.isFetching, pages.myRooms]);
 
@@ -73,38 +112,168 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
       const rooms = (followingQuery.data?.body?.rooms ?? []).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
-        following: pages.following === 1 ? rooms : [...prev.following, ...rooms],
+        following: sortByLastMessage(pages.following === 1 ? rooms : [...prev.following, ...rooms]),
       }));
+      if (pages.following === 1) setLoadingTabs((prev) => ({ ...prev, following: false }));
     }
   }, [followingQuery.data, followingQuery.isSuccess, followingQuery.isFetching, pages.following]);
 
+  useEffect(() => {
+    const onFavouriteUpdate = (e) => {
+      const { roomId, isFavourite } = e.detail ?? {};
+      if (!roomId) return;
+      const setFav = (list) =>
+        list.map((r) => ((r.id ?? r._id) === roomId ? { ...r, favorite: isFavourite } : r));
+      setAccRooms((prev) => ({
+        all: setFav(prev.all),
+        myRooms: setFav(prev.myRooms),
+        following: setFav(prev.following),
+      }));
+    };
+    window.addEventListener('roomFavouriteUpdate', onFavouriteUpdate);
+    return () => window.removeEventListener('roomFavouriteUpdate', onFavouriteUpdate);
+  }, []);
+
+  useEffect(() => {
+    const onFollowUpdate = (e) => {
+      const { roomId, isFollowing } = e.detail ?? {};
+      if (!roomId || isFollowing !== false) return;
+
+      const removeRoom = (list) => list.filter((room) => String(room.id ?? room._id) !== String(roomId));
+      setAccRooms((prev) => ({
+        all: removeRoom(prev.all),
+        myRooms: prev.myRooms,
+        following: removeRoom(prev.following),
+      }));
+    };
+
+    window.addEventListener('roomFollowUpdate', onFollowUpdate);
+    return () => window.removeEventListener('roomFollowUpdate', onFollowUpdate);
+  }, []);
+
+  useEffect(() => {
+    const onRoomDeleted = (e) => {
+      const { roomId } = e.detail ?? {};
+      if (!roomId) return;
+      const removeRoom = (list) => list.filter((r) => String(r.id ?? r._id) !== String(roomId));
+      setAccRooms((prev) => ({
+        all: removeRoom(prev.all),
+        myRooms: removeRoom(prev.myRooms),
+        following: removeRoom(prev.following),
+      }));
+    };
+    window.addEventListener('roomDeleted', onRoomDeleted);
+    return () => window.removeEventListener('roomDeleted', onRoomDeleted);
+  }, []);
+
+  useEffect(() => {
+    const onRoomCreated = (e) => {
+      const room = e.detail;
+      if (!room?._id) return;
+      const normalized = {
+        id: room._id,
+        name: room.name ?? 'Untitled Room',
+        desc: '',
+        descIsFile: false,
+        descIcon: null,
+        icon: room.image ?? '',
+        unread: 0,
+        favorite: false,
+        visibility: room.visibility ?? 'public',
+        lastMessage: null,
+        lastMessageAt: new Date().toISOString(),
+      };
+      setAccRooms((prev) => ({
+        all: sortByLastMessage([normalized, ...prev.all.filter((r) => r.id !== normalized.id)]),
+        myRooms: sortByLastMessage([normalized, ...prev.myRooms.filter((r) => r.id !== normalized.id)]),
+        following: prev.following,
+      }));
+    };
+    window.addEventListener('roomCreated', onRoomCreated);
+    return () => window.removeEventListener('roomCreated', onRoomCreated);
+  }, []);
+
+  useEffect(() => {
+    const onLastMessageUpdate = (e) => {
+      const { roomId, message } = e.detail || {};
+      if (!roomId || !message) return;
+      const lastMessage = {
+        text_representation: message.content ?? '',
+        content: message.content ?? '',
+        attachments: message.attachments ?? [],
+      };
+      const descData = getLastMessageDesc(lastMessage);
+      const now = new Date().toISOString();
+      const updateRooms = (list) => {
+        const updated = list.map((r) =>
+          String(r.id) === String(roomId)
+            ? { ...r, desc: descData.text, descIsFile: descData.isFile, descIcon: descData.icon ?? null, lastMessageAt: now }
+            : r
+        );
+        return sortByLastMessage(updated);
+      };
+      setAccRooms((prev) => ({
+        all: updateRooms(prev.all),
+        myRooms: updateRooms(prev.myRooms),
+        following: updateRooms(prev.following),
+      }));
+    };
+    window.addEventListener('roomLastMessageUpdate', onLastMessageUpdate);
+    return () => window.removeEventListener('roomLastMessageUpdate', onLastMessageUpdate);
+  }, []);
+
   const handleTabChange = (newTab) => {
     setTab(newTab);
-    if (newTab === 'myRooms') setVisitedTabs((prev) => ({ ...prev, myRooms: true }));
-    if (newTab === 'following') setVisitedTabs((prev) => ({ ...prev, following: true }));
+    if (newTab === 'myRooms' && !visitedTabs.myRooms) {
+      setVisitedTabs((prev) => ({ ...prev, myRooms: true }));
+      setLoadingTabs((prev) => ({ ...prev, myRooms: true }));
+    }
+    if (newTab === 'following' && !visitedTabs.following) {
+      setVisitedTabs((prev) => ({ ...prev, following: true }));
+      setLoadingTabs((prev) => ({ ...prev, following: true }));
+    }
   };
 
-  const handleToggleFavourite = (room, isFav) => {
-    const toggle = (list) =>
-      list.map((r) =>
-        (r.id ?? r._id) === (room.id ?? room._id) ? { ...r, favorite: !isFav } : r
-      );
+  const handleToggleFavourite = async (room, isFav) => {
+    const roomId = room.id ?? room._id;
+    const next = !isFav;
+    const setFav = (val) => (list) =>
+      list.map((r) => ((r.id ?? r._id) === roomId ? { ...r, favorite: val } : r));
+    // Optimistic update
     setAccRooms((prev) => ({
-      all: toggle(prev.all),
-      myRooms: toggle(prev.myRooms),
-      following: toggle(prev.following),
+      all: setFav(next)(prev.all),
+      myRooms: setFav(next)(prev.myRooms),
+      following: setFav(next)(prev.following),
     }));
-    showToast(isFav ? 'Removed from favourites' : 'Added to favourites');
+    try {
+      await toggleFavouriteRoom(roomId).unwrap();
+      window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', { detail: { roomId, isFavourite: next } }));
+      showToast(next ? 'Added to favourites' : 'Removed from favourites');
+    } catch {
+      setAccRooms((prev) => ({
+        all: setFav(isFav)(prev.all),
+        myRooms: setFav(isFav)(prev.myRooms),
+        following: setFav(isFav)(prev.following),
+      }));
+      showToast('Failed to update favourite. Please try again.');
+    }
   };
 
   const handleRoomClick = (room) => {
+    const clearUnread = (list) =>
+      list.map((r) => (r.id === room.id ? { ...r, unread: 0 } : r));
+    setAccRooms((prev) => ({
+      all: clearUnread(prev.all),
+      myRooms: clearUnread(prev.myRooms),
+      following: clearUnread(prev.following),
+    }));
     if (onRoomSelect) onRoomSelect(room);
   };
 
   const showToast = (msg) => setToast({ open: true, message: msg });
   const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
-  // Derive favourite/other split for the "all" tab
+  // Derive favourite/other split for the "all" tab (already sorted by last message)
   const favourite = accRooms.all.filter((r) => r.favorite);
   const other = accRooms.all.filter((r) => !r.favorite);
 
@@ -141,19 +310,18 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     following: followingQuery.isFetching,
   };
 
-  // Is this the very first load (no data yet + currently fetching)?
-  const isInitialLoad = isFetching[tab] && accRooms[tab]?.length === 0;
+  const isInitialLoad = loadingTabs[tab];
 
   let roomSections = [];
   if (tab === 'all') {
     roomSections = [
-      { label: 'Starred Rooms', data: favourite, isFav: true },
-      { label: 'Rooms', data: other, isFav: false },
+      { label: 'Starred Rooms', data: favourite, isFav: true, sectionKey: 'favourite' },
+      { label: 'Rooms', data: other, isFav: false, sectionKey: 'other' },
     ];
   } else if (tab === 'myRooms') {
-    roomSections = [{ label: 'My Rooms', data: accRooms.myRooms, isFav: false }];
+    roomSections = [{ label: 'My Rooms', data: accRooms.myRooms, isFav: false, sectionKey: 'myRooms' }];
   } else if (tab === 'following') {
-    roomSections = [{ label: 'Following', data: accRooms.following, isFav: false }];
+    roomSections = [{ label: 'Following', data: accRooms.following, isFav: false, sectionKey: 'following' }];
   }
 
   const drawerWidth = open ? 420 : 0;
@@ -304,18 +472,15 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                 }}
               >
                 {isInitialLoad ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                    <CircularProgress size={28} sx={{ color: '#a5b4fc' }} />
-                  </Box>
+                  <LeftDrawerSkeleton />
                 ) : (
                   <>
                     {roomSections.map((section) => {
-                      const sectionKey = section.isFav ? 'favourite' : tab === 'all' ? 'other' : tab;
                       const activeInSection = activeRoomId
-                        ? section.data.find((r) => (r.id ?? r._id) === activeRoomId)
+                        ? section.data.find((r) => r.id === activeRoomId)
                         : null;
-                      const preview = activeInSection
-                        ? [activeInSection, ...section.data.filter((r) => (r.id ?? r._id) !== activeRoomId)].slice(0, DRAWER_PREVIEW)
+                      const preview = activeInSection && !section.data.slice(0, DRAWER_PREVIEW).find((r) => r.id === activeRoomId)
+                        ? [activeInSection, ...section.data.filter((r) => r.id !== activeRoomId)].slice(0, DRAWER_PREVIEW)
                         : section.data.slice(0, DRAWER_PREVIEW);
 
                       return (
@@ -326,15 +491,11 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                           alignItems="center"
                           sx={{ mb: 1, mt: 2 }}
                         >
-                          <Typography fontWeight={600} fontSize={15}>
-                            {section.label}
-                          </Typography>
-                          {section.data.length > 0 && (
+                          <Typography fontWeight={600} fontSize={15}>{section.label}</Typography>
+                          {section.data.length > DRAWER_PREVIEW && (
                             <Button
                               size="small"
-                              onClick={() =>
-                                setViewAll({ open: true, label: section.label, section: sectionKey, tabKey: tab, search: '' })
-                              }
+                              onClick={() => setViewAll({ open: true, label: section.label, section: section.sectionKey, tabKey: tab, search: '' })}
                               sx={{
                                 fontSize: 11,
                                 fontWeight: 600,
@@ -404,14 +565,42 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                                     >
                                       {room.name}
                                     </Typography>
-                                    <Typography
-                                      fontSize={12}
-                                      color={activeRoomId === roomId ? '#e0e0e0' : '#bdbdbd'}
-                                      noWrap
-                                    >
-                                      {room.desc}
-                                    </Typography>
+                                    {room.desc ? (
+                                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                                        {room.descIsFile && room.descIcon && (
+                                          <Iconify icon={room.descIcon} width={12} style={{ color: '#a5b4fc', flexShrink: 0 }} />
+                                        )}
+                                        <Typography
+                                          fontSize={12}
+                                          color={activeRoomId === roomId ? '#e0e0e0' : '#bdbdbd'}
+                                          noWrap
+                                        >
+                                          {room.desc}
+                                        </Typography>
+                                      </Stack>
+                                    ) : (
+                                      <Typography fontSize={12} color="#616161" noWrap>No messages yet</Typography>
+                                    )}
                                   </Box>
+                                  {room.unread > 0 && activeRoomId !== roomId && (
+                                    <Box
+                                      sx={{
+                                        minWidth: 20,
+                                        height: 20,
+                                        bgcolor: '#4C4EFF',
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        px: 0.7,
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      <Typography fontSize={10} fontWeight={700} color="#fff" lineHeight={1}>
+                                        {room.unread > 99 ? '99+' : room.unread}
+                                      </Typography>
+                                    </Box>
+                                  )}
                                   {isFavourite ? (
                                     <IconButton
                                       onClick={(e) => { e.stopPropagation(); handleToggleFavourite(room, true); }}

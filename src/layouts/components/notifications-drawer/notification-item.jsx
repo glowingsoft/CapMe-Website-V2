@@ -5,7 +5,7 @@ import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import ListItemText from '@mui/material/ListItemText';
 import ListItemAvatar from '@mui/material/ListItemAvatar';
-import ListItemButton from '@mui/material/ListItemButton';
+import ListItem from '@mui/material/ListItem';
 
 import { fToNow } from 'src/utils/format-time';
 
@@ -188,8 +188,7 @@ export function NotificationItem({ notification }) {
   );
 
   return (
-    <ListItemButton
-      disableRipple
+    <ListItem
       sx={{
         p: 2.5,
         alignItems: 'flex-start',
@@ -208,7 +207,7 @@ export function NotificationItem({ notification }) {
         {notification.type === 'tags' && tagsAction}
         {notification.type === 'payment' && paymentAction}
       </Stack>
-    </ListItemButton>
+    </ListItem>
   );
 }
 

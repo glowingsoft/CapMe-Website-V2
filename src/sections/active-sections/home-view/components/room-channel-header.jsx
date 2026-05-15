@@ -7,6 +7,7 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
+import Skeleton from '@mui/material/Skeleton';
 import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -19,16 +20,16 @@ import RoomInformation from './room-information';
 import RoomRequestDrawer from './room-request-drawer';
 import HashtagModal from './hashtag-modal';
 import CreateRoomModal from './create-room-modal';
+import { useGetRoomByIdQuery, useLazyGetRoomByIdQuery, useToggleFavouriteRoomMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
 const RoomHashtagList = React.lazy(() => import('./room-hashtag-list'));
 
-// Placeholder members — swap with real room.members when API is ready
-const MOCK_MEMBERS = [
-  { avatar: 'https://i.pravatar.cc/40?img=1' },
-  { avatar: 'https://i.pravatar.cc/40?img=2' },
-  { avatar: 'https://i.pravatar.cc/40?img=3' },
-];
+const getId = (value) => {
+  if (!value) return undefined;
+  if (typeof value === 'object') return value._id ?? value.id;
+  return value;
+};
 
-export default function RoomChannelHeader({ room, memberCount = 12, members = MOCK_MEMBERS, onRoomInfoOpenChange, messages = [], onMessageSelect, isGarage = false }) {
+function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, onRoomUnfollow, onDeleteRoom, messages = [], onMessageSelect, isGarage = false, enrichedMembers = null, isRoomAdmin = false, isLoading = false }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [unfollowOpen, setUnfollowOpen] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
@@ -43,10 +44,45 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
   const [editRoomOpen, setEditRoomOpen] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchValue, setSearchValue] = useState('');
+  const [memberPermissionOverrides, setMemberPermissionOverrides] = useState({});
+  const messageRoomId = messages.find((message) => message?.roomId)?.roomId;
+
+  const roomId = getId(messagesRoom?._id ?? messagesRoom?.id) ?? getId(room?.roomId) ?? messageRoomId ?? room?.lastMessage?.roomId ?? room?._id ?? room?.id;
+  const { data: roomDetail } = useGetRoomByIdQuery(roomId, { skip: !roomId });
+  const [fetchRoomById, { isFetching: isRoomDetailFetching }] = useLazyGetRoomByIdQuery();
+  const [toggleFavourite] = useToggleFavouriteRoomMutation();
+  const [toggleRoomFollow] = useToggleRoomFollowMutation();
+  const resolvedRoomDetail = roomDetail?.body?.room ?? roomDetail?.room ?? roomDetail?.body ?? roomDetail;
+  const actualRoomId =
+    getId(messagesRoom?._id ?? messagesRoom?.id)
+    ?? getId(messagesRoom?.roomId)
+    ?? getId(messagesRoom?.room)
+    ?? getId(room?.roomId)
+    ?? messageRoomId
+    ?? room?.lastMessage?.roomId
+    ?? getId(resolvedRoomDetail?.roomId)
+    ?? getId(resolvedRoomDetail?.room)
+    ?? resolvedRoomDetail?._id
+    ?? resolvedRoomDetail?.id
+    ?? getId(room?.room)
+    ?? room?._id
+    ?? room?.id;
+
+  const roomForDrawers = React.useMemo(() => ({
+    ...(room ?? {}),
+    ...(messagesRoom ?? {}),
+    ...(resolvedRoomDetail ?? {}),
+    roomId: actualRoomId,
+    _id: actualRoomId,
+    id: actualRoomId,
+  }), [room, resolvedRoomDetail, messagesRoom, actualRoomId]);
 
   const showToast = (message) => setToast({ open: true, message });
   const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
-  const [isFavourite, setIsFavourite] = useState(room?.isFavourite || false);
+  const [isFavourite, setIsFavourite] = useState(false);
+  React.useEffect(() => {
+    setIsFavourite(resolvedRoomDetail?.isFavorite ?? resolvedRoomDetail?.is_favorite ?? room?.favorite ?? false);
+  }, [resolvedRoomDetail?.isFavorite, resolvedRoomDetail?.is_favorite, room?.favorite]);
 
   const setRoomInfoOpenNotify = (val) => {
     setRoomInfoOpen(val);
@@ -89,6 +125,7 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
     handleCloseMenu();
     setRoomRequestOpenNotify(false);
     setRoomInfoOpenNotify(true);
+    if (roomId) fetchRoomById(roomId, true);
   };
 
   const handleOpenRoomRequests = () => {
@@ -115,22 +152,52 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
     setUnfollowOpen(false);
   };
 
-  const handleToggleFavourite = () => {
-    setIsFavourite((prev) => !prev);
-    showToast(isFavourite ? 'Removed from favourites' : 'Added to favourites');
+  const handleToggleFavourite = async () => {
+    if (!roomId) return;
+    const next = !isFavourite;
+    setIsFavourite(next);
+    try {
+      await toggleFavourite(roomId).unwrap();
+      window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', { detail: { roomId, isFavourite: next } }));
+      showToast(next ? 'Added to favourites' : 'Removed from favourites');
+    } catch {
+      setIsFavourite(!next);
+      showToast('Failed to update favourite. Please try again.');
+    }
   };
 
+  React.useEffect(() => {
+    const onFavouriteUpdate = (e) => {
+      const { roomId: updatedId, isFavourite: val } = e.detail ?? {};
+      if (String(updatedId) === String(roomId)) setIsFavourite(val);
+    };
+    window.addEventListener('roomFavouriteUpdate', onFavouriteUpdate);
+    return () => window.removeEventListener('roomFavouriteUpdate', onFavouriteUpdate);
+  }, [roomId]);
+
   const handleConfirmUnfollow = async () => {
+    if (!actualRoomId) return;
     try {
       setUnfollowLoading(true);
-
+      await toggleRoomFollow(actualRoomId).unwrap();
       setUnfollowOpen(false);
       showToast('You have unfollowed the room');
+      window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId: actualRoomId, isFollowing: false } }));
+      onRoomUnfollow?.(actualRoomId);
     } catch (error) {
       console.error('Failed to unfollow room:', error);
+      showToast('Failed to unfollow. Please try again.');
     } finally {
       setUnfollowLoading(false);
     }
+  };
+
+  const handleMemberPermissionUpdate = ({ userId, permission }) => {
+    if (!userId || !permission) return;
+    setMemberPermissionOverrides((prev) => ({
+      ...prev,
+      [String(userId)]: permission,
+    }));
   };
 
   const menuItems = [
@@ -139,16 +206,16 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
       icon: 'material-symbols:info-rounded',
       onClick: handleOpenRoomInformation,
     },
-    {
+    ...(isRoomAdmin ? [{
       label: 'Room Requests',
       icon: 'solar:users-group-rounded-bold',
       onClick: handleOpenRoomRequests,
-    },
-    {
+    }] : []),
+    ...(!isRoomAdmin ? [{
       label: 'Following',
       icon: 'mdi:account-star',
       onClick: handleOpenUnfollowModal,
-    },
+    }] : []),
     {
       label: 'Share',
       icon: 'mingcute:share-forward-fill',
@@ -193,48 +260,35 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
       >
         {/* Left: avatar + room name */}
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <Avatar
-            sx={{
-              width: 32,
-              height: 32,
-              bgcolor: room?.color || '#4C4EFF',
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            {room?.name?.charAt(0).toUpperCase()}
-          </Avatar>
-          <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>
-            {room?.name}
-          </Typography>
+          {isLoading ? (
+            <Skeleton variant="circular" width={32} height={32} sx={{ bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+          ) : (
+            <Avatar
+              src={resolvedRoomDetail?.image ?? room?.icon ?? room?.image ?? undefined}
+              sx={{
+                width: 32,
+                height: 32,
+                bgcolor: room?.color || '#4C4EFF',
+                fontSize: 13,
+                fontWeight: 700,
+              }}
+            >
+              {room?.name?.charAt(0).toUpperCase()}
+            </Avatar>
+          )}
+          {isLoading ? (
+            <Skeleton variant="text" width={120} height={18} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
+          ) : (
+            <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>
+              {room?.name}
+            </Typography>
+          )}
         </Stack>
 
         {/* Right: actions */}
         <Stack direction="row" spacing={0.5} alignItems="center">
           {!isGarage && (
             <>
-              <Box sx={{ display: 'flex', alignItems: 'center', mr: 0.5 }}>
-                {members.slice(0, 3).map((m, i) => (
-                  <Avatar
-                    key={i}
-                    src={m.avatar}
-                    sx={{
-                      width: 26,
-                      height: 26,
-                      ml: i === 0 ? 0 : '-8px',
-                      border: '2px solid #18181B',
-                      zIndex: 3 - i,
-                    }}
-                  />
-                ))}
-              </Box>
-
-              <Typography fontSize={13} fontWeight={600} color="#fff" sx={{ mr: 1 }}>
-                {memberCount}
-              </Typography>
-
-              <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.15)', mx: 0.5 }} />
-
               <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
                 <Iconify icon="mdi:tag" width={20} />
               </IconButton>
@@ -253,8 +307,8 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
           )}
 
           {isGarage && (
-            <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5 }}>
-              Private · Only you
+            <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5, textTransform: 'capitalize' }}>
+              {room?.visibility ?? 'Personal'} · Only you
             </Typography>
           )}
 
@@ -398,14 +452,23 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
       <RoomInformation
         open={roomInfoOpen}
         onClose={handleCloseRoomInformation}
-        room={room}
+        room={roomForDrawers}
+        roomId={actualRoomId}
+        enrichedMembers={enrichedMembers}
+        isLoading={isRoomDetailFetching}
+        isRoomAdmin={isRoomAdmin}
+        permissionOverrides={memberPermissionOverrides}
         onEdit={() => setEditRoomOpen(true)}
+        onDeleteRoom={onDeleteRoom}
       />
 
       <RoomRequestDrawer
         open={roomRequestOpen}
         onClose={handleCloseRoomRequest}
-        room={room}
+        roomId={actualRoomId}
+        isRoomAdmin={isRoomAdmin}
+        permissionOverrides={memberPermissionOverrides}
+        onMemberPermissionUpdate={handleMemberPermissionUpdate}
         onApprove={(request) => showToast(`${request.name} approved`)}
         onReject={(request) => showToast(`${request.name} rejected`)}
       />
@@ -414,8 +477,12 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
         open={editRoomOpen}
         onClose={() => setEditRoomOpen(false)}
         editMode
-        initialValues={room}
-        onCreate={(data) => console.log('Room updated:', data)}
+        initialValues={roomForDrawers}
+        onCreate={() => {
+          setEditRoomOpen(false);
+          if (roomId) fetchRoomById(roomId, true);
+          setRoomInfoOpenNotify(true);
+        }}
       />
 
       <UnfollowModal
@@ -484,3 +551,5 @@ export default function RoomChannelHeader({ room, memberCount = 12, members = MO
     </>
   );
 }
+
+export default RoomChannelHeader;

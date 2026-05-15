@@ -1,4 +1,4 @@
-import { forwardRef, useState, useRef, useEffect } from 'react';
+import { forwardRef, useState, useRef } from 'react';
 import PhoneInputBase, { getCountries, getCountryCallingCode } from 'react-phone-number-input';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -6,7 +6,7 @@ import InputBase from '@mui/material/InputBase';
 import Paper from '@mui/material/Paper';
 import Popper from '@mui/material/Popper';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
-import { useTheme } from '@mui/material/styles';
+
 import 'react-phone-number-input/style.css';
 import { Iconify } from 'src/components/iconify';
 
@@ -23,7 +23,7 @@ const countryList = getCountries().map((code) => ({
 
 // ----------------------------------------------------------------------
 
-const StyledInput = forwardRef(({ value, onChange, ...props }, ref) => (
+const StyledInput = forwardRef(({ value, onChange, fullWidth, error, ...props }, ref) => (
   <input
     ref={ref}
     value={value}
@@ -47,7 +47,6 @@ StyledInput.displayName = 'StyledInput';
 
 export const PhoneInput = forwardRef(
   ({ value, onChange, placeholder, defaultCountry = 'PK', sx, ...other }, ref) => {
-    const theme = useTheme();
     const [selectedCountry, setSelectedCountry] = useState(defaultCountry);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [search, setSearch] = useState('');

@@ -11,14 +11,47 @@ import { getHashtagQuery } from './hashtag-utils';
 export default function HashtagSuggestions({ value, hashtags = [], onPick }) {
   const q = React.useMemo(() => getHashtagQuery(value), [value]);
   const query = q?.query ?? null;
+  const [activeIndex, setActiveIndex] = React.useState(0);
 
   const items = React.useMemo(() => {
     if (query === null) return [];
     const normalized = query.toLowerCase();
     return hashtags
-      .filter((h) => h.toLowerCase().startsWith(normalized))
+      .map((h) => String(h).replace(/^#+/, ''))
+      .filter((h) => h.toLowerCase().includes(normalized))
       .slice(0, 6);
   }, [hashtags, query]);
+
+  React.useEffect(() => {
+    setActiveIndex(0);
+  }, [query, items.length]);
+
+  React.useEffect(() => {
+    if (query === null || items.length === 0) return undefined;
+
+    const onKeyDown = (event) => {
+      if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+
+      if (event.key === 'ArrowDown') {
+        setActiveIndex((prev) => (prev + 1) % items.length);
+        return;
+      }
+
+      if (event.key === 'ArrowUp') {
+        setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
+        return;
+      }
+
+      onPick?.(items[activeIndex]);
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [activeIndex, items, onPick, query]);
 
   if (query === null || items.length === 0) return null;
 
@@ -33,9 +66,12 @@ export default function HashtagSuggestions({ value, hashtags = [], onPick }) {
       }}
     >
       <Stack>
-        {items.map((h) => (
+        {items.map((h, index) => {
+          const isActive = index === activeIndex;
+          return (
           <Box
             key={h}
+            onMouseEnter={() => setActiveIndex(index)}
             onMouseDown={(e) => {
               // Prevent input blur before click handler
               e.preventDefault();
@@ -45,6 +81,7 @@ export default function HashtagSuggestions({ value, hashtags = [], onPick }) {
               px: 1.5,
               py: 1.1,
               cursor: 'pointer',
+              bgcolor: isActive ? '#e8edff' : 'transparent',
               '&:hover': { bgcolor: '#e8edff' },
             }}
           >
@@ -62,7 +99,8 @@ export default function HashtagSuggestions({ value, hashtags = [], onPick }) {
               }}
             />
           </Box>
-        ))}
+        );
+        })}
       </Stack>
     </Paper>
   );

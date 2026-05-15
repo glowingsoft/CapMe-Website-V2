@@ -20,6 +20,7 @@ export default function DrawerHeader({
     onBack,
     onEdit,
     onShare,
+    onChangePassword,
     showEdit = true,
     showShare = true,
     backIcon = 'mingcute:left-line',
@@ -58,6 +59,12 @@ export default function DrawerHeader({
             </Stack>
 
             <Stack direction="row" spacing={1.2} alignItems="center" sx={{ flexShrink: 0 }}>
+                {onChangePassword && (
+                    <IconButton onClick={onChangePassword} sx={btnSx}>
+                        <Iconify icon="solar:lock-password-bold" width={20} />
+                    </IconButton>
+                )}
+
                 {showEdit && (
                     <IconButton onClick={onEdit} sx={btnSx}>
                         <Iconify icon={editIcon} width={20} />

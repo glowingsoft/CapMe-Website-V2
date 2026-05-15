@@ -1,75 +1,203 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
+import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Avatar from '@mui/material/Avatar';
 import { EmptyContent } from 'src/components/empty-content';
 import { Iconify } from 'src/components/iconify';
+import { useCancelRoomRequestMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
+import { useLazyGetExploreRoomListQuery } from 'src/store/Reducer/explore-api';
 
-export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelect, onFilterOpen, filterCount = 0 }) {
-    const [tab, setTab] = useState('all');
+const PAGE_SIZE = 10;
 
-    const TABS = useMemo(
-        () => [
-            { value: 'all', label: 'All' },
-            { value: 'popular', label: 'Popular' },
-            { value: 'new', label: 'New' },
-            { value: 'friends', label: 'Friends' },
-        ],
-        []
+const TABS = [
+    { value: 'all', label: 'All' },
+    { value: 'popular', label: 'Popular' },
+    { value: 'new', label: 'New' },
+    { value: 'friends', label: 'Friends' },
+];
+
+function RoomRowSkeleton() {
+    return (
+        <Stack direction="row" alignItems="center" spacing={1.5} sx={{ p: 1.2 }}>
+            <Skeleton variant="circular" width={36} height={36} sx={{ bgcolor: 'rgba(255,255,255,0.10)', flexShrink: 0 }} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Skeleton variant="text" width="65%" height={16} sx={{ bgcolor: 'rgba(255,255,255,0.10)' }} />
+            </Box>
+            <Skeleton variant="rounded" width={90} height={30} sx={{ bgcolor: 'rgba(255,255,255,0.10)', borderRadius: 2 }} />
+        </Stack>
     );
+}
+
+export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilterOpen, filterCount = 0, filters = {} }) {
+    const [tab, setTab] = useState('all');
+    const [rooms, setRooms] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingIds, setLoadingIds] = useState(() => new Set());
+    const [toast, setToast] = useState({ open: false, message: '', severity: 'success', key: 0 });
+
+    const showToast = (message, severity = 'success') =>
+        setToast((p) => ({ open: true, message, severity, key: p.key + 1 }));
+    const hideToast = () => setToast((p) => ({ ...p, open: false }));
+
+    const [fetchRooms] = useLazyGetExploreRoomListQuery();
+    const [toggleRoomFollow] = useToggleRoomFollowMutation();
+    const [cancelRoomRequest] = useCancelRoomRequestMutation();
+    const searchDebounceRef = useRef(null);
 
     const getRoomId = (room) => room?._id ?? room?.id;
 
-    const allRooms = useMemo(() => {
-        const inputLists = [
-            roomsData?.favourite ?? [],
-            roomsData?.other ?? [],
-            roomsData?.myRooms ?? [],
-            roomsData?.following ?? [],
-        ];
+    useEffect(() => {
+        const onFollowUpdate = (e) => {
+            const { roomId: updatedId, isFollowing, isPending } = e.detail ?? {};
+            if (!updatedId) return;
+            setRooms((prev) =>
+                prev.map((r) =>
+                    String(getRoomId(r)) === String(updatedId)
+                        ? { ...r, isFollowing, ...(isPending !== undefined ? { isPending } : {}) }
+                        : r
+                )
+            );
+        };
+        window.addEventListener('roomFollowUpdate', onFollowUpdate);
+        return () => window.removeEventListener('roomFollowUpdate', onFollowUpdate);
+    }, []);
 
-        const map = new Map();
-        inputLists.flat().forEach((r) => {
-            const id = getRoomId(r);
-            if (!id) return;
-            if (!map.has(id)) map.set(id, r);
-        });
+    const load = React.useCallback(
+        (type, extraFilters = {}) => {
+            setIsLoading(true);
+            fetchRooms({
+                type,
+                page: 1,
+                limit: PAGE_SIZE,
+                ...(extraFilters.search ? { search: extraFilters.search } : {}),
+                ...(extraFilters.dateCreated ? { dateCreated: extraFilters.dateCreated } : {}),
+                ...(extraFilters.memberCount ? { memberCount: extraFilters.memberCount } : {}),
+                ...(extraFilters.contentFocus ? { contentFocus: extraFilters.contentFocus } : {}),
+            })
+                .unwrap()
+                .then((data) => setRooms(data.rooms ?? []))
+                .catch(() => setRooms([]))
+                .finally(() => setIsLoading(false));
+        },
+        [fetchRooms]
+    );
 
-        return Array.from(map.values());
-    }, [roomsData]);
+    const buildFilterParams = React.useCallback(
+        (search) => ({
+            search: search ?? filters.query ?? '',
+            dateCreated: filters.date ?? '',
+            memberCount: filters.memberCount ?? '',
+            contentFocus: filters.contentType ?? '',
+        }),
+        [filters]
+    );
 
-    const initialFollowingIds = useMemo(() => {
-        const ids = new Set();
-        (roomsData?.following ?? []).forEach((r) => {
-            const id = getRoomId(r);
-            if (id) ids.add(id);
-        });
-        return ids;
-    }, [roomsData]);
+    // Initial load
+    useEffect(() => {
+        load('all');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const [followingIds, setFollowingIds] = useState(initialFollowingIds);
-    const [requestedIds, setRequestedIds] = useState(() => new Set());
+    // Re-fetch when filters change; debounce the search field
+    useEffect(() => {
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = setTimeout(() => {
+            load(tab, buildFilterParams());
+        }, filters.query ? 400 : 0);
+        return () => clearTimeout(searchDebounceRef.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.query, filters.date, filters.memberCount, filters.contentType]);
+
+    const handleTabChange = (value) => {
+        setTab(value);
+        load(value, buildFilterParams());
+    };
 
     const handleRoomClick = (room) => {
-        if (onRoomSelect) onRoomSelect(room);
+        onRoomSelect?.(room);
+    };
+
+    const handleCancelRequest = async (room) => {
+        const roomId = getRoomId(room);
+        if (!roomId || loadingIds.has(roomId)) return;
+
+        setLoadingIds((prev) => { const next = new Set(prev); next.add(roomId); return next; });
+        try {
+            const result = await cancelRoomRequest(roomId).unwrap();
+            if (result?.message) showToast(result.message, 'success');
+            setRooms((prev) =>
+                prev.map((r) =>
+                    getRoomId(r) === roomId ? { ...r, isPending: false, isFollowing: false } : r
+                )
+            );
+            window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false } }));
+        } catch {
+            showToast('Failed to cancel request. Please try again.', 'error');
+        } finally {
+            setLoadingIds((prev) => { const next = new Set(prev); next.delete(roomId); return next; });
+        }
+    };
+
+    const handleFollowToggle = async (room) => {
+        const roomId = getRoomId(room);
+        if (!roomId || loadingIds.has(roomId)) return;
+
+        setLoadingIds((prev) => { const next = new Set(prev); next.add(roomId); return next; });
+        try {
+            const result = await toggleRoomFollow(roomId).unwrap();
+            const msg = result?.message ?? '';
+            const isRequestSent = msg.toLowerCase().includes('request') || msg.toLowerCase().includes('sent');
+
+            if (isRequestSent && !room.isFollowing) {
+                // Pending request — not yet following
+                showToast(msg, 'info');
+                setRooms((prev) =>
+                    prev.map((r) =>
+                        getRoomId(r) === roomId ? { ...r, isFollowing: false, isPending: true } : r
+                    )
+                );
+                window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+            } else {
+                // Actual follow/unfollow
+                const nextFollowing = !room.isFollowing;
+                if (msg) showToast(msg, 'success');
+                setRooms((prev) =>
+                    prev.map((r) =>
+                        getRoomId(r) === roomId ? { ...r, isFollowing: nextFollowing, isPending: false } : r
+                    )
+                );
+                window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: nextFollowing, isPending: false } }));
+            }
+        } catch (err) {
+            const msg = err?.data?.message ?? err?.message ?? '';
+            if (msg.toLowerCase().includes('already sent')) {
+                setRooms((prev) =>
+                    prev.map((r) =>
+                        getRoomId(r) === roomId ? { ...r, isFollowing: false, isPending: true } : r
+                    )
+                );
+                showToast(msg, 'info');
+                window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+            } else {
+                showToast('Failed to update. Please try again.', 'error');
+            }
+        } finally {
+            setLoadingIds((prev) => { const next = new Set(prev); next.delete(roomId); return next; });
+        }
     };
 
     const drawerWidth = 420;
 
-    const visibleRooms = useMemo(() => {
-
-        if (tab === 'all') return allRooms;
-        if (tab === 'popular') return allRooms;
-        if (tab === 'new') return allRooms;
-        if (tab === 'friends') return allRooms;
-        return allRooms;
-    }, [allRooms, tab]);
-
     return (
         <>
-            {/* Floating filter button (same spot as old toggle) */}
+            {/* Floating filter button */}
             <IconButton
                 onClick={onFilterOpen}
                 sx={{
@@ -144,6 +272,7 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                         <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
                             Discover and manage your rooms.
                         </Typography>
+
                         {/* Tabs */}
                         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                             {TABS.map((t) => (
@@ -151,7 +280,7 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                                     key={t.value}
                                     variant={tab === t.value ? 'contained' : 'text'}
                                     size="small"
-                                    onClick={() => setTab(t.value)}
+                                    onClick={() => handleTabChange(t.value)}
                                     sx={{
                                         bgcolor: tab === t.value ? '#4C4EFF' : 'transparent',
                                         color: '#fff',
@@ -170,6 +299,7 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                             ))}
                         </Stack>
                     </Box>
+
                     {/* Scrollable room list */}
                     <Box
                         sx={{
@@ -181,34 +311,50 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                             scrollbarColor: 'rgba(255,255,255,0.1) transparent',
                             '&::-webkit-scrollbar': { width: '3px' },
                             '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
-                            '&::-webkit-scrollbar-thumb': {
-                                bgcolor: 'rgba(255,255,255,0.08)',
-                                borderRadius: '10px',
-                            },
-                            '&:hover::-webkit-scrollbar-thumb': {
-                                bgcolor: 'rgba(255,255,255,0.25)',
-                            },
+                            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.08)', borderRadius: '10px' },
+                            '&:hover::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.25)' },
                         }}
                     >
-                        {visibleRooms.length === 0 ? (
+                        {isLoading ? (
+                            <Stack spacing={0.3}>
+                                {Array.from({ length: 6 }).map((_, i) => <RoomRowSkeleton key={i} />)}
+                            </Stack>
+                        ) : rooms.length === 0 ? (
                             <EmptyContent
                                 title="No rooms found"
                                 description="Try a different tab or adjust your filters."
-                                sx={
-                                    {
-                                        py: 8,
-                                        '& h6': { color: '#a5b4fc' },
-                                        '& .MuiTypography-body2': { color: '#9e9e9e' },
-                                    }
-                                }
+                                sx={{
+                                    py: 8,
+                                    '& h6': { color: '#a5b4fc' },
+                                    '& .MuiTypography-body2': { color: '#9e9e9e' },
+                                }}
                             />
                         ) : (
                             <Stack spacing={0.3} sx={{ mb: 2 }}>
-                                {visibleRooms.map((room) => {
+                                {rooms.map((room) => {
                                     const roomId = getRoomId(room);
                                     const isActive = activeRoomId === roomId;
-                                    const isFollowing = followingIds.has(roomId);
-                                    const isRequested = requestedIds.has(roomId);
+                                    const isFollowing = room.isFollowing;
+                                    const isPending = room.isPending;
+                                    const isLoadingFollow = loadingIds.has(roomId);
+
+                                    let btnLabel = 'Follow';
+                                    let btnBg = '#4C4EFF';
+                                    let btnBorder = '#4C4EFF';
+                                    let btnVariant = 'contained';
+                                    if (isLoadingFollow) {
+                                        btnLabel = null;
+                                    } else if (isPending) {
+                                        btnLabel = 'Request Sent';
+                                        btnBg = 'transparent';
+                                        btnBorder = 'rgba(255,193,7,0.6)';
+                                        btnVariant = 'outlined';
+                                    } else if (isFollowing) {
+                                        btnLabel = 'Following';
+                                        btnBg = 'transparent';
+                                        btnBorder = 'rgba(255,255,255,0.25)';
+                                        btnVariant = 'outlined';
+                                    }
 
                                     return (
                                         <Stack
@@ -227,51 +373,52 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                                             }}
                                             onClick={() => handleRoomClick(room)}
                                         >
-                                            <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: '#4C4EFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15, color: '#fff' }}>
+                                            <Avatar
+                                                {...(room.image ? { src: room.image } : {})}
+                                                sx={{ width: 36, height: 36, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, flexShrink: 0 }}
+                                            >
                                                 {room.name?.charAt(0).toUpperCase()}
-                                            </Box>
+                                            </Avatar>
+
                                             <Box sx={{ flex: 1, minWidth: 0 }}>
                                                 <Typography fontWeight={600} fontSize={14} noWrap>
                                                     {room.name}
                                                 </Typography>
                                             </Box>
+
                                             <Button
                                                 size="small"
-                                                variant={isFollowing || isRequested ? 'outlined' : 'contained'}
+                                                variant={btnVariant}
+                                                disabled={isLoadingFollow}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (isFollowing) return;
-                                                    if (isRequested) {
-                                                        setRequestedIds((prev) => {
-                                                            const next = new Set(prev);
-                                                            next.delete(roomId);
-                                                            return next;
-                                                        });
-                                                        return;
-                                                    }
-                                                    setRequestedIds((prev) => {
-                                                        const next = new Set(prev);
-                                                        next.add(roomId);
-                                                        return next;
-                                                    });
+                                                    if (isPending) handleCancelRequest(room);
+                                                    else handleFollowToggle(room);
                                                 }}
                                                 sx={{
                                                     height: 30,
-                                                    minWidth: 120,
+                                                    minWidth: 100,
                                                     px: 1.5,
                                                     borderRadius: 2,
                                                     fontWeight: 700,
+                                                    fontSize: isPending ? 11 : 13,
                                                     textTransform: 'none',
-                                                    bgcolor: isFollowing || isRequested ? 'transparent' : '#4C4EFF',
-                                                    color: '#fff',
-                                                    borderColor: isFollowing || isRequested ? 'rgba(255,255,255,0.25)' : '#4C4EFF',
+                                                    bgcolor: btnBg,
+                                                    color: isPending ? '#FFC107' : '#fff',
+                                                    borderColor: btnBorder,
                                                     '&:hover': {
-                                                        bgcolor: isFollowing || isRequested ? 'rgba(255,255,255,0.08)' : '#3b3bd6',
-                                                        borderColor: isFollowing || isRequested ? 'rgba(255,255,255,0.35)' : '#3b3bd6',
+                                                        bgcolor: isPending
+                                                            ? 'rgba(255,193,7,0.08)'
+                                                            : isFollowing ? 'rgba(255,255,255,0.08)' : '#3b3bd6',
+                                                        borderColor: btnBorder,
                                                     },
+                                                    '&.Mui-disabled': { opacity: 0.6 },
                                                 }}
                                             >
-                                                {isFollowing ? 'Following' : isRequested ? 'Cancel request' : 'Follow'}
+                                                {isLoadingFollow
+                                                    ? <CircularProgress size={14} sx={{ color: isPending ? '#FFC107' : '#fff' }} />
+                                                    : btnLabel
+                                                }
                                             </Button>
                                         </Stack>
                                     );
@@ -281,6 +428,18 @@ export default function ExploreLeftDrawer({ roomsData, activeRoomId, onRoomSelec
                     </Box>
                 </Box>
             </Box>
+
+            <Snackbar
+                key={toast.key}
+                open={toast.open}
+                autoHideDuration={2500}
+                onClose={hideToast}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={hideToast} severity={toast.severity} variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </>
     );
 }

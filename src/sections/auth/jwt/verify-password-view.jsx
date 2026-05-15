@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
 
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
@@ -15,6 +17,8 @@ import { paths } from 'src/routes/paths';
 
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
+import { toast } from 'src/components/snackbar';
+import { useVerifyPasswordOtpMutation, useForgotPasswordMutation } from 'src/store/Reducer/auth';
 
 import { OtpTimer } from './otp-timer';
 
@@ -28,6 +32,20 @@ export const OtpVerifySchema = zod.object({
 
 export function JwtVerifyPasswordView() {
   const router = useRouter();
+  const email = sessionStorage.getItem('forgot_email') ?? '';
+const [errorMsg, setErrorMsg] = useState('');
+
+  const [verifyPasswordOtp] = useVerifyPasswordOtpMutation();
+  const [forgotPassword] = useForgotPasswordMutation();
+
+  const handleResend = async () => {
+    try {
+      await forgotPassword({ email }).unwrap();
+      toast.success('OTP resent! Please check your email.');
+    } catch {
+      toast.error('Failed to resend OTP. Please try again.');
+    }
+  };
 
   const methods = useForm({
     resolver: zodResolver(OtpVerifySchema),
@@ -36,8 +54,14 @@ export function JwtVerifyPasswordView() {
 
   const { handleSubmit, formState: { isSubmitting } } = methods;
 
-  const onSubmit = handleSubmit(async () => {
-    router.push(paths.auth.jwt.resetPassword);
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      await verifyPasswordOtp({ email, pin: Number(data.otp) }).unwrap();
+      router.push(paths.auth.jwt.resetPassword);
+    } catch (error) {
+      const msg = error?.data?.message ?? error?.data?.error ?? error?.message ?? 'Verification failed. Please try again.';
+      setErrorMsg(typeof msg === 'string' ? msg : 'Verification failed. Please try again.');
+    }
   });
 
   return (
@@ -62,7 +86,7 @@ export function JwtVerifyPasswordView() {
           py: 4,
         }}
       >
-        {/* Logos */}
+        {/* Logo + icon */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2, gap: 1 }}>
           <Box
             component="img"
@@ -78,9 +102,21 @@ export function JwtVerifyPasswordView() {
           <Box component="span" sx={{ color: '#4C4EFF' }}>Check</Box>
           {' Your Email'}
         </Typography>
-        <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5, px: 1 }}>
+        <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: email ? 1 : 2.5, px: 1 }}>
           We sent a 6-digit verification code to your email. Enter it below to continue.
         </Typography>
+        {!!email && (
+          <Typography align="center" fontSize={13} fontWeight={700} sx={{ mb: 2.5 }}>
+            {email}
+          </Typography>
+        )}
+
+        {/* Error */}
+        {!!errorMsg && (
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
+            {errorMsg}
+          </Alert>
+        )}
 
         {/* OTP Form */}
         <Form methods={methods} onSubmit={onSubmit}>
@@ -107,7 +143,7 @@ export function JwtVerifyPasswordView() {
                 bgcolor: '#4C4EFF',
                 color: '#fff',
                 fontWeight: 700,
-                fontSize: 15, 
+                fontSize: 15,
                 borderRadius: 2.5,
                 textTransform: 'none',
                 '&:hover': { bgcolor: '#3739b7' },
@@ -120,7 +156,7 @@ export function JwtVerifyPasswordView() {
 
         {/* Resend timer */}
         <Box sx={{ mt: 3 }}>
-          <OtpTimer seconds={30} />
+          <OtpTimer seconds={30} onResend={handleResend} />
         </Box>
 
         {/* Back */}

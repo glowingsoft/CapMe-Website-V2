@@ -1,40 +1,108 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import InputBase from '@mui/material/InputBase';
+import CircularProgress from '@mui/material/CircularProgress';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-import { MOCK_ROOM_MEMBERS, MOCK_ROOM_REQUESTS } from '../mock';
+import { useSelector } from 'react-redux';
+import { selectUser } from 'src/store/slices/userSlice';
+import { toast } from 'src/components/snackbar';
+import { useLazyGetRoomRequestsQuery, useUpdateRoomRequestPermissionMutation } from 'src/store/Reducer/rooms-api';
 
 import DrawerHeader from './drawer-header';
+
+function RequestSkeleton() {
+    return (
+        <Box sx={{ bgcolor: '#fff', borderRadius: 2, px: 1.5, py: 1.5, boxShadow: '0 8px 24px rgba(0,0,0,0.04)' }}>
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.25 }}>
+                <Skeleton variant="circular" width={44} height={44} />
+                <Box sx={{ flex: 1 }}>
+                    <Skeleton variant="text" width="55%" height={16} />
+                    <Skeleton variant="text" width="35%" height={13} />
+                </Box>
+            </Stack>
+            <Stack direction="row" spacing={1}>
+                <Skeleton variant="rounded" height={38} sx={{ flex: 1, borderRadius: 2 }} />
+                <Skeleton variant="rounded" height={38} sx={{ flex: 1, borderRadius: 2 }} />
+            </Stack>
+        </Box>
+    );
+}
+
+const normalizePermission = (permission) => {
+    const value = String(permission ?? '').toLowerCase();
+    if (value === 'editor') return 'edit';
+    if (value === 'viewer') return 'view';
+    return value || 'view';
+};
+
+const permissionLabel = (permission) => {
+    const value = normalizePermission(permission);
+    if (value === 'edit') return 'Editor';
+    if (value === 'view') return 'Viewer';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+};
 
 export default function RoomRequestDrawer({
     open,
     onClose,
-    room,
-    requests: requestsProp,
+    roomId,
+    isRoomAdmin = false,
+    permissionOverrides = {},
+    onMemberPermissionUpdate,
     onApprove,
     onReject,
 }) {
     const [activeTab, setActiveTab] = useState('requests');
-    const [requests, setRequests] = useState(requestsProp || room?.requests || MOCK_ROOM_REQUESTS);
-    const [members, setMembers] = useState(room?.members || MOCK_ROOM_MEMBERS);
+    const [requests, setRequests] = useState([]);
+    const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+    const [members, setMembers] = useState([]);
+    const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+    const [updatingAccess, setUpdatingAccess] = useState(null);
+    const [updateRoomRequestPermission] = useUpdateRoomRequestPermissionMutation();
+    const [fetchRoomRequests] = useLazyGetRoomRequestsQuery();
+    const currentUser = useSelector(selectUser);
+    const currentUserId = String(currentUser?.basicInfo?._id ?? currentUser?.id ?? currentUser?._id ?? currentUser?.userId ?? currentUser?.user?._id ?? '');
+
     const [requestSearch, setRequestSearch] = useState('');
     const [memberSearch, setMemberSearch] = useState('');
 
+    // Fetch requests when drawer opens
     useEffect(() => {
-        setRequests(requestsProp || room?.requests || MOCK_ROOM_REQUESTS);
-    }, [requestsProp, room]);
+        if (!open || !roomId) return;
+        setIsLoadingRequests(true);
+        fetchRoomRequests({ roomId, type: 'requests' })
+            .unwrap()
+            .then((data) => setRequests(data ?? []))
+            .catch(() => setRequests([]))
+            .finally(() => setIsLoadingRequests(false));
+    }, [open, roomId, fetchRoomRequests]);
 
+    // Fetch members when members tab is opened
     useEffect(() => {
-        setMembers(room?.members || MOCK_ROOM_MEMBERS);
-    }, [room]);
+        if (!open || !roomId || activeTab !== 'members' || !isRoomAdmin) return;
+        fetchRoomRequests({ roomId, type: 'members' })
+            .unwrap()
+            .then((data) => {
+                const normalized = (data ?? [])
+                    .filter((m) => String(m.userId) !== currentUserId)
+                    .map((m) => ({
+                        ...m,
+                        role: permissionOverrides[m.userId] ?? normalizePermission(m.role),
+                    }));
+                setMembers(normalized);
+            })
+            .catch(() => setMembers([]))
+            .finally(() => setIsLoadingMembers(false));
+    }, [open, roomId, activeTab, isRoomAdmin, fetchRoomRequests, currentUserId, permissionOverrides]);
 
     useEffect(() => {
         if (!open) {
@@ -44,20 +112,71 @@ export default function RoomRequestDrawer({
         }
     }, [open]);
 
-    const handleApproveRequest = (request) => {
-        setRequests((prev) => prev.filter((item) => item.id !== request.id));
-        onApprove?.(request);
+    const [processingIds, setProcessingIds] = useState(() => new Set());
+
+    const handleApproveRequest = async (request) => {
+        if (processingIds.has(request.id)) return;
+        setProcessingIds((prev) => { const next = new Set(prev); next.add(request.id); return next; });
+        try {
+            await updateRoomRequestPermission({ roomId, userId: request.id, permission: 'view' }).unwrap();
+            setRequests((prev) => prev.filter((item) => item.id !== request.id));
+            onApprove?.(request);
+            toast.success(`${request.name} approved`);
+        } catch {
+            toast.error('Failed to approve request');
+        } finally {
+            setProcessingIds((prev) => { const next = new Set(prev); next.delete(request.id); return next; });
+        }
     };
 
-    const handleRejectRequest = (request) => {
-        setRequests((prev) => prev.filter((item) => item.id !== request.id));
-        onReject?.(request);
+    const handleRejectRequest = async (request) => {
+        if (processingIds.has(request.id)) return;
+        setProcessingIds((prev) => { const next = new Set(prev); next.add(request.id); return next; });
+        try {
+            await updateRoomRequestPermission({ roomId, userId: request.id, permission: 'decline' }).unwrap();
+            setRequests((prev) => prev.filter((item) => item.id !== request.id));
+            onReject?.(request);
+            toast.success(`${request.name} rejected`);
+        } catch {
+            toast.error('Failed to reject request');
+        } finally {
+            setProcessingIds((prev) => { const next = new Set(prev); next.delete(request.id); return next; });
+        }
     };
 
-    const handleSetMemberRole = (memberId, role) => {
+    const handleSetMemberRole = async (memberId, role) => {
+        const permission = normalizePermission(role);
+        const previousMembers = members;
+
+        if (updatingAccess || !isRoomAdmin || !['view', 'edit'].includes(permission)) return;
+        if (!roomId || !memberId) {
+            toast.error(!roomId ? 'Missing room id' : 'Missing member id');
+            return;
+        }
+
+        setUpdatingAccess(`${memberId}:${permission}`);
         setMembers((prev) => prev.map((member) => (
-            member.id === memberId ? { ...member, role } : member
+            member.id === memberId ? { ...member, role: permission } : member
         )));
+
+        try {
+            const response = await updateRoomRequestPermission({ roomId, userId: memberId, permission }).unwrap();
+            const updatedPermission = normalizePermission(response?.body?.permission ?? response?.permission ?? permission);
+            const updatedUserId = response?.body?.user ?? response?.user ?? memberId;
+
+            onMemberPermissionUpdate?.({ userId: updatedUserId, permission: updatedPermission });
+            onMemberPermissionUpdate?.({ userId: memberId, permission: updatedPermission });
+
+            setMembers((prev) => prev.map((member) => (
+                member.id === memberId || member.id === updatedUserId ? { ...member, role: updatedPermission } : member
+            )));
+            toast.success('Member access updated');
+        } catch (error) {
+            setMembers(previousMembers);
+            toast.error('Failed to update member access');
+        } finally {
+            setUpdatingAccess(null);
+        }
     };
 
     const requestsCount = requests.length;
@@ -73,7 +192,7 @@ export default function RoomRequestDrawer({
 
     const filteredMembers = members.filter((member) => (
         member.name.toLowerCase().includes(normalizedMemberSearch)
-        || member.role.toLowerCase().includes(normalizedMemberSearch)
+        || permissionLabel(member.role).toLowerCase().includes(normalizedMemberSearch)
     ));
 
     return (
@@ -120,34 +239,36 @@ export default function RoomRequestDrawer({
                                 fontSize: 14,
                                 fontWeight: 700,
                                 color: activeTab === 'requests' ? '#fff' : '#6B7280',
-                                bgcolor: activeTab === 'requests' ? '#050511' : '#F3F4F6',
+                                bgcolor: activeTab === 'requests' ? '#4C4EFF' : '#F3F4F6',
                                 '&:hover': {
-                                    bgcolor: activeTab === 'requests' ? '#050511' : '#E5E7EB',
+                                    bgcolor: activeTab === 'requests' ? '#4C4EFF' : '#E5E7EB',
                                 },
                             }}
                         >
                             Requests ({requestsCount})
                         </Button>
 
-                        <Button
-                            onClick={() => setActiveTab('members')}
-                            sx={{
-                                minWidth: 0,
-                                px: 2,
-                                height: 40,
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontSize: 14,
-                                fontWeight: 700,
-                                color: activeTab === 'members' ? '#fff' : '#6B7280',
-                                bgcolor: activeTab === 'members' ? '#050511' : '#F3F4F6',
-                                '&:hover': {
-                                    bgcolor: activeTab === 'members' ? '#050511' : '#E5E7EB',
-                                },
-                            }}
-                        >
-                            Members ({membersCount})
-                        </Button>
+                        {isRoomAdmin ? (
+                            <Button
+                                onClick={() => { setIsLoadingMembers(true); setActiveTab('members'); }}
+                                sx={{
+                                    minWidth: 0,
+                                    px: 2,
+                                    height: 40,
+                                    borderRadius: 2,
+                                    textTransform: 'none',
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    color: activeTab === 'members' ? '#fff' : '#6B7280',
+                                    bgcolor: activeTab === 'members' ? '#4C4EFF' : '#F3F4F6',
+                                    '&:hover': {
+                                        bgcolor: activeTab === 'members' ? '#4C4EFF' : '#E5E7EB',
+                                    },
+                                }}
+                            >
+                                Members ({membersCount})
+                            </Button>
+                        ) : null}
                     </Stack>
 
                     {activeTab === 'requests' && (
@@ -175,11 +296,19 @@ export default function RoomRequestDrawer({
                             </Box>
 
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Pending approvals for {room?.name || 'this room'}
+                                Pending approvals for this room
                             </Typography>
 
                             <Stack spacing={1.5}>
-                                {filteredRequests.length === 0 && (
+                                {isLoadingRequests && (
+                                    <>
+                                        <RequestSkeleton />
+                                        <RequestSkeleton />
+                                        <RequestSkeleton />
+                                    </>
+                                )}
+
+                                {!isLoadingRequests && filteredRequests.length === 0 && (
                                     <Box
                                         sx={{
                                             borderRadius: 2,
@@ -199,7 +328,7 @@ export default function RoomRequestDrawer({
                                     </Box>
                                 )}
 
-                                {filteredRequests.map((request) => (
+                                {!isLoadingRequests && filteredRequests.map((request) => (
                                     <Box
                                         key={request.id}
                                         sx={{
@@ -227,9 +356,10 @@ export default function RoomRequestDrawer({
                                         <Stack direction="row" spacing={1}>
                                             <Button
                                                 fullWidth
+                                                disabled={processingIds.has(request.id)}
                                                 onClick={() => handleRejectRequest(request)}
                                                 sx={{
-                                                    height: 38,
+                                                    height: 30,
                                                     borderRadius: 2,
                                                     bgcolor: '#F3F4F6',
                                                     color: '#111827',
@@ -237,16 +367,20 @@ export default function RoomRequestDrawer({
                                                     fontWeight: 700,
                                                     textTransform: 'none',
                                                     '&:hover': { bgcolor: '#E5E7EB' },
+                                                    '&.Mui-disabled': { opacity: 0.6 },
                                                 }}
                                             >
-                                                Reject
+                                                {processingIds.has(request.id)
+                                                    ? <CircularProgress size={12} sx={{ color: '#111827' }} />
+                                                    : 'Reject'}
                                             </Button>
 
                                             <Button
                                                 fullWidth
+                                                disabled={processingIds.has(request.id)}
                                                 onClick={() => handleApproveRequest(request)}
                                                 sx={{
-                                                    height: 38,
+                                                    height: 30,
                                                     borderRadius: 2,
                                                     bgcolor: '#4C4EFF',
                                                     color: '#fff',
@@ -254,9 +388,12 @@ export default function RoomRequestDrawer({
                                                     fontWeight: 700,
                                                     textTransform: 'none',
                                                     '&:hover': { bgcolor: '#3f41dc' },
+                                                    '&.Mui-disabled': { opacity: 0.6 },
                                                 }}
                                             >
-                                                Approve
+                                                {processingIds.has(request.id)
+                                                    ? <CircularProgress size={12} color="inherit" />
+                                                    : 'Approve'}
                                             </Button>
                                         </Stack>
                                     </Box>
@@ -265,7 +402,7 @@ export default function RoomRequestDrawer({
                         </>
                     )}
 
-                    {activeTab === 'members' && (
+                    {activeTab === 'members' && isRoomAdmin && (
                         <Stack spacing={1.5}>
                             <Box
                                 sx={{
@@ -288,7 +425,15 @@ export default function RoomRequestDrawer({
                                 />
                             </Box>
 
-                            {filteredMembers.length === 0 && (
+                            {isLoadingMembers && (
+                                <>
+                                    <RequestSkeleton />
+                                    <RequestSkeleton />
+                                    <RequestSkeleton />
+                                </>
+                            )}
+
+                            {!isLoadingMembers && filteredMembers.length === 0 && (
                                 <Box
                                     sx={{
                                         borderRadius: 2,
@@ -308,9 +453,13 @@ export default function RoomRequestDrawer({
                                 </Box>
                             )}
 
-                            {filteredMembers.map((member) => {
-                                const isEditor = member.role === 'editor';
-                                const isViewer = member.role === 'viewer';
+                            {!isLoadingMembers && filteredMembers.map((member) => {
+                                const isAdminMember = member.role === 'admin';
+                                const isEditor = member.role === 'edit';
+                                const isViewer = member.role === 'view';
+                                const isUpdatingEditor = updatingAccess === `${member.id}:edit`;
+                                const isUpdatingViewer = updatingAccess === `${member.id}:view`;
+                                const isAccessDisabled = isAdminMember || Boolean(updatingAccess);
 
                                 return (
                                     <Box
@@ -332,7 +481,7 @@ export default function RoomRequestDrawer({
                                                 </Typography>
 
                                                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                                                    Current access: {member.role}
+                                                    Current access: {permissionLabel(member.role)}
                                                 </Typography>
                                             </Box>
                                         </Stack>
@@ -340,10 +489,11 @@ export default function RoomRequestDrawer({
                                         <Stack direction="row" spacing={1}>
                                             <Button
                                                 fullWidth
-                                                onClick={() => handleSetMemberRole(member.id, 'editor')}
+                                                disabled={isAccessDisabled}
+                                                onClick={() => handleSetMemberRole(member.id, 'edit')}
                                                 startIcon={isEditor ? <Iconify icon="mingcute:check-fill" width={16} /> : null}
                                                 sx={{
-                                                    height: 38,
+                                                    height: 30,
                                                     borderRadius: 2,
                                                     bgcolor: isEditor ? '#4C4EFF' : '#F3F4F6',
                                                     color: isEditor ? '#fff' : '#111827',
@@ -355,15 +505,16 @@ export default function RoomRequestDrawer({
                                                     },
                                                 }}
                                             >
-                                                Editor
+                                                {isUpdatingEditor ? 'Saving...' : 'Editor'}
                                             </Button>
 
                                             <Button
                                                 fullWidth
-                                                onClick={() => handleSetMemberRole(member.id, 'viewer')}
+                                                disabled={isAccessDisabled}
+                                                onClick={() => handleSetMemberRole(member.id, 'view')}
                                                 startIcon={isViewer ? <Iconify icon="mingcute:check-fill" width={16} /> : null}
                                                 sx={{
-                                                    height: 38,
+                                                    height: 30,
                                                     borderRadius: 2,
                                                     bgcolor: isViewer ? '#4C4EFF' : '#F3F4F6',
                                                     color: isViewer ? '#fff' : '#111827',
@@ -375,7 +526,7 @@ export default function RoomRequestDrawer({
                                                     },
                                                 }}
                                             >
-                                                Viewer
+                                                {isUpdatingViewer ? 'Saving...' : 'Viewer'}
                                             </Button>
                                         </Stack>
                                     </Box>

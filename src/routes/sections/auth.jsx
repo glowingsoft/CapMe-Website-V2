@@ -15,6 +15,7 @@ import { GuestGuard } from 'src/auth/guard';
 const Jwt = {
   SignInPage: lazy(() => import('src/pages/auth/jwt/sign-in')),
   SignUpPage: lazy(() => import('src/pages/auth/jwt/sign-up')),
+  VerifyOtpPage: lazy(() => import('src/pages/auth/jwt/verify-otp')),
   ForgetPasswordPage: lazy(() => import('src/pages/auth/jwt/forget-password')),
   VerifyPasswordPage: lazy(() => import('src/pages/auth/jwt/verify-password')),
   ResetPasswordPage: lazy(() => import('src/pages/auth/jwt/reset-password')),
@@ -36,6 +37,14 @@ const authJwt = {
       element: (
         <GuestGuard>
           <Jwt.SignUpPage />
+        </GuestGuard>
+      ),
+    },
+    {
+      path: 'verify-otp',
+      element: (
+        <GuestGuard>
+          <Jwt.VerifyOtpPage />
         </GuestGuard>
       ),
     },

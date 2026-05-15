@@ -64,15 +64,26 @@ function normalizeLoginResponse(response, fallbackEmail, fallbackUserType) {
   const apiUser = findUserObject(payload);
   const userType = apiUser?.user_type ?? fallbackUserType ?? 2;
   const displayName = apiUser?.name ?? fallbackEmail?.split('@')?.[0] ?? 'User';
+  const photoURL = apiUser?.image ?? apiUser?.photoURL ?? null;
 
   return {
     accessToken,
     userData: {
       ...apiUser,
       id: apiUser?.id ?? apiUser?._id ?? fallbackEmail,
+      _id: apiUser?._id ?? apiUser?.id ?? fallbackEmail,
       email: apiUser?.email ?? fallbackEmail,
-      basicInfo: apiUser?.basicInfo ?? { name: displayName },
+      photoURL,
       displayName,
+      mobile: apiUser?.mobile ?? '',
+      basicInfo: {
+        ...(apiUser?.basicInfo ?? {}),
+        _id: apiUser?._id ?? apiUser?.id ?? '',
+        name: displayName,
+        email: apiUser?.email ?? fallbackEmail,
+        mobile: apiUser?.mobile ?? '',
+        image: photoURL,
+      },
       role: userType === 1 ? 'admin' : 'user',
       permission: userType,
       token: accessToken,
@@ -124,26 +135,65 @@ export const signInWithPassword = async ({ email, password, role, user_type }) =
 /** **************************************
  * Sign up
  *************************************** */
-export const signUp = async ({ email, password, firstName, lastName }) => {
-  const params = {
-    email,
-    password,
-    firstName,
-    lastName,
-  };
-
+export const signUp = async ({ name, email, password, phone, image = 'noImg.png', user_type = 2 }) => {
   try {
-    const res = await axios.post(endpoints.auth.signUp, params);
+    const timezone = getClientTimeZone();
+    const deviceId = getClientDeviceId();
 
-    const { accessToken } = res.data;
+    const { authApi } = await import('src/store/Reducer/auth');
+    const { store } = await import('src/store/store');
 
-    if (!accessToken) {
-      throw new Error('Access token not found in response');
-    }
+    const response = await store.dispatch(
+      authApi.endpoints.register.initiate({
+        name,
+        email,
+        password,
+        phone,
+        timezone,
+        image,
+        device_id: deviceId,
+        device_type: 'web',
+        user_type,
+      })
+    ).unwrap();
 
-    sessionStorage.setItem(STORAGE_KEY, accessToken);
+    return response;
   } catch (error) {
     console.error('Error during sign up:', error);
+    throw error;
+  }
+};
+
+/** **************************************
+ * Google / Social sign in
+ *************************************** */
+export const signInWithGoogle = async (googleUser) => {
+  try {
+    const timezone = getClientTimeZone();
+    const deviceId = getClientDeviceId();
+
+    const body = {
+      social_id: googleUser.sub,
+      social_type: 'google',
+      email: googleUser.email,
+      name: googleUser.name,
+      image: googleUser.picture,
+      device_id: deviceId,
+      device_type: 'web',
+      timezone,
+    };
+
+    const { authApi } = await import('src/store/Reducer/auth');
+    const { store } = await import('src/store/store');
+    const response = await store.dispatch(authApi.endpoints.socialLogin.initiate(body)).unwrap();
+    const normalized = normalizeLoginResponse(response, googleUser.email, 2);
+
+    await setSession(normalized.accessToken);
+    sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(normalized.userData));
+
+    return normalized.userData;
+  } catch (error) {
+    console.error('Error during Google sign in:', error);
     throw error;
   }
 };
@@ -153,6 +203,11 @@ export const signUp = async ({ email, password, firstName, lastName }) => {
  *************************************** */
 export const signOut = async () => {
   try {
+    // Hit the backend logout endpoint (fire-and-forget — don't block local cleanup on failure)
+    const { authApi } = await import('src/store/Reducer/auth');
+    const { store } = await import('src/store/store');
+    await store.dispatch(authApi.endpoints.logout.initiate()).unwrap().catch(() => {});
+
     await setSession(null);
     sessionStorage.removeItem(STORAGE_USER_KEY);
   } catch (error) {

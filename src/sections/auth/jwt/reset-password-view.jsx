@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
 
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
@@ -18,6 +20,8 @@ import { paths } from 'src/routes/paths';
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
 import { useBoolean } from 'src/hooks/use-boolean';
+import { toast } from 'src/components/snackbar';
+import { useResetPasswordMutation } from 'src/store/Reducer/auth';
 
 // ----------------------------------------------------------------------
 
@@ -37,6 +41,8 @@ export function JwtResetPasswordView() {
   const router = useRouter();
   const newPassword = useBoolean();
   const confirmPassword = useBoolean();
+  const [errorMsg, setErrorMsg] = useState('');
+  const [resetPassword] = useResetPasswordMutation();
 
   const methods = useForm({
     resolver: zodResolver(ResetPasswordSchema),
@@ -45,8 +51,21 @@ export function JwtResetPasswordView() {
 
   const { handleSubmit, formState: { isSubmitting } } = methods;
 
-  const onSubmit = handleSubmit(async () => {
-    router.push(paths.auth.jwt.signIn);
+  const onSubmit = handleSubmit(async (data) => {
+    try {
+      const email = sessionStorage.getItem('forgot_email') ?? '';
+      await resetPassword({
+        email,
+        newpassword: data.newPassword,
+        retypenewpassword: data.confirmPassword,
+      }).unwrap();
+      sessionStorage.removeItem('forgot_email');
+      toast.success('Password reset successfully! Please sign in.');
+      router.push(paths.auth.jwt.signIn);
+    } catch (error) {
+      const msg = error?.data?.message ?? error?.data?.error ?? error?.message ?? 'Failed to reset password. Please try again.';
+      setErrorMsg(typeof msg === 'string' ? msg : 'Failed to reset password. Please try again.');
+    }
   });
 
   const fieldSx = {
@@ -78,7 +97,7 @@ export function JwtResetPasswordView() {
           py: 4,
         }}
       >
-        {/* Logos */}
+        {/* Logo + icon */}
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2, gap: 1 }}>
           <Box
             component="img"
@@ -97,6 +116,13 @@ export function JwtResetPasswordView() {
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5 }}>
           Your new password must be different from your previous password.
         </Typography>
+
+        {/* Error */}
+        {!!errorMsg && (
+          <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
+            {errorMsg}
+          </Alert>
+        )}
 
         {/* Form */}
         <Form methods={methods} onSubmit={onSubmit}>

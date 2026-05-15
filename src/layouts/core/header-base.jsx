@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSelector } from 'react-redux';
+import { selectUser } from 'src/store/slices/userSlice';
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
-import ChatHistoryDrawer from 'src/sections/active-sections/chat-me-view/components/chat-history-drawer';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
@@ -24,6 +25,7 @@ import {
 import { Logo } from 'src/components/logo';
 import { HeaderSection } from './header-section';
 import CustomSearchBar from 'src/components/custom-search-bar';
+import SearchOverlay from 'src/components/search-overlay/search-overlay';
 import { Icon } from '@iconify/react';
 import { MenuButton } from '../components/menu-button';
 import { SignInButton } from '../components/sign-in-button';
@@ -97,12 +99,6 @@ const StyledDivider = styled('span')(({ theme }) => ({
 
 // ----------------------------------------------------------------------
 
-const GARAGE_ROOM = {
-  id: 'garage',
-  name: 'My Garage',
-  color: '#4C4EFF',
-  isGarage: true,
-};
 
 // ----------------------------------------------------------------------
 
@@ -135,17 +131,34 @@ export function HeaderBase({
   const navigate = useNavigate();
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchAnchorRef = useRef(null);
+  const currentUser = useSelector(selectUser);
 
   const handleOpenGarage = () => {
-    if (location.pathname.startsWith('/home')) {
-      window.dispatchEvent(new CustomEvent('openRoom', { detail: GARAGE_ROOM }));
+    const garageData = currentUser?.garageRoom;
+    const garageRoom = {
+      id: garageData?._id ?? garageData?.id ?? 'garage',
+      _id: garageData?._id ?? garageData?.id ?? 'garage',
+      name: garageData?.name ?? 'Garage',
+      image: garageData?.image ?? '',
+      visibility: garageData?.visibility ?? 'personal',
+      isGarage: true,
+      color: '#4C4EFF',
+    };
+    const isExactHome = location.pathname === '/home' || location.pathname === '/home/';
+    if (isExactHome) {
+      window.dispatchEvent(new CustomEvent('openRoom', { detail: garageRoom }));
     } else {
-      navigate('/home', { state: { pendingRoom: GARAGE_ROOM } });
+      navigate('/home', { state: { pendingRoom: garageRoom } });
     }
   };
   const params = new URLSearchParams(location.search);
   const chatMeTab = params.get('tab') || 'prompts';
   const showChatMeActions = (location.pathname === '/home/chat-me' || location.pathname === '/home/banking') && chatMeTab === 'prompts';
+  const isActivityFeedPage = location.pathname.includes('/analytics');
+  const isHomePage = location.pathname === '/home' || location.pathname === '/home/';
 
   // Close all persistent right drawers on every page navigation
   useEffect(() => {
@@ -237,15 +250,21 @@ export function HeaderBase({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'flex-end',
                   gap: { xs: 1, sm: 1.5 },
                   width: '100%',
                   maxWidth: 600,
                 }}
               >
-                {/* -- Searchbar -- */}
-                {searchbar && (
-                  <Box sx={{ flex: 1, mr: 2 }}>
-                    <CustomSearchBar placeholder="Search Here.." />
+                {/* -- Searchbar (home page only) -- */}
+                {searchbar && isHomePage && (
+                  <Box ref={searchAnchorRef} sx={{ flex: 1, mr: 2 }}>
+                    <CustomSearchBar
+                      placeholder="Search Here.."
+                      value={searchQuery}
+                      onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                      onFocus={() => setSearchOpen(true)}
+                    />
                   </Box>
                 )}
 
@@ -394,14 +413,17 @@ export function HeaderBase({
         {...other}
       />
 
-      <ChatHistoryDrawer
-        open={chatHistoryOpen}
-        onClose={() => setChatHistoryOpen(false)}
-      />
-
       <AnnouncementModal
         open={announcementOpen}
         onClose={() => setAnnouncementOpen(false)}
+      />
+
+      <SearchOverlay
+        open={searchOpen}
+        onClose={() => { setSearchOpen(false); setSearchQuery(''); }}
+        anchorEl={searchAnchorRef.current}
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
       />
     </>
   );

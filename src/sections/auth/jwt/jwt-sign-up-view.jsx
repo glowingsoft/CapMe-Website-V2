@@ -28,6 +28,8 @@ import { Form, Field } from 'src/components/hook-form';
 import { RHFUploadAvatar } from 'src/components/hook-form/rhf-upload';
 
 import { toast } from 'src/components/snackbar';
+import { signUp } from 'src/auth/context/jwt/action';
+import { handleApiError } from 'src/store/handleApiError';
 
 // ----------------------------------------------------------------------
 
@@ -55,13 +57,21 @@ export function JwtSignUpView() {
   const { handleSubmit, watch, setValue, formState: { isSubmitting, errors } } = methods;
   const termsChecked = watch('terms');
 
-  const onSubmit = handleSubmit(async () => {
+  const onSubmit = handleSubmit(async (data) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success('Account created! Please sign in.');
-      router.push(paths.auth.jwt.signIn);
+      const response = await signUp({
+        name: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        phone: data.phoneNumber,
+      });
+      toast.success('Account created! Please verify your email.');
+      sessionStorage.setItem('otp_email', data.email);
+      router.push(paths.auth.jwt.verifyOtp);
     } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : error);
+      const msg = error?.data?.message ?? error?.message ?? 'Registration failed. Please try again.';
+      setErrorMsg(typeof msg === 'string' ? msg : 'Registration failed. Please try again.');
+      handleApiError(error);
     }
   });
 

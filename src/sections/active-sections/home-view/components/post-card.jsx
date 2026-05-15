@@ -15,20 +15,39 @@ import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
 import HashtagAction from 'src/components/hashtags/hashtag-action';
 import { toast } from 'src/components/snackbar';
-import { useLikeMessageMutation, useShareMessageMutation, usePinMessageMutation, useEditMessageMutation } from 'src/store/Reducer/rooms-api';
 import { selectUser } from 'src/store/slices/userSlice';
+import { getSocket } from 'src/socket/socket';
+import { chatSocketService } from 'src/socket/chatSocketService';
+import { useGetRoomByIdQuery } from 'src/store/Reducer/rooms-api';
 
 import FileMessage from './file-message';
+import HashtagModal from './hashtag-modal';
+import { AutoLinkPreview } from './message-link-preview';
 import ImagePreviewDialog from './image-preview-dialog';
 import MessageDeleteModal from './message-delete-modal';
 import MessageEditModal from './message-edit-modal';
 import ShareMessageModal from './share-message-modal';
 
-function renderWithHashtags(text) {
-    const parts = text.split(/(#[\p{L}\p{N}_]+)/u);
+function renderWithHashtags(text, onHashtagClick) {
+    const parts = text.split(/(https?:\/\/[^\s<>"{}|\\^`[\]]+|#[\p{L}\p{N}_]+)/u);
     return parts.map((part, i) =>
-        part.startsWith('#') ? (
-            <span key={i} style={{ color: '#4C4EFF', fontWeight: 600, cursor: 'pointer' }}>
+        part.startsWith('http') ? (
+            <a
+                key={i}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ color: '#4C4EFF', textDecoration: 'none', fontWeight: 500 }}
+            >
+                {part}
+            </a>
+        ) : part.startsWith('#') ? (
+            <span
+                key={i}
+                onClick={(e) => { e.stopPropagation(); onHashtagClick?.(part.slice(1)); }}
+                style={{ color: '#4C4EFF', fontWeight: 600, cursor: 'pointer' }}
+            >
                 {part}
             </span>
         ) : (
@@ -39,15 +58,21 @@ function renderWithHashtags(text) {
 
 const VISIBILITY_CONFIG = {
     public: { icon: 'solar:global-bold', label: 'Public', color: '#43a047' },
-    friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#4C4EFF' },
-    private: { icon: 'solar:lock-bold', label: 'Private', color: '#9e9e9e' },
+    // friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#4C4EFF' },
+    private: { icon: 'solar:lock-bold', label: 'Private', color: '#29b6f6' },
+    private_friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#7b5ea7' },
+    personal: { icon: 'solar:garage-bold', label: 'Personal', color: '#4C4EFF' },
 };
 
-function PostCardSubheader({ time, visibility }) {
-    const cfg = visibility ? VISIBILITY_CONFIG[visibility] : null;
+function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName }) {
+    // If visibility not on the message, fetch from its room
+    const needsFetch = !visibility && !!roomId;
+    const { data: roomData } = useGetRoomByIdQuery(roomId, { skip: !needsFetch });
+    const resolvedVisibility = visibility ?? roomData?.visibility ?? roomData?.roomVisibility ?? null;
+    const cfg = resolvedVisibility ? VISIBILITY_CONFIG[resolvedVisibility] : null;
 
     return (
-        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 0.2 }}>
+        <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 0.2, flexWrap: 'wrap' }}>
             <Typography fontSize={12} color="text.secondary" lineHeight={1}>
                 {time}
             </Typography>
@@ -62,11 +87,19 @@ function PostCardSubheader({ time, visibility }) {
                     </Stack>
                 </>
             )}
+            {!!roomname && !hideRoomName && (
+                <>
+                    <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: '#d0d0d0', flexShrink: 0 }} />
+                    <Typography fontSize={11} fontWeight={700} sx={{ color: '#4C4EFF', lineHeight: 1, whiteSpace: 'nowrap' }}>
+                        {roomname}
+                    </Typography>
+                </>
+            )}
         </Stack>
     );
 }
 
-function PostCard({ post, onCommentClick, onMenuAction }) {
+function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hideRoomName = false, menuActions = null }) {
     const currentUser = useSelector(selectUser);
     const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
 
@@ -79,83 +112,47 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
     );
 
     const [anchor, setAnchor] = useState(null);
-    const [liked, setLiked] = useState(isLikedByMe);
-    const [likeCount, setLikeCount] = useState(post.stats?.likes ?? 0);
+    const [hashtagModalTag, setHashtagModalTag] = useState(null);
+    const likeAction = String(post.likeAction ?? '').toLowerCase();
+    const liked = likeAction ? likeAction.includes('like') && !likeAction.includes('unlike') : isLikedByMe;
+    const likeCount = post.stats?.likes ?? 0;
     const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [shareOpen, setShareOpen] = useState(false);
 
-    // Sync whenever parent post data changes (room switch, backend refetch, or likeMessage event update)
-    React.useEffect(() => {
-        setLiked(isLikedByMe);
-        setLikeCount(post.stats?.likes ?? 0);
-    }, [post.id, post.stats?.likes, isLikedByMe]);
+    const isPinned = Boolean(post.isPinned ?? post.is_pin);
+    const isOwnPost = currentUserId && String(post.user?.id ?? post.user?._id ?? '') === String(currentUserId);
 
-    const [likeMessageApi] = useLikeMessageMutation();
-    const [shareMessageApi] = useShareMessageMutation();
-    const [pinMessageApi] = usePinMessageMutation();
-    const [editMessageApi] = useEditMessageMutation();
-
-    const isPinned = Boolean(post.isPinned);
-
-    const menuItems = useMemo(
-        () => [
+    const menuItems = useMemo(() => {
+        const all = [
             { label: 'Copy', icon: 'solar:copy-bold', action: 'copy' },
-            { label: 'Edit', icon: 'solar:pen-bold', action: 'edit' },
             { label: isPinned ? 'Unpin Message' : 'Pin Message', icon: 'solar:pin-bold', action: 'pin' },
-            { label: 'Delete', icon: 'solar:trash-bin-trash-bold', action: 'delete', danger: true },
-        ],
-        [isPinned]
-    );
+            ...(isOwnPost ? [
+                { label: 'Edit', icon: 'solar:pen-bold', action: 'edit' },
+                { label: 'Delete', icon: 'solar:trash-bin-trash-bold', action: 'delete', danger: true },
+            ] : []),
+        ];
+        return menuActions ? all.filter((item) => menuActions.includes(item.action)) : all;
+    }, [isPinned, isOwnPost, menuActions]);
 
     const openProfile = useCallback(() => {
         window.dispatchEvent(new CustomEvent('openUserProfile', { detail: post.user }));
     }, [post.user]);
 
-    const [likeLoading, setLikeLoading] = useState(false);
-
-    const handleLike = useCallback(async () => {
-        if (likeLoading) return;
-        setLikeLoading(true);
-        try {
-            const res = await likeMessageApi(post.id ?? post._id).unwrap();
-
-            // API returns { status, message, body: { likesCount } }
-            const newCount = res?.body?.likeCount ?? res?.likeCount ?? res?.body?.likesCount ?? res?.likesCount;
-            // Derive liked from explicit field OR from the message string
-            const rawMsg = res?.body?.message ?? res?.message ?? '';
-            let isNowLiked = res?.body?.liked ?? res?.liked;
-            if (isNowLiked === undefined) {
-                const lower = rawMsg.toLowerCase();
-                if (lower.includes('unlike')) isNowLiked = false;
-                else if (lower.includes('like')) isNowLiked = true;
-            }
-            // Final fallback: toggle
-            const resolvedLiked = isNowLiked !== undefined ? isNowLiked : !liked;
-            const resolvedCount = newCount !== undefined ? newCount : (resolvedLiked ? likeCount + 1 : Math.max(0, likeCount - 1));
-
-            setLiked(resolvedLiked);
-            setLikeCount(resolvedCount);
-
-            if (rawMsg) toast.success(rawMsg);
-
-            // Broadcast to parent (home-view) so localPosts stays in sync
-            window.dispatchEvent(
-                new CustomEvent('likeMessage', {
-                    detail: {
-                        messageId: post.id ?? post._id,
-                        liked: resolvedLiked,
-                        likeCount: resolvedCount,
-                    },
-                })
-            );
-        } catch {
-            toast.error('Could not update like. Please try again.');
-        } finally {
-            setLikeLoading(false);
+    const handleLike = useCallback(() => {
+        const socket = getSocket();
+        if (!socket?.connected) {
+            toast.error('Not connected. Please try again.');
+            return;
         }
-    }, [likeLoading, likeMessageApi, liked, likeCount, post.id, post._id]);
+
+        const messageId = post.id ?? post._id;
+        if (!messageId) return;
+        chatSocketService.likeMessage({ messageId });
+    }, [post.id, post._id]);
+
+    // Clear overrides — isLikedByMe and post.stats.likes are now up to date
 
     const handleComment = useCallback(() => {
         onCommentClick?.(post);
@@ -185,18 +182,16 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                     break;
 
                 case 'pin': {
+                    const socket = getSocket();
+                    if (!socket?.connected) {
+                        toast.error('Not connected. Please try again.');
+                        break;
+                    }
+
+                    const messageId = post.id ?? post._id;
+                    if (!messageId) break;
                     const nextPinned = !isPinned;
-                    pinMessageApi({ messageId: post.id ?? post._id, is_pin: nextPinned });
-                    window.dispatchEvent(
-                        new CustomEvent('pinMessage', {
-                            detail: {
-                                messageId: post.id,
-                                isPinned: nextPinned,
-                                message: post,
-                            },
-                        })
-                    );
-                    toast.success(nextPinned ? 'Message pinned' : 'Message unpinned');
+                    chatSocketService.pinMessage({ messageId, is_pin: nextPinned });
                     break;
                 }
 
@@ -214,19 +209,41 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
     );
 
     const handleConfirmDelete = useCallback(() => {
+        const socket = getSocket();
+        if (!socket?.connected) {
+            toast.error('Not connected. Please try again.');
+            return;
+        }
+
+        const messageId = post.id ?? post._id;
+        const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
+        if (!messageId || !roomId) return;
+
         setDeleteConfirmOpen(false);
-        window.dispatchEvent(new CustomEvent('deleteMessage', { detail: { messageId: post.id } }));
-        toast.success('Message deleted');
-    }, [post.id]);
+        chatSocketService.deleteMessage({ messageId, roomId });
+    }, [post.id, post._id, post.roomId, post.room?._id, post.room?.id]);
 
     const handleSaveEdit = useCallback(
         (newContent) => {
+            const socket = getSocket();
+            if (!socket?.connected) {
+                toast.error('Not connected. Please try again.');
+                return;
+            }
+
+            const messageId = post.id ?? post._id;
+            const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
+            if (!messageId || !roomId) return;
+
             setEditOpen(false);
-            editMessageApi({ messageId: post.id ?? post._id, content: newContent });
-            window.dispatchEvent(new CustomEvent('editMessage', { detail: { messageId: post.id, content: newContent } }));
-            toast.success('Message updated');
+            chatSocketService.editMessage({
+                messageId,
+                content: newContent,
+                roomId,
+                meta: post.meta ?? {},
+            });
         },
-        [editMessageApi, post.id, post._id]
+        [post.id, post._id, post.roomId, post.room?._id, post.room?.id, post.meta]
     );
 
     const openImagePreview = useCallback((e) => {
@@ -276,7 +293,7 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                             {post.user?.name}
                         </Typography>
                     }
-                    subheader={<PostCardSubheader time={post.time} visibility={post.visibility} />}
+                    subheader={<PostCardSubheader time={post.time} visibility={post.visibility} roomname={post.roomname} roomId={post.roomId} hideRoomName={hideRoomName} />}
                     action={
                         <>
                             <IconButton
@@ -337,33 +354,52 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                     }
                 />
 
-                {post.image && (
-                    <CardMedia
-                        component="img"
-                        image={post.image}
-                        alt="Post visual"
-                        loading="lazy"
-                        decoding="async"
-                        onClick={openImagePreview}
+                {post.meta?.url || post.content ? (
+                    <AutoLinkPreview text={post.content} meta={post.meta} noAutoFetch={noAutoFetch} />
+                ) : null}
+
+                {!post.meta?.url && post.image ? (
+                    <>
+                        <CardMedia
+                            component="img"
+                            image={post.image}
+                            alt="Post visual"
+                            loading="lazy"
+                            decoding="async"
+                            onClick={openImagePreview}
+                            sx={{
+                                width: '100%',
+                                height: 480,
+                                borderRadius: 2,
+                                objectFit: 'cover',
+                                display: 'block',
+                                cursor: 'pointer',
+                            }}
+                        />
+                        <ImagePreviewDialog
+                            open={imagePreviewOpen}
+                            src={post.image}
+                            alt="Post image preview"
+                            onClose={() => setImagePreviewOpen(false)}
+                        />
+                    </>
+                ) : null}
+
+                {post.attachments?.length > 0 && post.attachments.map((att, i) => (
+                    <Box
+                        key={i}
                         sx={{
-                            width: '100%',
-                            height: 480,
-                            borderRadius: 2,
-                            objectFit: 'cover',
-                            display: 'block',
-                            cursor: 'pointer',
+                            px: att.type?.startsWith('image/') ? 0 : 2.5,
+                            pt: 1.5,
+                            pb: att.type?.startsWith('image/') ? 0 : 0.5,
                         }}
-                    />
-                )}
+                    >
+                        <FileMessage file={att} />
+                    </Box>
+                ))}
 
-                <ImagePreviewDialog
-                    open={imagePreviewOpen}
-                    src={post.image}
-                    alt="Post image preview"
-                    onClose={() => setImagePreviewOpen(false)}
-                />
-
-                {post.file && (
+                {/* Legacy: locally-added file (no server upload) */}
+                {post.file && !post.attachments?.length && (
                     <Box
                         sx={{
                             px: post.file?.type?.startsWith('image/') ? 0 : 2.5,
@@ -377,14 +413,22 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
 
                 {(post.content || post.hashtags) && (
                     <CardContent sx={{ px: 2.5, pt: post.image ? 1.5 : 1, pb: '12px !important' }}>
-                        {post.content && (
-                            <Typography variant="body2" color="text.primary" lineHeight={1.7} sx={{ whiteSpace: 'pre-wrap' }}>
-                                {renderWithHashtags(post.content)}
-                            </Typography>
-                        )}
+                        {post.content && (() => {
+                            const urlInContent = post.meta?.url
+                                ? post.content.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/)?.[0] ?? post.meta.url
+                                : null;
+                            const displayContent = urlInContent
+                                ? post.content.replace(urlInContent, '').trim()
+                                : post.content;
+                            return displayContent ? (
+                                <Typography variant="body2" color="text.primary" lineHeight={1.7} sx={{ whiteSpace: 'pre-wrap' }}>
+                                    {renderWithHashtags(displayContent, setHashtagModalTag)}
+                                </Typography>
+                            ) : null;
+                        })()}
                         {post.hashtags && (
                             <Typography variant="body2" sx={{ mt: 0.5, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                                {renderWithHashtags(post.hashtags)}
+                                {renderWithHashtags(post.hashtags, setHashtagModalTag)}
                             </Typography>
                         )}
                     </CardContent>
@@ -427,7 +471,11 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                             </Typography>
                         </Stack>
 
-                        <HashtagAction text={`${post.content || ''} ${post.hashtags || ''}`} />
+                        <HashtagAction
+                            text={`${post.content || ''} ${post.hashtags || ''}`}
+                            roomId={post.roomId}
+                            onHashtagOpen={setHashtagModalTag}
+                        />
 
                         <Stack direction="row" spacing={0.7} alignItems="center" sx={{ cursor: 'pointer' }}>
                             <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
@@ -456,7 +504,13 @@ function PostCard({ post, onCommentClick, onMenuAction }) {
                 open={shareOpen}
                 onClose={() => setShareOpen(false)}
                 messageId={post.id ?? post._id}
-                shareApi={shareMessageApi}
+            />
+
+            <HashtagModal
+                open={!!hashtagModalTag}
+                onClose={() => setHashtagModalTag(null)}
+                hashtag={hashtagModalTag}
+                roomId={post.roomId}
             />
         </>
     );

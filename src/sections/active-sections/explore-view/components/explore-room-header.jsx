@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 import UnfollowModal from 'src/sections/active-sections/home-view/components/unfollow-modal';
+import { useCancelRoomRequestMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
 
 export default function ExploreRoomHeader({
   room,
@@ -25,16 +26,64 @@ export default function ExploreRoomHeader({
   const [reportOpen, setReportOpen] = useState(false);
   const [reportFeedback, setReportFeedback] = useState('');
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ open: false, message: '' });
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success', key: 0 });
+  const [toggleRoomFollow] = useToggleRoomFollowMutation();
+  const [cancelRoomRequest] = useCancelRoomRequestMutation();
 
-  const showToast = (message) => setToast({ open: true, message });
+  const showToast = (message, severity = 'success') =>
+    setToast((p) => ({ open: true, message, severity, key: p.key + 1 }));
   const hideToast = () => setToast((p) => ({ ...p, open: false }));
 
   const handleFollow = async () => {
+    const roomId = room?._id ?? room?.id;
+    if (!roomId) return;
+
+    // Cancel pending request
+    if (isPending) {
+      setLoading(true);
+      try {
+        const result = await cancelRoomRequest(roomId).unwrap();
+        if (result?.message) showToast(result.message, 'success');
+        onFollowToggle(roomId, { cancelled: true });
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false } }));
+      } catch {
+        showToast('Failed to cancel request. Please try again.', 'error');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 400)); // TODO: replace with API call
-    onFollowToggle(room._id);
-    setLoading(false);
+    try {
+      const result = await toggleRoomFollow(roomId).unwrap();
+      const msg = result?.message ?? '';
+      const isRequestSent = msg.toLowerCase().includes('request') || msg.toLowerCase().includes('sent');
+
+      if (isRequestSent && !isFollowing) {
+        // Pending request — not yet following
+        showToast(msg, 'info');
+        onFollowToggle(roomId, { isPending: true });
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+      } else {
+        // Actual follow/unfollow
+        const nextFollowing = !isFollowing;
+        if (msg) showToast(msg, 'success');
+        onFollowToggle(roomId);
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: nextFollowing, isPending: false } }));
+      }
+    } catch (err) {
+      const msg = err?.data?.message ?? err?.message ?? '';
+      if (msg.toLowerCase().includes('already sent')) {
+        showToast(msg, 'info');
+        onFollowToggle(roomId, { isPending: true });
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+      } else {
+        showToast('Failed to update. Please try again.', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const menuItems = [
@@ -51,7 +100,7 @@ export default function ExploreRoomHeader({
   ];
 
   let followLabel = isFollowing ? 'Following' : 'Follow';
-  if (isPending && !isFollowing) followLabel = 'Requested';
+  if (isPending && !isFollowing) followLabel = 'Request Sent';
   const memberCount = Number(room?.memberCount ?? 0);
   const showMemberCount = Number.isFinite(memberCount) && memberCount > 0;
 
@@ -149,14 +198,20 @@ export default function ExploreRoomHeader({
               height: 30,
               px: 2,
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: isPending ? 11 : 12,
               textTransform: 'none',
               borderRadius: 1.5,
-              bgcolor: isFollowing ? 'transparent' : '#4C4EFF',
-              color: isFollowing ? '#fff' : '#fff',
-              border: isFollowing ? '1.5px solid rgba(255,255,255,0.3)' : 'none',
+              bgcolor: isPending ? 'transparent' : isFollowing ? 'transparent' : '#4C4EFF',
+              color: isPending ? '#FFC107' : '#fff',
+              border: isPending
+                ? '1.5px solid rgba(255,193,7,0.5)'
+                : isFollowing
+                  ? '1.5px solid rgba(255,255,255,0.3)'
+                  : 'none',
               '&:hover': {
-                bgcolor: isFollowing ? 'rgba(255,255,255,0.08)' : '#3739b7',
+                bgcolor: isPending
+                  ? 'rgba(255,193,7,0.08)'
+                  : isFollowing ? 'rgba(255,255,255,0.08)' : '#3739b7',
               },
               '&.Mui-disabled': { opacity: 0.6 },
             }}
@@ -182,8 +237,7 @@ export default function ExploreRoomHeader({
         onClose={() => setMenuAnchor(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        PaperProps={{
-          sx: {
+        slotProps={{ paper: { sx: {
             mt: 1,
             width: 200,
             borderRadius: 2.5,
@@ -200,8 +254,7 @@ export default function ExploreRoomHeader({
               transform: 'rotate(45deg)',
               boxShadow: '-3px -3px 5px rgba(0,0,0,0.03)',
             },
-          },
-        }}
+          } } }}
       >
         <Box sx={{ p: 1.5, position: 'relative', zIndex: 1, bgcolor: '#fff', borderRadius: 2.5 }}>
           {menuItems.map((item, i) => (
@@ -250,12 +303,13 @@ export default function ExploreRoomHeader({
       />
 
       <Snackbar
+        key={toast.key}
         open={toast.open}
-        autoHideDuration={3000}
+        autoHideDuration={2500}
         onClose={hideToast}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <Alert onClose={hideToast} severity="success" variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
+        <Alert onClose={hideToast} severity={toast.severity} variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
           {toast.message}
         </Alert>
       </Snackbar>

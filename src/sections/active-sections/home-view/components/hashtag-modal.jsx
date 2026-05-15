@@ -6,14 +6,17 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { useGetMessagesByTagQuery } from 'src/store/Reducer/rooms-api';
 
 import PostCard from './post-card';
 
-// Expects: open, onClose, hashtag (without #), roomId, onMessageClick
-export default function HashtagModal({ open, onClose, hashtag, roomId, onMessageClick }) {
+// Expects: open, onClose, hashtag (without #), roomId
+export default function HashtagModal({ open, onClose, hashtag, roomId }) {
     const tagKey = hashtag?.startsWith('#') ? hashtag.slice(1) : hashtag;
+    const navigate = useNavigate();
+    const location = useLocation();
 
     const { data, isLoading } = useGetMessagesByTagQuery(
         { tag: tagKey, roomId },
@@ -23,7 +26,20 @@ export default function HashtagModal({ open, onClose, hashtag, roomId, onMessage
     const messages = data?.messages ?? [];
 
     const handleMessageCardClick = (msg) => {
-        onMessageClick?.(msg);
+        const msgRoomId = msg.roomId ?? roomId;
+        const msgRoomName = msg.roomname ?? '';
+        if (!msgRoomId) return;
+
+        onClose();
+
+        const room = { id: msgRoomId, _id: msgRoomId, name: msgRoomName };
+        const messageId = msg.id ?? msg._id;
+
+        if (location.pathname?.startsWith('/home')) {
+            window.dispatchEvent(new CustomEvent('openRoomMessage', { detail: { room, message: { ...msg, _id: messageId, id: messageId } } }));
+        } else {
+            navigate('/home', { state: { pendingRoom: room, pendingMessageId: messageId } });
+        }
     };
 
     return (
@@ -51,7 +67,7 @@ export default function HashtagModal({ open, onClose, hashtag, roomId, onMessage
                                         '&:hover': { opacity: 0.85 },
                                     }}
                                 >
-                                    <PostCard post={msg} onCommentClick={() => handleMessageCardClick(msg)} />
+                                    <PostCard post={msg} onCommentClick={() => handleMessageCardClick(msg)} noAutoFetch hideRoomName />
                                 </Box>
                             ))
                         )}

@@ -29,7 +29,7 @@ function InterestCard({ title, score, confidence, description, tags = [] }) {
         </Box>
 
         <Stack direction="row" alignItems="center" spacing={0.8} sx={{ flexShrink: 0 }}>
-          <Typography fontSize={12} fontWeight={800} color="#4C4EFF">
+          <Typography fontSize={16} fontWeight={800} color="#4C4EFF">
             {safeScore}
           </Typography>
           <IconButton size="small" sx={{ p: 0.3, color: '#4C4EFF' }}>
@@ -76,19 +76,18 @@ function InterestCard({ title, score, confidence, description, tags = [] }) {
       </Typography>
 
       {/* Tags */}
-      <Stack direction="row" spacing={1.2} flexWrap="wrap" sx={{ mt: 2 }}>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2, gap: 1 }}>
         {tags.map((t) => (
           <Box
             key={t}
             sx={{
-              px: 2.5,
-              py: 1.2,
+              px: 1.5,
+              py: 0.5,
               borderRadius: 2,
-              bgcolor: '#f3f3f4',
-              fontWeight: 800,
-              fontSize: 12.5,
-              minWidth: 120,
-              textAlign: 'center',
+              bgcolor: 'rgba(76,78,255,0.08)',
+              color: '#4C4EFF',
+              fontWeight: 500,
+              fontSize: 12,
             }}
           >
             {t}

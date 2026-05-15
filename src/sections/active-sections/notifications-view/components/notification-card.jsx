@@ -5,33 +5,22 @@ import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 
 const ICON_BY_TYPE = {
-  comment: 'mingcute:chat-3-line',
-  like: 'ic:round-favorite-border',
+  comment: 'solar:chat-round-bold',
+  like: 'solar:like-bold',
   mention: 'mingcute:at-line',
   invite: 'solar:user-plus-bold',
+  follow: 'solar:user-check-bold',
+  room: 'solar:users-group-rounded-bold',
   message: 'solar:chat-round-dots-bold',
   system: 'solar:shield-check-bold',
 };
 
-export default function NotificationCard({ notification, onClick }) {
+export default function NotificationCard({ notification }) {
   const icon = ICON_BY_TYPE[notification.type] ?? 'solar:bell-bold';
   const isUnread = notification.read === false;
 
-  const handleClick = () => {
-    onClick?.();
-    if (notification.user) {
-      window.dispatchEvent(new CustomEvent('openUserProfile', { detail: notification.user }));
-    }
-  };
-
   return (
     <Box
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleClick();
-      }}
       sx={{
         bgcolor: isUnread ? 'rgba(76,78,255,0.06)' : '#fff',
         borderRadius: 3,
@@ -39,15 +28,10 @@ export default function NotificationCard({ notification, onClick }) {
         py: 1.8,
         boxShadow: '0px 10px 24px rgba(0,0,0,0.06)',
         border: isUnread ? '1px solid rgba(76,78,255,0.25)' : '1px solid rgba(0,0,0,0.06)',
-        cursor: 'pointer',
-        transition: 'transform 0.12s, box-shadow 0.12s, border-color 0.12s, background-color 0.12s',
+        transition: 'transform 0.12s, box-shadow 0.12s',
         '&:hover': {
           transform: 'translateY(-1px)',
           boxShadow: '0px 14px 30px rgba(0,0,0,0.08)',
-        },
-        '&:focus-visible': {
-          outline: '2px solid rgba(76,78,255,0.45)',
-          outlineOffset: 2,
         },
       }}
     >

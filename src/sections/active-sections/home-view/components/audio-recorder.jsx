@@ -11,14 +11,17 @@ const formatTime = (s) =>
 
 const BAR_HEIGHTS = Array.from({ length: 180 }, () => 8 + Math.floor(Math.random() * 22));
 
-// Best MIME type this browser supports for recording
+// Prefer AAC/MP4 for React Native and mobile playback. Some browsers, especially
+// Chromium builds, only support WebM recording, so WebM remains a fallback.
 const MIME_TYPE = (() => {
   if (typeof MediaRecorder === 'undefined') return '';
   const candidates = [
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/aac',
     'audio/webm;codecs=opus',
     'audio/webm',
     'audio/ogg;codecs=opus',
-    'audio/mp4',
   ];
   const chosen = candidates.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
   // console.log('[AudioRecorder] selected MIME_TYPE:', chosen || '(browser default)');
@@ -28,7 +31,8 @@ const MIME_TYPE = (() => {
 function normalizeType(rawType) {
   const lower = (rawType || MIME_TYPE || 'audio/webm').toLowerCase();
   if (lower.includes('ogg')) return { type: 'audio/ogg', ext: 'ogg' };
-  if (lower.includes('mp4')) return { type: 'audio/mp4', ext: 'mp4' };
+  if (lower.includes('mp4')) return { type: 'audio/mp4', ext: 'm4a' };
+  if (lower.includes('aac')) return { type: 'audio/aac', ext: 'aac' };
   return { type: 'audio/webm', ext: 'webm' };
 }
 

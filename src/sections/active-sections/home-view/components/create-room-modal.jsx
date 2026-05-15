@@ -3,6 +3,7 @@ import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogContent from '@mui/material/DialogContent';
 import IconButton from '@mui/material/IconButton';
@@ -10,8 +11,17 @@ import InputBase from '@mui/material/InputBase';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
 import Snackbar from '@mui/material/Snackbar';
+import { useCreateRoomMutation, useUpdateRoomMutation } from 'src/store/Reducer/rooms-api';
+import { useLazySearchUsersQuery, useUploadChatFilesMutation } from 'src/store/Reducer/auth';
+import { selectUser } from 'src/store/slices/userSlice';
+
+const cleanUrl = (s) => {
+  if (!s || typeof s !== 'string') return '';
+  return s.replace(/^https?:\/\/[^/]+(\/https?:\/\/.+)$/, (_, rest) => rest.slice(1)).trim();
+};
 
 function toSlug(value) {
   return value
@@ -37,21 +47,23 @@ function Field({ label, hint, children }) {
 const VISIBILITY_OPTIONS = [
   { id: 'public', icon: 'solar:global-bold', label: 'Public', note: 'Anyone in the workspace can join' },
   { id: 'private', icon: 'solar:lock-bold', label: 'Private', note: 'Only invited members can see this room' },
-  { id: 'friends', icon: 'solar:users-group-rounded-bold', label: 'Friends', note: 'Only your friends can see and join this room' },
+  { id: 'private_friends', icon: 'solar:users-group-rounded-bold', label: 'Friends', note: 'Only your friends can see and join this room' },
 ];
 
-// Mock user suggestions for invite
-const MOCK_USERS = [
-  { id: 'u1', name: 'Alice Johnson', email: 'alice@example.com', avatar: '' },
-  { id: 'u2', name: 'Bob Smith', email: 'bob@example.com', avatar: '' },
-  { id: 'u3', name: 'Carol Williams', email: 'carol@example.com', avatar: '' },
-  { id: 'u4', name: 'David Brown', email: 'david@example.com', avatar: '' },
-  { id: 'u5', name: 'Eva Martinez', email: 'eva@example.com', avatar: '' },
-  { id: 'u6', name: 'Frank Lee', email: 'frank@example.com', avatar: '' },
-];
 
 export default function CreateRoomModal({ open, onClose, onCreate, editMode = false, initialValues = null }) {
-  const [photo, setPhoto] = useState(null);
+  const currentUser = useSelector(selectUser);
+  const currentUserId = String(currentUser?.basicInfo?._id ?? currentUser?._id ?? currentUser?.id ?? currentUser?.userId ?? currentUser?.user?._id ?? '');
+  const [createRoom, { isLoading: isCreating }] = useCreateRoomMutation();
+  const [updateRoom, { isLoading: isUpdating }] = useUpdateRoomMutation();
+  const [uploadFile] = useUploadChatFilesMutation();
+  const [searchUsers, { data: userSearchResults, isFetching: isSearching }] = useLazySearchUsersQuery();
+  const searchDebounceRef = useRef(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const isLoading = isUploading || isCreating || isUpdating;
+
+  const [photo, setPhoto] = useState(null);       // preview (data URL or existing URL)
+  const [photoFile, setPhotoFile] = useState(null); // raw File for upload
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -64,22 +76,33 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
 
   const photoInputRef = useRef(null);
   const tagInputRef = useRef(null);
-  const [toast, setToast] = useState({
-    open: false,
-    message: '',
-  });
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     if (open && editMode && initialValues) {
-      setPhoto(initialValues.image || null);
-      setName(initialValues.name || '');
-      setSlug(toSlug(initialValues.name || ''));
-      setDescription(initialValues.description || '');
-      setTags(initialValues.tags || []);
-      setVisibility((initialValues.visibility || 'public').toLowerCase());
-      setInvited([]);
+      const image = cleanUrl(initialValues.image ?? initialValues.icon ?? '') || null;
+      setPhoto(image);
+      setPhotoFile(null);
+      setName(initialValues.name ?? '');
+      setSlug(toSlug(initialValues.name ?? ''));
+      setDescription(initialValues.description ?? initialValues.desc ?? '');
+      setTags(Array.isArray(initialValues.tags) ? initialValues.tags : []);
+      setVisibility((initialValues.visibility ?? 'public').toLowerCase());
+      setTagInput('');
+      setInviteInput('');
+      setSuggestions([]);
+      const mappedMembers = (initialValues.members ?? [])
+        .filter((m) => String(m.id ?? m._id ?? '') !== currentUserId)
+        .map((m) => ({
+          id: m.id ?? m._id,
+          name: m.name ?? m.email ?? '',
+          email: m.email ?? '',
+          avatar: m.image ?? m.avatar ?? '',
+        }));
+      setInvited(mappedMembers);
     } else if (!open) {
       setPhoto(null);
+      setPhotoFile(null);
       setName('');
       setSlug('');
       setDescription('');
@@ -90,13 +113,22 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
       setInvited([]);
       setSuggestions([]);
     }
-    setToast({ open: false, message: '' });
+    setToast({ open: false, message: '', severity: 'success' });
   }, [open]);
+
+  useEffect(() => {
+    if (!inviteInput) return;
+    const filtered = (userSearchResults ?? [])
+      .filter((u) => !invited.find((i) => i.id === u.id))
+      .slice(0, 5);
+    setSuggestions(filtered);
+  }, [userSearchResults, invited, inviteInput]);
 
   // --- Photo ---
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setPhoto(ev.target.result);
     reader.readAsDataURL(file);
@@ -133,15 +165,9 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
   const handleInviteInput = (e) => {
     const val = e.target.value;
     setInviteInput(val);
+    clearTimeout(searchDebounceRef.current);
     if (val.length >= 1) {
-      const q = val.toLowerCase();
-      setSuggestions(
-        MOCK_USERS.filter(
-          (u) =>
-            !invited.find((i) => i.id === u.id) &&
-            (u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
-        ).slice(0, 5)
-      );
+      searchDebounceRef.current = setTimeout(() => searchUsers(val), 300);
     } else {
       setSuggestions([]);
     }
@@ -173,32 +199,41 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
   const removeInvitee = (id) => setInvited((prev) => prev.filter((i) => i.id !== id));
 
 
-  const showToast = (message) => setToast({ open: true, message });
-  const hideToast = () =>
-    setToast((prev) => ({
-      ...prev,
-      open: false,
-    }));
+  const showToast = (message, severity = 'success') => setToast({ open: true, message, severity });
+  const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
-
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) return;
+    try {
+      let imageName = '';
+      if (photoFile) {
+        setIsUploading(true);
+        const uploadResult = await uploadFile(photoFile).unwrap();
+        setIsUploading(false);
+        const fileData = Array.isArray(uploadResult) ? uploadResult[0] : uploadResult;
+        imageName = fileData?.fileName ?? fileData?.fileUrl ?? '';
+      }
 
-    onCreate?.({
-      photo,
-      name: name.trim(),
-      slug,
-      description: description.trim(),
-      tags,
-      visibility,
-      invited,
-    });
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        tags,
+        visibility,
+        members: invited.map((u) => u.id),
+        ...(imageName ? { image: imageName } : {}),
+      };
 
-    showToast(editMode ? 'Room updated successfully' : 'Room created successfully');
+      const result = editMode
+        ? await updateRoom({ id: initialValues?._id ?? initialValues?.id, ...payload }).unwrap()
+        : await createRoom({ ...payload, image: imageName }).unwrap();
 
-    setTimeout(() => {
-      onClose();
-    }, 300);
+      showToast(editMode ? 'Room updated successfully' : 'Room created successfully');
+      onCreate?.(result?.body ?? result);
+      setTimeout(() => onClose(), 300);
+    } catch {
+      setIsUploading(false);
+      showToast(editMode ? 'Failed to update room. Please try again.' : 'Failed to create room. Please try again.', 'error');
+    }
   };
 
   const selectedVisibility = VISIBILITY_OPTIONS.find((o) => o.id === visibility);
@@ -222,7 +257,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
       >
         <Alert
           onClose={hideToast}
-          severity="success"
+          severity={toast.severity ?? 'success'}
           variant="filled"
           sx={{ borderRadius: 2, fontWeight: 600 }}
         >
@@ -292,8 +327,13 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                     <Box
                       component="img"
                       src={photo}
+                      onError={() => setPhoto(null)}
                       sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
+                  ) : name ? (
+                    <Typography fontSize={28} fontWeight={700} sx={{ color: '#4C4EFF', userSelect: 'none' }}>
+                      {name.charAt(0).toUpperCase()}
+                    </Typography>
                   ) : (
                     <Iconify icon="solar:camera-add-bold" width={26} style={{ color: '#9e9e9e' }} />
                   )}
@@ -426,7 +466,8 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                       fontWeight: 600,
                       fontSize: 12,
                       height: 26,
-                      '& .MuiChip-deleteIcon': { color: '#4C4EFF', fontSize: 14 },
+                      '& .MuiChip-deleteIcon': { color: '#4C4EFF', fontSize: 14, '&:hover': { color: '#fff' } },
+                      '&:hover': { bgcolor: '#4C4EFF', color: '#fff' },
                     }}
                   />
                 ))}
@@ -507,7 +548,9 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                         fontWeight: 600,
                         fontSize: 12,
                         height: 28,
-                        '& .MuiChip-deleteIcon': { color: '#4C4EFF', fontSize: 14 },
+                        '& .MuiChip-deleteIcon': { color: '#4C4EFF', fontSize: 14, '&:hover': { color: '#fff' } },
+                        '&:hover': { bgcolor: '#4C4EFF', color: '#fff' },
+                        '&:hover .MuiChip-avatar': { bgcolor: 'rgba(255,255,255,0.25)' },
                       }}
                     />
                   ))}
@@ -541,8 +584,15 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                   />
                 </Box>
 
+                {/* Searching indicator */}
+                {isSearching && inviteInput && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                    <CircularProgress size={16} />
+                  </Box>
+                )}
+
                 {/* Suggestions dropdown */}
-                {suggestions.length > 0 && (
+                {!isSearching && suggestions.length > 0 && (
                   <Box
                     sx={{
                       position: 'absolute',
@@ -611,9 +661,9 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
             <Button
               fullWidth
               variant="contained"
-              disabled={!name.trim()}
+              disabled={!name.trim() || isLoading}
               onClick={handleCreate}
-              endIcon={<Iconify icon="mingcute:arrow-right-line" width={18} />}
+              endIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <Iconify icon="mingcute:arrow-right-line" width={18} />}
               sx={{
                 bgcolor: '#4C4EFF',
                 color: '#fff',

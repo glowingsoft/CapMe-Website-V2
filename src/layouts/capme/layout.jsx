@@ -6,15 +6,10 @@ import Avatar from '@mui/material/Avatar';
 import { LayoutSection } from 'src/layouts/core/layout-section';
 import Typography from '@mui/material/Typography';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectUser } from 'src/store/slices/userSlice';
 import AnnouncementModal from 'src/layouts/components/announcement-modal';
 import { Main } from './main';
-
-const GARAGE_ROOM = {
-  id: 'garage',
-  name: 'My Garage',
-  color: '#4C4EFF',
-  isGarage: true,
-};
 
 function HeaderRailLogo() {
   return (
@@ -151,12 +146,25 @@ function DefaultHeaderRight() {
   const navigate = useNavigate();
   const location = useLocation();
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const currentUser = useSelector(selectUser);
+  const garageRoomData = currentUser?.garageRoom;
+
+  const garageRoom = {
+    id: garageRoomData?._id ?? garageRoomData?.id ?? 'garage',
+    _id: garageRoomData?._id ?? garageRoomData?.id ?? 'garage',
+    name: garageRoomData?.name ?? 'Garage',
+    image: garageRoomData?.image ?? '',
+    visibility: garageRoomData?.visibility ?? 'personal',
+    isGarage: true,
+    color: '#4C4EFF',
+  };
 
   const handleOpenGarage = () => {
-    if (location.pathname.startsWith('/home')) {
-      window.dispatchEvent(new CustomEvent('openRoom', { detail: GARAGE_ROOM }));
+    const isExactHome = location.pathname === '/home' || location.pathname === '/home/';
+    if (isExactHome) {
+      window.dispatchEvent(new CustomEvent('openRoom', { detail: garageRoom }));
     } else {
-      navigate('/home', { state: { pendingRoom: GARAGE_ROOM } });
+      navigate('/home', { state: { pendingRoom: garageRoom } });
     }
   };
 
@@ -194,9 +202,11 @@ function DefaultHeaderRight() {
 
         <Avatar
           alt="Profile"
-          src="https://i.pravatar.cc/112?img=12"
-          sx={{ width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 }, border: '1px solid #FFFFFF4D' }}
-        />
+          src={currentUser?.image?.includes('noImg') ? undefined : currentUser?.image}
+          sx={{ width: { xs: 48, md: 56 }, height: { xs: 48, md: 56 }, border: '1px solid #FFFFFF4D', bgcolor: '#4C4EFF', fontWeight: 700, fontSize: 20, color: '#fff' }}
+        >
+          {currentUser?.name?.charAt(0).toUpperCase()}
+        </Avatar>
       </Box>
 
       <AnnouncementModal
