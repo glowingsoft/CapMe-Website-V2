@@ -5,8 +5,6 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
-import Snackbar from '@mui/material/Snackbar';
-import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -14,6 +12,8 @@ import Skeleton from '@mui/material/Skeleton';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { useTranslate } from 'src/locales';
+import { toast } from 'src/components/snackbar';
 import { fDate } from 'src/utils/format-time';
 import { ConfirmModal } from 'src/components/custom-dialog';
 import { useSelector } from 'react-redux';
@@ -22,11 +22,11 @@ import DrawerHeader from './drawer-header';
 import RoomInfoSkeleton from './room-info-skeleton';
 
 const VISIBILITY_CONFIG = {
-    public: { icon: 'solar:global-bold', label: 'Public', color: '#43a047', bg: 'rgba(67,160,71,0.1)' },
-    friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#4C4EFF', bg: 'rgba(76,78,255,0.1)' },
-    private: { icon: 'solar:lock-bold', label: 'Private', color: '#29b6f6', bg: 'rgba(41,182,246,0.1)' },
-    private_friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#7b5ea7', bg: 'rgba(123,94,167,0.1)' },
-    personal: { icon: 'solar:garage-bold', label: 'Personal', color: '#4C4EFF', bg: 'rgba(76,78,255,0.1)' },
+    public: { icon: 'solar:global-bold', labelKey: 'search.visibility_public', color: '#43a047', bg: 'rgba(67,160,71,0.1)' },
+    friends: { icon: 'solar:users-group-rounded-bold', labelKey: 'search.visibility_private_friends', color: '#4C4EFF', bg: 'rgba(76,78,255,0.1)' },
+    private: { icon: 'solar:lock-bold', labelKey: 'search.visibility_private', color: '#29b6f6', bg: 'rgba(41,182,246,0.1)' },
+    private_friends: { icon: 'solar:users-group-rounded-bold', labelKey: 'search.visibility_private_friends', color: '#7b5ea7', bg: 'rgba(123,94,167,0.1)' },
+    personal: { icon: 'solar:garage-bold', labelKey: 'search.visibility_personal', color: '#4C4EFF', bg: 'rgba(76,78,255,0.1)' },
 };
 import RoomMediaPanel from './room-media-panel';
 import UnfollowModal from './unfollow-modal';
@@ -80,12 +80,12 @@ export default function RoomInformation({
     onDeleteRoom,
     onRemoveFollower,
 }) {
+    const { t } = useTranslate('common');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [removeModalOpen, setRemoveModalOpen] = useState(false);
     const [removingFollower, setRemovingFollower] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
     const [reportFeedback, setReportFeedback] = useState('');
-    const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
     const [showMedia, setShowMedia] = useState(false);
     const [removedMemberIds, setRemovedMemberIds] = useState([]);
     const [apiMembers, setApiMembers] = useState([]);
@@ -155,8 +155,6 @@ export default function RoomInformation({
         };
     }, []);
 
-    const showToast = (message, severity = 'success') => setToast({ open: true, message, severity });
-    const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
     const roomName = freshRoom?.name ?? room?.name ?? 'Creative Rooms';
     const roomDescription = freshRoom?.description ?? room?.description ?? 'This is new room';
@@ -209,11 +207,11 @@ export default function RoomInformation({
         setDeleteModalOpen(false);
         try {
             await deleteRoom(roomId).unwrap();
-            showToast('Room deleted successfully');
+            toast.success(t('room_info.toast_deleted'));
             onDeleteRoom?.();
             onClose?.();
         } catch (err) {
-            showToast(err?.data?.message ?? 'Failed to delete room', 'error');
+            toast.error(err?.data?.message ?? 'Failed to delete room');
         }
     };
 
@@ -222,7 +220,7 @@ export default function RoomInformation({
 
         const memberId = removingFollower?.memberId ?? removingFollower?.id;
         if (!roomId || !memberId) {
-            showToast(!roomId ? 'Missing room id' : 'Missing member id', 'error');
+            toast.error(!roomId ? 'Missing room id' : 'Missing member id');
             return;
         }
 
@@ -234,13 +232,13 @@ export default function RoomInformation({
             setRemovedMemberIds((prev) => [...prev, String(memberId), String(removingFollower?.id ?? '')].filter(Boolean));
             onRemoveFollower?.(removingFollower);
             setRemovingFollower(null);
-            showToast('Member removed successfully');
+            toast.success(t('room_info.toast_removed'));
         } catch (error) {
             console.error('removeRoomMember failed', {
                 payload: { roomId, memberId },
                 error,
             });
-            showToast(error?.data?.message ?? 'Failed to remove member', 'error');
+            toast.error(error?.data?.message ?? 'Failed to remove member');
         }
     };
 
@@ -248,7 +246,7 @@ export default function RoomInformation({
         // TODO: call report API with reportFeedback
         setReportOpen(false);
         setReportFeedback('');
-        showToast('Room reported successfully');
+        toast.success(t('room_info.toast_reported'));
     };
 
     return (
@@ -316,7 +314,7 @@ export default function RoomInformation({
                                 <Iconify icon="solar:calendar-bold" width={18} sx={{ color: 'text.primary' }} />
 
                                 <Typography variant="body2" color="text.secondary">
-                                    Created on&nbsp; {createdAt}
+                                    {t('room_info.created_on')}&nbsp; {createdAt}
                                 </Typography>
                             </Stack>
                         </Stack>
@@ -324,7 +322,7 @@ export default function RoomInformation({
                         {/* Description */}
                         <Box sx={{ px: 2, pb: 2 }}>
                             <Typography fontWeight={700} fontSize={14} sx={{ mb: 1 }}>
-                                Description
+                                {t('room_info.description')}
                             </Typography>
 
                             <Box
@@ -351,7 +349,7 @@ export default function RoomInformation({
                             return (
                                 <Box sx={{ px: 2, pb: 2 }}>
                                     <Typography fontWeight={700} fontSize={14} sx={{ mb: 1 }}>
-                                        Visibility
+                                        {t('room_info.visibility')}
                                     </Typography>
 
                                     <Stack
@@ -382,12 +380,12 @@ export default function RoomInformation({
                                         </Box>
                                         <Box>
                                             <Typography fontSize={13} fontWeight={700} sx={{ color: cfg.color }}>
-                                                {cfg.label}
+                                                {t(cfg.labelKey)}
                                             </Typography>
                                             <Typography fontSize={11} color="text.secondary">
-                                                {key === 'public' && 'Anyone can find and join this room'}
-                                                {key === 'private' && 'Only invited members can see this room'}
-                                                {(key === 'friends' || key === 'private_friends') && 'Only your friends can see and join'}
+                                                {key === 'public' && t('room_info.visibility_public_note')}
+                                                {key === 'private' && t('room_info.visibility_private_note')}
+                                                {(key === 'friends' || key === 'private_friends') && t('room_info.visibility_friends_note')}
                                             </Typography>
                                         </Box>
                                     </Stack>
@@ -400,7 +398,7 @@ export default function RoomInformation({
                         {roomTags.length > 0 && (
                             <Box sx={{ px: 2, pb: 2 }}>
                                 <Typography fontWeight={700} fontSize={14} sx={{ mb: 1 }}>
-                                    Tags
+                                    {t('room_info.tags')}
                                 </Typography>
 
                                 <Stack direction="row" flexWrap="wrap" gap={0.75}>
@@ -448,7 +446,7 @@ export default function RoomInformation({
                             >
                                 <Iconify icon="solar:download-minimalistic-bold" width={19} sx={{ color: '#555' }} />
                                 <Typography fontSize={14} fontWeight={600} color="#111">
-                                    Downloaded Media
+                                    {t('room_info.downloaded_media')}
                                 </Typography>
                             </Box>
 
@@ -470,7 +468,7 @@ export default function RoomInformation({
                                 >
                                     <Iconify icon="solar:trash-bin-trash-bold" width={19} sx={{ color: '#555' }} />
                                     <Typography fontSize={14} fontWeight={600} color="#111">
-                                        Delete Room
+                                        {t('room_info.delete_room')}
                                     </Typography>
                                 </Box>
                             )}
@@ -493,7 +491,7 @@ export default function RoomInformation({
                                 <Iconify icon="material-symbols:report-rounded" width={19} sx={{ color: '#C40000' }} />
 
                                 <Typography fontSize={14} fontWeight={600} color="#C40000">
-                                    Report
+                                    {t('room_info.report')}
                                 </Typography>
                             </Box>
                         </Stack>
@@ -501,7 +499,7 @@ export default function RoomInformation({
                         {/* Members — admin only */}
                         {isRoomAdmin && <Box sx={{ px: 2, pb: 3 }}>
                             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                <Typography fontWeight={700} fontSize={14}>Members</Typography>
+                                <Typography fontWeight={700} fontSize={14}>{t('room_info.members')}</Typography>
                                 <Typography fontSize={12} color="text.secondary" fontWeight={600}>{members.length}</Typography>
                             </Stack>
 
@@ -531,7 +529,7 @@ export default function RoomInformation({
                                 </Stack>
                             ) : members.length === 0 ? (
                                 <Typography fontSize={14} color="text.disabled" textAlign="center" sx={{ py: 3 }}>
-                                    No members yet.
+                                    {t('room_info.no_members')}
                                 </Typography>
                             ) : (
                                 <Stack spacing={1}>
@@ -624,9 +622,9 @@ export default function RoomInformation({
                     onClose={() => setDeleteModalOpen(false)}
                     onConfirm={handleConfirmDelete}
                     loading={isDeletingRoom}
-                    title="Delete Room"
-                    description={`Are you sure you want to delete "${roomName}"? This action cannot be undone.`}
-                    confirmLabel="Delete"
+                    title={t('room_info.delete_modal_title')}
+                    description={t('room_info.delete_modal_description', { roomName })}
+                    confirmLabel={t('room_info.delete_modal_confirm')}
                     confirmColor="#C40000"
                     icon="solar:trash-bin-trash-bold"
                     iconColor="#C40000"
@@ -640,9 +638,9 @@ export default function RoomInformation({
                     onClose={() => setRemoveModalOpen(false)}
                     onConfirm={handleConfirmRemove}
                     loading={isRemovingMember}
-                    title="Remove Follower"
-                    description={removingFollower ? `Are you sure you want to remove "${removingFollower.name}" from this room?` : ''}
-                    confirmLabel="Remove"
+                    title={t('room_info.remove_modal_title')}
+                    description={removingFollower ? t('room_info.remove_modal_description', { memberName: removingFollower.name }) : ''}
+                    confirmLabel={t('room_info.remove_modal_confirm')}
                     confirmColor="#B90000"
                     icon="solar:user-minus-bold"
                     iconColor="#B90000"
@@ -655,31 +653,15 @@ export default function RoomInformation({
                 onClose={() => { setReportOpen(false); setReportFeedback(''); }}
                 onConfirm={handleConfirmReport}
                 roomName={roomName}
-                title="Report Room"
+                title={t('room_info.report_modal_title')}
                 icon="material-symbols:report-rounded"
                 iconBgColor="#4C4EFF"
-                confirmLabel="Submit"
+                confirmLabel={t('room_info.report_modal_confirm')}
                 confirmColor="#4C4EFF"
                 feedback={reportFeedback}
                 onFeedbackChange={setReportFeedback}
             />
 
-            {/* Toast */}
-            <Snackbar
-                open={toast.open}
-                autoHideDuration={3000}
-                onClose={hideToast}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            >
-                <Alert
-                    onClose={hideToast}
-                    severity={toast.severity}
-                    variant="filled"
-                    sx={{ borderRadius: 2, fontWeight: 600 }}
-                >
-                    {toast.message}
-                </Alert>
-            </Snackbar>
         </>
     );
 }

@@ -51,21 +51,21 @@ const ICONS = {
 
 // ----------------------------------------------------------------------
 
-export const navDataAdmin = [
+export const getNavDataAdmin = (t) => [
   {
-    subheader: 'Overview',
+    subheader: t('nav.admin_overview'),
     items: [
-      { title: 'Dashboard', path: paths.adminDashboard.root, icon: ICONS.dashboard },
+      { title: t('nav.admin_dashboard'), path: paths.adminDashboard.root, icon: ICONS.dashboard },
 
-      { title: "Faq's", path: paths.adminDashboard.content.faqs, icon: ICONS.faqs },
-      { title: 'Support', path: paths.adminDashboard.content.support, icon: ICONS.support },
-      { title: 'Help Center', path: paths.adminDashboard.content.helpCenter, icon: ICONS.helpCenter },
+      { title: t('nav.admin_faqs'), path: paths.adminDashboard.content.faqs, icon: ICONS.faqs },
+      { title: t('nav.admin_support'), path: paths.adminDashboard.content.support, icon: ICONS.support },
+      { title: t('nav.admin_help_center'), path: paths.adminDashboard.content.helpCenter, icon: ICONS.helpCenter },
 
-      { title: 'About Us', path: paths.adminDashboard.content.about, icon: ICONS.about },
+      { title: t('nav.admin_about_us'), path: paths.adminDashboard.content.about, icon: ICONS.about },
       // { title: 'Contact Us', path: paths.adminDashboard.content.contact, icon: ICONS.contact },
 
-      { title: 'Privacy Policy', path: paths.adminDashboard.content.privacy, icon: ICONS.privacy },
-      { title: 'Terms of Service', path: paths.adminDashboard.content.terms, icon: ICONS.terms },
+      { title: t('nav.admin_privacy_policy'), path: paths.adminDashboard.content.privacy, icon: ICONS.privacy },
+      { title: t('nav.admin_terms_of_service'), path: paths.adminDashboard.content.terms, icon: ICONS.terms },
 
       // { title: 'Chat', path: paths.adminDashboard.chat, icon: ICONS.chat },
 

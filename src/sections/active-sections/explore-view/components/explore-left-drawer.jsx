@@ -1,9 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Skeleton from '@mui/material/Skeleton';
-import Snackbar from '@mui/material/Snackbar';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -13,15 +11,19 @@ import { EmptyContent } from 'src/components/empty-content';
 import { Iconify } from 'src/components/iconify';
 import { useCancelRoomRequestMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
 import { useLazyGetExploreRoomListQuery } from 'src/store/Reducer/explore-api';
+import RoomAvatar from 'src/components/room-avatar';
+import { useTranslate } from 'src/locales';
+import { toast } from 'src/components/snackbar';
 
 const PAGE_SIZE = 10;
 
 const TABS = [
-    { value: 'all', label: 'All' },
-    { value: 'popular', label: 'Popular' },
-    { value: 'new', label: 'New' },
-    { value: 'friends', label: 'Friends' },
+    { value: 'all', labelKey: 'explore_drawer.tab_all' },
+    { value: 'popular', labelKey: 'explore_drawer.tab_popular' },
+    { value: 'new', labelKey: 'explore_drawer.tab_new' },
+    { value: 'friends', labelKey: 'explore_drawer.tab_friends' },
 ];
+
 
 function RoomRowSkeleton() {
     return (
@@ -40,11 +42,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadingIds, setLoadingIds] = useState(() => new Set());
-    const [toast, setToast] = useState({ open: false, message: '', severity: 'success', key: 0 });
-
-    const showToast = (message, severity = 'success') =>
-        setToast((p) => ({ open: true, message, severity, key: p.key + 1 }));
-    const hideToast = () => setToast((p) => ({ ...p, open: false }));
+    const { t } = useTranslate('common');
 
     const [fetchRooms] = useLazyGetExploreRoomListQuery();
     const [toggleRoomFollow] = useToggleRoomFollowMutation();
@@ -130,8 +128,8 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
 
         setLoadingIds((prev) => { const next = new Set(prev); next.add(roomId); return next; });
         try {
-            const result = await cancelRoomRequest(roomId).unwrap();
-            if (result?.message) showToast(result.message, 'success');
+            await cancelRoomRequest(roomId).unwrap();
+            toast.success(t('room_channel_header.toast_request_cancelled'));
             setRooms((prev) =>
                 prev.map((r) =>
                     getRoomId(r) === roomId ? { ...r, isPending: false, isFollowing: false } : r
@@ -139,7 +137,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
             );
             window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false } }));
         } catch {
-            showToast('Failed to cancel request. Please try again.', 'error');
+            toast.error(t('explore_drawer.toast_cancel_error'));
         } finally {
             setLoadingIds((prev) => { const next = new Set(prev); next.delete(roomId); return next; });
         }
@@ -157,7 +155,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
 
             if (isRequestSent && !room.isFollowing) {
                 // Pending request — not yet following
-                showToast(msg, 'info');
+                toast.info(t('room_channel_header.toast_request_sent'));
                 setRooms((prev) =>
                     prev.map((r) =>
                         getRoomId(r) === roomId ? { ...r, isFollowing: false, isPending: true } : r
@@ -167,7 +165,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
             } else {
                 // Actual follow/unfollow
                 const nextFollowing = !room.isFollowing;
-                if (msg) showToast(msg, 'success');
+                toast.success(nextFollowing ? t('explore_drawer.toast_followed') : t('explore_drawer.toast_unfollowed'));
                 setRooms((prev) =>
                     prev.map((r) =>
                         getRoomId(r) === roomId ? { ...r, isFollowing: nextFollowing, isPending: false } : r
@@ -176,17 +174,17 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                 window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: nextFollowing, isPending: false } }));
             }
         } catch (err) {
-            const msg = err?.data?.message ?? err?.message ?? '';
-            if (msg.toLowerCase().includes('already sent')) {
+            const errMsg = err?.data?.message ?? err?.message ?? '';
+            if (errMsg.toLowerCase().includes('already sent')) {
                 setRooms((prev) =>
                     prev.map((r) =>
                         getRoomId(r) === roomId ? { ...r, isFollowing: false, isPending: true } : r
                     )
                 );
-                showToast(msg, 'info');
+                toast.info(t('room_channel_header.toast_request_sent'));
                 window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
             } else {
-                showToast('Failed to update. Please try again.', 'error');
+                toast.error(t('explore_drawer.toast_update_error'));
             }
         } finally {
             setLoadingIds((prev) => { const next = new Set(prev); next.delete(roomId); return next; });
@@ -215,7 +213,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                     '&:hover': { bgcolor: '#3739b7' },
                     display: { xs: 'none', md: 'flex' },
                 }}
-                aria-label="Open filters"
+                aria-label={t('explore_drawer.open_filters')}
             >
                 <Iconify icon="solar:filter-bold" width={20} />
                 {filterCount > 0 && (
@@ -266,35 +264,35 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                     {/* Fixed header */}
                     <Box sx={{ p: 3, pt: 4, flexShrink: 0 }}>
                         <Typography sx={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2, mb: 0.5 }}>
-                            <Box component="span" sx={{ color: '#a5b4fc' }}>Explore</Box>
+                            <Box component="span" sx={{ color: '#a5b4fc' }}>{t('explore_drawer.title')}</Box>
                             {' Rooms'}
                         </Typography>
                         <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
-                            Discover and manage your rooms.
+                            {t('explore_drawer.subtitle')}
                         </Typography>
 
                         {/* Tabs */}
                         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-                            {TABS.map((t) => (
+                            {TABS.map((tabItem) => (
                                 <Button
-                                    key={t.value}
-                                    variant={tab === t.value ? 'contained' : 'text'}
+                                    key={tabItem.value}
+                                    variant={tab === tabItem.value ? 'contained' : 'text'}
                                     size="small"
-                                    onClick={() => handleTabChange(t.value)}
+                                    onClick={() => handleTabChange(tabItem.value)}
                                     sx={{
-                                        bgcolor: tab === t.value ? '#4C4EFF' : 'transparent',
+                                        bgcolor: tab === tabItem.value ? '#4C4EFF' : 'transparent',
                                         color: '#fff',
                                         borderRadius: 2,
-                                        fontWeight: tab === t.value ? 700 : 500,
+                                        fontWeight: tab === tabItem.value ? 700 : 500,
                                         fontSize: 13,
                                         px: 2,
                                         py: 0.5,
                                         minWidth: 0,
                                         boxShadow: 'none',
-                                        '&:hover': { bgcolor: tab === t.value ? '#3b3bd6' : 'rgba(255,255,255,0.08)' },
+                                        '&:hover': { bgcolor: tab === tabItem.value ? '#3b3bd6' : 'rgba(255,255,255,0.08)' },
                                     }}
                                 >
-                                    {t.label}
+                                    {t(tabItem.labelKey)}
                                 </Button>
                             ))}
                         </Stack>
@@ -321,8 +319,8 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                             </Stack>
                         ) : rooms.length === 0 ? (
                             <EmptyContent
-                                title="No rooms found"
-                                description="Try a different tab or adjust your filters."
+                                title={t('explore_drawer.no_rooms')}
+                                description={t('explore_drawer.no_rooms_subtitle')}
                                 sx={{
                                     py: 8,
                                     '& h6': { color: '#a5b4fc' },
@@ -338,19 +336,19 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                                     const isPending = room.isPending;
                                     const isLoadingFollow = loadingIds.has(roomId);
 
-                                    let btnLabel = 'Follow';
+                                    let btnLabel = t('explore_drawer.btn_follow');
                                     let btnBg = '#4C4EFF';
                                     let btnBorder = '#4C4EFF';
                                     let btnVariant = 'contained';
                                     if (isLoadingFollow) {
                                         btnLabel = null;
                                     } else if (isPending) {
-                                        btnLabel = 'Request Sent';
+                                        btnLabel = t('explore_drawer.btn_request_sent');
                                         btnBg = 'transparent';
                                         btnBorder = 'rgba(255,193,7,0.6)';
                                         btnVariant = 'outlined';
                                     } else if (isFollowing) {
-                                        btnLabel = 'Following';
+                                        btnLabel = t('explore_drawer.btn_following');
                                         btnBg = 'transparent';
                                         btnBorder = 'rgba(255,255,255,0.25)';
                                         btnVariant = 'outlined';
@@ -373,12 +371,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                                             }}
                                             onClick={() => handleRoomClick(room)}
                                         >
-                                            <Avatar
-                                                {...(room.image ? { src: room.image } : {})}
-                                                sx={{ width: 36, height: 36, bgcolor: '#4C4EFF', fontSize: 15, fontWeight: 700, flexShrink: 0 }}
-                                            >
-                                                {room.name?.charAt(0).toUpperCase()}
-                                            </Avatar>
+                                            <RoomAvatar image={room.image} name={room.name} size={36} />
 
                                             <Box sx={{ flex: 1, minWidth: 0 }}>
                                                 <Typography fontWeight={600} fontSize={14} noWrap>
@@ -429,17 +422,6 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                 </Box>
             </Box>
 
-            <Snackbar
-                key={toast.key}
-                open={toast.open}
-                autoHideDuration={2500}
-                onClose={hideToast}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-            >
-                <Alert onClose={hideToast} severity={toast.severity} variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
-                    {toast.message}
-                </Alert>
-            </Snackbar>
         </>
     );
 }

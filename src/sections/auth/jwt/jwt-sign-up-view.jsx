@@ -30,6 +30,7 @@ import { RHFUploadAvatar } from 'src/components/hook-form/rhf-upload';
 import { toast } from 'src/components/snackbar';
 import { signUp } from 'src/auth/context/jwt/action';
 import { handleApiError } from 'src/store/handleApiError';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -46,6 +47,7 @@ export const SignUpSchema = zod.object({
 
 export function JwtSignUpView() {
   const router = useRouter();
+  const { t } = useTranslate('common');
   const password = useBoolean();
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -59,7 +61,7 @@ export function JwtSignUpView() {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      const response = await signUp({
+      await signUp({
         name: data.fullName.trim(),
         email: data.email.trim().toLowerCase(),
         password: data.password,
@@ -116,11 +118,10 @@ export function JwtSignUpView() {
 
         {/* Title */}
         <Typography align="center" sx={{ fontSize: 26, fontWeight: 800, mb: 0.8, lineHeight: 1.2 }}>
-          <Box component="span" sx={{ color: '#4C4EFF' }}>Create</Box>
-          {' Account'}
+          {t('auth.sign_up.title')}
         </Typography>
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2 }}>
-          Join Capme and start exploring your world.
+          {t('auth.sign_up.subtitle')}
         </Typography>
 
         {/* Error */}
@@ -165,13 +166,13 @@ export function JwtSignUpView() {
                 />
               </Box>
               <Typography fontSize={12} fontWeight={500} sx={{ mt: 2, color: 'text.disabled' }}>
-                Upload Your Image
+                {t('auth.sign_up.upload_image')}
               </Typography>
             </Box>
 
             {/* Full Name */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>Full Name <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.sign_up.full_name_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Text
                 name="fullName"
                 placeholder="John Doe"
@@ -189,7 +190,7 @@ export function JwtSignUpView() {
 
             {/* Email */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>Email <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.sign_up.email_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Text
                 name="email"
                 placeholder="johndoe@gmail.com"
@@ -207,9 +208,10 @@ export function JwtSignUpView() {
 
             {/* Phone Number */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>Phone Number <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.sign_up.phone_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Phone
                 name="phoneNumber"
+                placeholder={t('auth.sign_up.phone_placeholder')}
                 sx={{
                   borderRadius: 2,
                   bgcolor: '#fafafa',
@@ -221,7 +223,7 @@ export function JwtSignUpView() {
 
             {/* Password */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>Password <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.sign_up.password_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Text
                 name="password"
                 placeholder="6+ characters"
@@ -258,7 +260,7 @@ export function JwtSignUpView() {
                 }
                 label={
                   <Typography fontSize={13} color={errors.terms ? 'error.main' : 'text.secondary'}>
-                    I accept the{' '}
+                    {t('auth.sign_up.terms_text')}{' '}
                     <Link
                       component={RouterLink}
                       href={paths.dashboard.settings.terms}
@@ -266,7 +268,7 @@ export function JwtSignUpView() {
                       color="#4C4EFF"
                       underline="none"
                     >
-                      Terms &amp; Conditions
+                      {t('auth.sign_up.terms_link')}
                     </Link>
                   </Typography>
                 }
@@ -294,7 +296,7 @@ export function JwtSignUpView() {
                 '&:hover': { bgcolor: '#3739b7' },
               }}
             >
-              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Create Account'}
+              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : t('auth.sign_up.submit')}
             </Button>
           </Stack>
         </Form>
@@ -303,7 +305,7 @@ export function JwtSignUpView() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 2 }}>
           <Divider sx={{ flex: 1 }} />
           <Typography fontSize={12} color="text.disabled" fontWeight={500}>
-            Or Continue With
+            {t('auth.sign_up.or_continue_with')}
           </Typography>
           <Divider sx={{ flex: 1 }} />
         </Box>
@@ -323,14 +325,14 @@ export function JwtSignUpView() {
             '&:hover': { borderColor: '#ccc', bgcolor: '#fafafa' },
           }}
         >
-          Google
+          {t('auth.sign_up.google')}
         </Button>
 
         {/* Footer */}
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mt: 2 }}>
-          Already Have An Account?{' '}
+          {t('auth.sign_up.have_account')}{' '}
           <Link component={RouterLink} href={paths.auth.jwt.signIn} fontWeight={700} color="#4C4EFF" underline="none">
-            Sign In
+            {t('auth.sign_up.sign_in_link')}
           </Link>
         </Typography>
       </Box>

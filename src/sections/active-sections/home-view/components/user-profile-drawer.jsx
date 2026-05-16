@@ -9,13 +9,17 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
+import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { Scrollbar } from 'src/components/scrollbar';
+import { selectUser } from 'src/store/slices/userSlice';
 import {
   useFollowUnfollowUserMutation,
   useOtherUserProfileQuery,
   useOtherUserRoomsQuery,
 } from 'src/store/Reducer/auth';
+import { useCancelRoomRequestMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
 import DrawerHeader from './drawer-header';
 import ImagePreviewDialog from './image-preview-dialog';
 import {
@@ -27,6 +31,9 @@ import {
 const getRealAvatar = (url) => (url && !url.includes('noImg') ? url : undefined);
 
 export default function UserProfileDrawer({ open, onClose, user }) {
+  const { t } = useTranslate('common');
+  const currentUser = useSelector(selectUser);
+  const currentUserId = String(currentUser?._id ?? currentUser?.id ?? currentUser?.basicInfo?._id ?? '');
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
@@ -81,9 +88,12 @@ export default function UserProfileDrawer({ open, onClose, user }) {
   const mapRooms = (rooms = []) =>
     rooms.map((room) => ({
       _id: room._id,
+      id: room._id,
       name: room.name || 'Untitled Room',
       icon: room.image || undefined,
-      follow: !!room.follow,
+      image: room.image || undefined,
+      is_following: !!room.is_following,
+      is_requested: !!room.is_requested,
       visibility: room.visibility,
       createdby: room.createdby,
     }));
@@ -102,6 +112,8 @@ export default function UserProfileDrawer({ open, onClose, user }) {
     setFollowingRooms([]);
     setIsFollowerOverride(undefined);
     setFollowerCountOverride(undefined);
+    setRoomFollowStates({});
+    setRoomFollowLoadingIds(new Set());
   }, [open, profileUserId]);
 
   useEffect(() => {
@@ -128,7 +140,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
 
   const isFollower = typeof isFollowerOverride === 'boolean' ? isFollowerOverride : !!apiProfile?.isFollower;
   const followerCount = followerCountOverride ?? apiProfile?.followerCount ?? 0;
-  const friendLabel = isFollower ? 'Friends' : 'Add Friend';
+  const friendLabel = isFollower ? t('user_profile.btn_friends') : t('user_profile.btn_add_friend');
 
   // Only two lists: Created rooms and followings
   const lists = [createdRooms, followingRooms];
@@ -160,12 +172,48 @@ export default function UserProfileDrawer({ open, onClose, user }) {
   };
 
   const [roomFollowStates, setRoomFollowStates] = useState({});
-  const cycleRoomFollow = (e, roomId) => {
-    e.stopPropagation();
-    setRoomFollowStates((prev) => ({ ...prev, [roomId]: true }));
+  const [roomFollowLoadingIds, setRoomFollowLoadingIds] = useState(new Set());
+  const [toggleRoomFollow] = useToggleRoomFollowMutation();
+  const [cancelRoomRequest] = useCancelRoomRequestMutation();
+
+  // Derive display state: 'follow' | 'requested' | 'following'
+  const getFollowState = (item) => {
+    const override = roomFollowStates[item._id];
+    if (override !== undefined) return override;
+    if (item.is_following) return 'following';
+    if (item.is_requested) return 'requested';
+    return 'follow';
   };
 
-  const tabLabels = ['Created Rooms', 'Followings'];
+  const handleRoomFollowClick = async (e, item) => {
+    e.stopPropagation();
+    const roomId = item._id;
+    if (roomFollowLoadingIds.has(roomId)) return;
+    const current = getFollowState(item);
+    setRoomFollowLoadingIds((prev) => new Set([...prev, roomId]));
+    try {
+      if (current === 'requested') {
+        await cancelRoomRequest(roomId).unwrap();
+        setRoomFollowStates((prev) => ({ ...prev, [roomId]: 'follow' }));
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false, isCancelledRequest: true } }));
+      } else if (current === 'follow') {
+        await toggleRoomFollow(roomId).unwrap();
+        setRoomFollowStates((prev) => ({ ...prev, [roomId]: 'requested' }));
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+      } else {
+        // 'following' → unfollow
+        await toggleRoomFollow(roomId).unwrap();
+        setRoomFollowStates((prev) => ({ ...prev, [roomId]: 'follow' }));
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false } }));
+      }
+    } catch {
+      setRoomFollowStates((prev) => ({ ...prev, [roomId]: current }));
+    } finally {
+      setRoomFollowLoadingIds((prev) => { const s = new Set(prev); s.delete(roomId); return s; });
+    }
+  };
+
+  const tabLabels = [t('user_profile.tab_created_rooms'), t('user_profile.tab_followings')];
 
   if (!user) return null;
 
@@ -178,6 +226,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
         hideBackdrop
         disableEnforceFocus
         disableAutoFocus
+        disableRestoreFocus
         disableScrollLock
         ModalProps={{ sx: { pointerEvents: 'none' } }}
         PaperProps={{
@@ -261,7 +310,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                     cursor: 'pointer',
                   }}
                 >
-                  Friends
+                  {t('user_profile.btn_friends')}
                 </Button>
               ) : (
                 <Button
@@ -295,17 +344,17 @@ export default function UserProfileDrawer({ open, onClose, user }) {
             <Stack direction="row" justifyContent="space-around" alignItems="center" sx={{ px: 2, pb: 3 }}>
               <Stack alignItems="center" sx={{ flex: 1 }}>
                 <Typography variant="h6" fontWeight={700} color="#4C4EFF">{apiProfile?.roomCount ?? createdRooms.length}</Typography>
-                <Typography variant="body2" color="text.secondary">Rooms</Typography>
+                <Typography variant="body2" color="text.secondary">{t('user_profile.stat_rooms')}</Typography>
               </Stack>
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
               <Stack alignItems="center" sx={{ flex: 1 }}>
                 <Typography variant="h6" fontWeight={700} color="#4C4EFF">{followerCount}</Typography>
-                <Typography variant="body2" color="text.secondary">Followers</Typography>
+                <Typography variant="body2" color="text.secondary">{t('user_profile.stat_followers')}</Typography>
               </Stack>
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
               <Stack alignItems="center" sx={{ flex: 1 }}>
                 <Typography variant="h6" fontWeight={700} color="#4C4EFF">{apiProfile?.followingCount ?? followingRooms.length}</Typography>
-                <Typography variant="body2" color="text.secondary">Following</Typography>
+                <Typography variant="body2" color="text.secondary">{t('user_profile.stat_following')}</Typography>
               </Stack>
             </Stack>
           )}
@@ -314,7 +363,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
           <Box sx={{ px: 2, pb: 2 }}>
             <InputBase
               fullWidth
-              placeholder="Search here.."
+              placeholder={t('user_profile.search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               sx={{
@@ -363,16 +412,12 @@ export default function UserProfileDrawer({ open, onClose, user }) {
               <Stack spacing={1}>
                 {filtered.length === 0 ? (
                   <Typography color="text.secondary" fontSize={14} sx={{ textAlign: 'center', py: 3 }}>
-                    No results found.
+                    {t('user_profile.no_results')}
                   </Typography>
                 ) : (
                   filtered.map((item, i) => {
-                    const isRoomTab = tab === 0 || tab === 1;
-                    const effectiveFollow = roomFollowStates[item._id] ?? item.follow;
-
-                    const handleClick = () => {
-                      handleRoomClick(item);
-                    };
+                    const followState = getFollowState(item);
+                    const isOwnRoom = currentUserId && String(item.createdby) === currentUserId;
 
                     return (
                       <Stack
@@ -380,7 +425,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                         direction="row"
                         alignItems="center"
                         spacing={1.5}
-                        onClick={handleClick}
+                        onClick={() => handleRoomClick(item)}
                         sx={{
                           p: 1,
                           borderRadius: 2,
@@ -400,57 +445,62 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                           <Typography className="item-name" fontSize={14} fontWeight={600} color="text.primary" noWrap sx={{ transition: 'color 0.15s' }}>
                             {item.name}
                           </Typography>
-                          {isRoomTab && (
-                            <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.2 }}>
-                              {item.visibility ? (item.visibility === 'private' ? 'Private' : 'Public') : 'Public'}
-                            </Typography>
-                          )}
+                          <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.2 }}>
+                            {item.visibility === 'private' ? t('search.visibility_private') : t('search.visibility_public')}
+                          </Typography>
                         </Box>
-                        {isRoomTab && (
-                          effectiveFollow === false ? (
-                            <Button
-                              size="small"
-                              variant="contained"
-                              onClick={(e) => cycleRoomFollow(e, item._id)}
-                              sx={{
-                                minWidth: 100,
-                                height: 30,
-                                borderRadius: 2,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                flexShrink: 0,
-                                boxShadow: 'none',
-                                bgcolor: '#4C4EFF',
-                                color: '#fff',
-                                border: '1px solid #4C4EFF',
-                                '&:hover': { bgcolor: '#3739b7' },
-                              }}
-                            >
-                              Follow
-                            </Button>
-                          ) : (
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              disabled
-                              sx={{
-                                minWidth: 100,
-                                height: 30,
-                                borderRadius: 2,
-                                fontSize: 12,
-                                fontWeight: 700,
-                                textTransform: 'none',
-                                flexShrink: 0,
-                                boxShadow: 'none',
-                                borderColor: '#4C4EFF',
-                                color: '#4C4EFF',
-                                bgcolor: 'rgba(76,78,255,0.06)',
-                              }}
-                            >
-                              Following
-                            </Button>
-                          )
+
+                        {/* Follow state button — hidden for rooms the current user owns */}
+                        {!isOwnRoom && followState === 'follow' && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            disabled={roomFollowLoadingIds.has(item._id)}
+                            onClick={(e) => handleRoomFollowClick(e, item)}
+                            sx={{
+                              minWidth: 100, height: 30, borderRadius: 2, fontSize: 12, fontWeight: 700,
+                              textTransform: 'none', flexShrink: 0, boxShadow: 'none',
+                              bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF',
+                              '&:hover': { bgcolor: '#3739b7' },
+                              '&.Mui-disabled': { opacity: 0.6 },
+                            }}
+                          >
+                            {t('user_profile.btn_follow')}
+                          </Button>
+                        )}
+                        {!isOwnRoom && followState === 'requested' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={roomFollowLoadingIds.has(item._id)}
+                            onClick={(e) => handleRoomFollowClick(e, item)}
+                            sx={{
+                              minWidth: 100, height: 30, borderRadius: 2, fontSize: 11, fontWeight: 700,
+                              textTransform: 'none', flexShrink: 0, boxShadow: 'none',
+                              borderColor: 'rgba(76,175,80,0.6)', color: '#43A047', bgcolor: 'transparent',
+                              '&:hover': { bgcolor: 'rgba(76,175,80,0.08)', borderColor: 'rgba(76,175,80,0.6)' },
+                              '&.Mui-disabled': { opacity: 0.6 },
+                            }}
+                          >
+                            {t('user_profile.btn_request_sent')}
+                          </Button>
+                        )}
+                        {!isOwnRoom && followState === 'following' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={roomFollowLoadingIds.has(item._id)}
+                            onClick={(e) => handleRoomFollowClick(e, item)}
+                            sx={{
+                              minWidth: 100, height: 30, borderRadius: 2, fontSize: 12, fontWeight: 700,
+                              textTransform: 'none', flexShrink: 0, boxShadow: 'none',
+                              borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'rgba(76,78,255,0.06)',
+                              '&:hover': { bgcolor: 'rgba(76,78,255,0.12)' },
+                              '&.Mui-disabled': { opacity: 0.6 },
+                            }}
+                          >
+                            {t('user_profile.btn_following')}
+                          </Button>
                         )}
                       </Stack>
                     );
@@ -478,7 +528,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                       '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
                     }}
                   >
-                    Load More
+                    {t('user_profile.load_more')}
                   </Button>
                 )}
               </>

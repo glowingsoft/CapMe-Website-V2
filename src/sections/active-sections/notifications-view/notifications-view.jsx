@@ -7,6 +7,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { EmptyContent } from 'src/components/empty-content';
 import { useLazyGetNotificationsQuery } from 'src/store/Reducer/rooms-api';
 import NotificationCard from './components/notification-card';
@@ -52,6 +53,7 @@ function getPageNumbers(current, total) {
 }
 
 export default function NotificationsView() {
+  const { t } = useTranslate('common');
   const [items, setItems] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [page, setPage] = React.useState(1);
@@ -139,11 +141,11 @@ export default function NotificationsView() {
           <Stack direction="row" alignItems="flex-end" justifyContent="space-between" spacing={2} sx={{ mb: 2.5 }}>
             <Box>
               <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-                <Box component="span" sx={{ color: '#4C4EFF' }}>My</Box>
-                {' Notifications'}
+                <Box component="span" sx={{ color: '#4C4EFF' }}>{t('notifications.title').split(' ')[0]}</Box>
+                {` ${t('notifications.title').split(' ').slice(1).join(' ')}`}
               </Typography>
               <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
-                Your real-time activity, all in one place.
+                {t('notifications.subtitle')}
               </Typography>
             </Box>
 
@@ -161,7 +163,7 @@ export default function NotificationsView() {
                 '&:hover': { bgcolor: unreadCount === 0 ? 'rgba(0,0,0,0.06)' : '#3b3bd6' },
               }}
             >
-              Mark all as read
+              {t('notifications.mark_all_read')}
             </Button>
           </Stack>
 
@@ -173,8 +175,8 @@ export default function NotificationsView() {
             </Stack>
           ) : items.length === 0 ? (
             <EmptyContent
-              title="No notifications"
-              description="You're all caught up! Check back later for updates."
+              title={t('notifications.empty_title')}
+              description={t('notifications.empty_subtitle')}
               sx={{ py: 12 }}
             />
           ) : (

@@ -19,6 +19,7 @@ import { selectUser } from 'src/store/slices/userSlice';
 import { getSocket } from 'src/socket/socket';
 import { chatSocketService } from 'src/socket/chatSocketService';
 import { useGetRoomByIdQuery } from 'src/store/Reducer/rooms-api';
+import { useTranslate } from 'src/locales';
 
 import FileMessage from './file-message';
 import HashtagModal from './hashtag-modal';
@@ -57,14 +58,15 @@ function renderWithHashtags(text, onHashtagClick) {
 }
 
 const VISIBILITY_CONFIG = {
-    public: { icon: 'solar:global-bold', label: 'Public', color: '#43a047' },
-    // friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#4C4EFF' },
-    private: { icon: 'solar:lock-bold', label: 'Private', color: '#29b6f6' },
-    private_friends: { icon: 'solar:users-group-rounded-bold', label: 'Friends', color: '#7b5ea7' },
-    personal: { icon: 'solar:garage-bold', label: 'Personal', color: '#4C4EFF' },
+    public: { icon: 'solar:global-bold', labelKey: 'search.visibility_public', color: '#43a047' },
+    // friends: { icon: 'solar:users-group-rounded-bold', labelKey: 'search.visibility_private_friends', color: '#4C4EFF' },
+    private: { icon: 'solar:lock-bold', labelKey: 'search.visibility_private', color: '#29b6f6' },
+    private_friends: { icon: 'solar:users-group-rounded-bold', labelKey: 'search.visibility_private_friends', color: '#7b5ea7' },
+    personal: { icon: 'solar:garage-bold', labelKey: 'search.visibility_personal', color: '#4C4EFF' },
 };
 
 function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName }) {
+    const { t } = useTranslate('common');
     // If visibility not on the message, fetch from its room
     const needsFetch = !visibility && !!roomId;
     const { data: roomData } = useGetRoomByIdQuery(roomId, { skip: !needsFetch });
@@ -82,7 +84,7 @@ function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName })
                     <Stack direction="row" alignItems="center" spacing={0.4}>
                         <Iconify icon={cfg.icon} width={12} style={{ color: cfg.color, flexShrink: 0 }} />
                         <Typography fontSize={11} fontWeight={600} sx={{ color: cfg.color, lineHeight: 1 }}>
-                            {cfg.label}
+                            {t(cfg.labelKey)}
                         </Typography>
                     </Stack>
                 </>
@@ -100,6 +102,7 @@ function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName })
 }
 
 function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hideRoomName = false, menuActions = null }) {
+    const { t } = useTranslate('common');
     const currentUser = useSelector(selectUser);
     const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
 
@@ -126,15 +129,15 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
 
     const menuItems = useMemo(() => {
         const all = [
-            { label: 'Copy', icon: 'solar:copy-bold', action: 'copy' },
-            { label: isPinned ? 'Unpin Message' : 'Pin Message', icon: 'solar:pin-bold', action: 'pin' },
+            { label: t('post_card.menu_copy'), icon: 'solar:copy-bold', action: 'copy' },
+            { label: isPinned ? t('post_card.menu_unpin') : t('post_card.menu_pin'), icon: 'solar:pin-bold', action: 'pin' },
             ...(isOwnPost ? [
-                { label: 'Edit', icon: 'solar:pen-bold', action: 'edit' },
-                { label: 'Delete', icon: 'solar:trash-bin-trash-bold', action: 'delete', danger: true },
+                { label: t('post_card.menu_edit'), icon: 'solar:pen-bold', action: 'edit' },
+                { label: t('post_card.menu_delete'), icon: 'solar:trash-bin-trash-bold', action: 'delete', danger: true },
             ] : []),
         ];
         return menuActions ? all.filter((item) => menuActions.includes(item.action)) : all;
-    }, [isPinned, isOwnPost, menuActions]);
+    }, [isPinned, isOwnPost, menuActions, t]);
 
     const openProfile = useCallback(() => {
         window.dispatchEvent(new CustomEvent('openUserProfile', { detail: post.user }));
@@ -143,7 +146,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
     const handleLike = useCallback(() => {
         const socket = getSocket();
         if (!socket?.connected) {
-            toast.error('Not connected. Please try again.');
+            toast.error(t('post_card.toast_not_connected'));
             return;
         }
 
@@ -173,7 +176,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                 case 'copy':
                     if (post.content) {
                         navigator.clipboard.writeText(post.content);
-                        toast.success('Message copied to clipboard');
+                        toast.success(t('post_card.toast_copied'));
                     }
                     break;
 
@@ -184,7 +187,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                 case 'pin': {
                     const socket = getSocket();
                     if (!socket?.connected) {
-                        toast.error('Not connected. Please try again.');
+                        toast.error(t('post_card.toast_not_connected'));
                         break;
                     }
 
@@ -211,7 +214,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
     const handleConfirmDelete = useCallback(() => {
         const socket = getSocket();
         if (!socket?.connected) {
-            toast.error('Not connected. Please try again.');
+            toast.error(t('post_card.toast_not_connected'));
             return;
         }
 
@@ -227,7 +230,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
         (newContent) => {
             const socket = getSocket();
             if (!socket?.connected) {
-                toast.error('Not connected. Please try again.');
+                toast.error(t('post_card.toast_not_connected'));
                 return;
             }
 

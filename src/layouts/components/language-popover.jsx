@@ -1,6 +1,7 @@
 import { m } from 'framer-motion';
 import { useCallback } from 'react';
 
+import Box from '@mui/material/Box';
 import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
@@ -48,16 +49,42 @@ export function LanguagePopover({ data = [], sx, ...other }) {
 
       <CustomPopover open={popover.open} anchorEl={popover.anchorEl} onClose={popover.onClose}>
         <MenuList sx={{ width: 160, minHeight: 72 }}>
-          {data?.map((option) => (
-            <MenuItem
-              key={option.value}
-              selected={option.value === currentLang.value}
-              onClick={() => handleChangeLang(option.value)}
-            >
-              <FlagIcon code={option.countryCode} />
-              {option.label}
-            </MenuItem>
-          ))}
+          {data?.map((option) => {
+            const isActive = option.value === currentLang.value;
+            return (
+              <MenuItem
+                key={option.value}
+                selected={isActive}
+                onClick={() => handleChangeLang(option.value)}
+                sx={{ justifyContent: 'space-between' }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FlagIcon code={option.countryCode} />
+                  {option.label}
+                </Box>
+                {isActive && (
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      bgcolor: '#22c55e',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      ml: 1,
+                    }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Box>
+                )}
+              </MenuItem>
+            );
+          })}
         </MenuList>
       </CustomPopover>
     </>

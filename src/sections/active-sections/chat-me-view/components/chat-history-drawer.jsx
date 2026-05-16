@@ -8,17 +8,12 @@ import InputBase from '@mui/material/InputBase';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { ConfirmModal } from 'src/components/custom-dialog';
 import DrawerHeader from 'src/sections/active-sections/home-view/components/drawer-header';
 import { useDeleteAllAiChatsMutation, useLazyGetAiHistoryQuery } from 'src/store/Reducer/ai-api';
 
 const CHAT_HISTORY_GROUP_ORDER = ['today', 'yesterday', 'this_week', 'older'];
-const CHAT_HISTORY_GROUP_LABELS = {
-  today: 'Today',
-  yesterday: 'Yesterday',
-  this_week: 'This Week',
-  older: 'Older',
-};
 
 function HistorySkeleton() {
   return (
@@ -37,6 +32,7 @@ function formatHistoryTime(value) {
 }
 
 export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewChat, onHistoryCleared }) {
+  const { t } = useTranslate('common');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [history, setHistory] = useState([]);
@@ -148,7 +144,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
       }}
     >
       {/* ── Header ── */}
-      <DrawerHeader title="Chat History" onBack={onClose} showEdit={false} showShare={false} />
+      <DrawerHeader title={t('chat_history.title')} onBack={onClose} showEdit={false} showShare={false} />
 
       {/* ── Logo ── */}
       <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3, pb: 1.5, flexShrink: 0 }}>
@@ -180,7 +176,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
             <InputBase
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search here..."
+              placeholder={t('chat_history.search_placeholder')}
               sx={{ flex: 1, fontSize: 14, '& input': { p: 0 } }}
             />
             {search && (
@@ -224,7 +220,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
         {(!hasLoaded && page === 1) || (isFetching && page === 1) ? (
           <Box>
             <Typography sx={{ px: 2.5, pt: 2, pb: 0.5, fontSize: 13, fontWeight: 800, color: '#4C4EFF' }}>
-              Loading
+              {t('chat_history.loading')}
             </Typography>
             {[1, 2, 3, 4, 5].map((item) => (
               <Box key={item}>
@@ -237,21 +233,21 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 8, gap: 1 }}>
             <Iconify icon="solar:danger-triangle-bold" width={40} style={{ color: '#e0e0e0' }} />
             <Typography fontSize={14} color="text.disabled">
-              Failed to load chat history
+              {t('chat_history.load_error')}
             </Typography>
           </Box>
         ) : history.length === 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 8, gap: 1 }}>
             <Iconify icon="solar:history-bold" width={40} style={{ color: '#e0e0e0' }} />
             <Typography fontSize={14} color="text.disabled">
-              No chat history yet
+              {t('chat_history.empty_title')}
             </Typography>
           </Box>
         ) : filtered.length === 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 8, gap: 1 }}>
             <Iconify icon="mingcute:search-line" width={36} style={{ color: '#e0e0e0' }} />
             <Typography fontSize={14} color="text.disabled">
-              No results for &ldquo;{search}&rdquo;
+              {t('chat_history.no_results', { search })}
             </Typography>
           </Box>
         ) : (
@@ -260,7 +256,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
               <Typography
                 sx={{ px: 2.5, pt: 2, pb: 0.5, fontSize: 13, fontWeight: 800, color: '#4C4EFF', letterSpacing: 0.2 }}
               >
-                {CHAT_HISTORY_GROUP_LABELS[group] ?? group}
+                {CHAT_HISTORY_GROUP_ORDER.includes(group) ? t(`chat_history.group_${group}`) : group}
               </Typography>
 
               {grouped[group].map((item) => (
@@ -321,7 +317,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
                 '&:hover': { bgcolor: 'rgba(76,78,255,0.14)' },
               }}
             >
-              Load More
+              {t('chat_history.load_more')}
             </Button>
           </Box>
         )}
@@ -356,7 +352,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
             '&:hover': { bgcolor: '#3b3bd6' },
           }}
         >
-          Clear History
+          {t('chat_history.clear_btn')}
         </Button>
       </Box>
       </Drawer>
@@ -365,10 +361,10 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
         open={confirmClearOpen}
         onClose={() => setConfirmClearOpen(false)}
         onConfirm={handleConfirmClear}
-        title="Clear chat history?"
-        description="This will permanently delete all of your AI chats. This action cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
+        title={t('chat_history.confirm_title')}
+        description={t('chat_history.confirm_description')}
+        confirmLabel={t('chat_history.confirm_delete')}
+        cancelLabel={t('chat_history.confirm_cancel')}
         loading={isDeletingChats}
         icon="solar:trash-bin-trash-bold"
         iconColor="#C40000"

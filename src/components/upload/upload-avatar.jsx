@@ -5,6 +5,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 import { varAlpha } from 'src/theme/styles';
+import { useTranslate } from 'src/locales';
 
 import { Image } from '../image';
 import { Iconify } from '../iconify';
@@ -13,6 +14,7 @@ import { RejectionFiles } from './components/rejection-files';
 // ----------------------------------------------------------------------
 
 export function UploadAvatar({ sx, error, value, disabled, helperText, ...other }) {
+  const { t } = useTranslate('common');
   const { getRootProps, getInputProps, isDragActive, isDragReject, fileRejections } = useDropzone({
     multiple: false,
     disabled,
@@ -73,7 +75,7 @@ export function UploadAvatar({ sx, error, value, disabled, helperText, ...other 
     >
       <Iconify icon="solar:camera-add-bold" width={32} />
 
-      <Typography variant="caption">{hasFile ? 'Update photo' : 'Upload photo'}</Typography>
+      <Typography variant="caption">{hasFile ? t('upload_avatar.update_photo') : t('upload_avatar.upload_photo')}</Typography>
     </Box>
   );
 

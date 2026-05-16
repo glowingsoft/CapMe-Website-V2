@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import HashtagSuggestions from 'src/components/hashtags/hashtag-suggestions';
 import { HASHTAGS } from 'src/sections/active-sections/home-view/hashtags-mock';
 import InterestsTab from './interests';
@@ -21,24 +22,15 @@ import { closeChatHistoryDrawer } from 'src/utils/drawer-events';
 const CHAT_HISTORY_DRAWER_WIDTH = 420;
 
 const TABS = [
-  { value: 'prompts', label: 'Prompts' },
-  { value: 'interests', label: 'Interests' },
-  { value: 'summary', label: 'Summary' },
+  { value: 'prompts', labelKey: 'chat_me.tab_prompts' },
+  { value: 'interests', labelKey: 'chat_me.tab_interests' },
+  { value: 'summary', labelKey: 'chat_me.tab_summary' },
 ];
 
 const CARDS = [
-  {
-    title: 'Emotional Needs Decoder',
-    subtitle: 'If this journal were a world, what would it look like?',
-  },
-  {
-    title: 'World of ME',
-    subtitle: 'If this journal were a world, what would it look like?',
-  },
-  {
-    title: 'Top Content Type',
-    subtitle: 'Type of content I share the most.',
-  },
+  { titleKey: 'chat_me.card_emotional_title', subtitleKey: 'chat_me.card_emotional_subtitle' },
+  { titleKey: 'chat_me.card_world_title', subtitleKey: 'chat_me.card_world_subtitle' },
+  { titleKey: 'chat_me.card_content_type_title', subtitleKey: 'chat_me.card_content_type_subtitle' },
 ];
 
 
@@ -193,6 +185,7 @@ const tokenizeAssistantResponse = (value) => {
 };
 
 export default function ChatMeView() {
+  const { t } = useTranslate('common');
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -361,7 +354,7 @@ export default function ChatMeView() {
       setMessages([{
         id: `load-error-${Date.now()}`,
         role: 'assistant',
-        content: 'Sorry, I could not load this chat. Please try again.',
+        content: t('chat_me.error_load_chat'),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }]);
     } finally {
@@ -428,7 +421,7 @@ export default function ChatMeView() {
         {
           id,
           role: 'assistant',
-          content: result?.response || 'I could not generate a response right now.',
+          content: result?.response || t('chat_me.error_no_response'),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -441,7 +434,7 @@ export default function ChatMeView() {
         {
           id,
           role: 'assistant',
-          content: 'Sorry, I could not reach AI chat. Please try again.',
+          content: t('chat_me.error_reach_chat'),
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
@@ -467,13 +460,19 @@ export default function ChatMeView() {
   const hasMessages = messages.length > 0 || isTyping || isLoadingHistoryChat;
   const promptCards = React.useMemo(() => {
     const prompts = (aiPromptsData?.items ?? []).filter((item) => item.group === 'prompts');
-    if (!prompts.length) return CARDS;
+    if (!prompts.length) {
+      return CARDS.map((c) => ({
+        id: c.titleKey,
+        title: t(c.titleKey),
+        subtitle: t(c.subtitleKey),
+      }));
+    }
     return prompts.map((item) => ({
       id: item.id,
       title: item.text,
       subtitle: item.description,
     }));
-  }, [aiPromptsData]);
+  }, [aiPromptsData, t]);
   const showPromptSkeleton = tab === 'prompts' && (isPromptsUninitialized || isPromptsLoading || isPromptsFetching);
 
   return (
@@ -490,11 +489,11 @@ export default function ChatMeView() {
               '& .MuiTabs-indicator': { bgcolor: '#4C4EFF', height: 3, borderRadius: 2 },
             }}
           >
-            {TABS.map((t) => (
+            {TABS.map((tabItem) => (
               <Tab
-                key={t.value}
-                value={t.value}
-                label={t.label}
+                key={tabItem.value}
+                value={tabItem.value}
+                label={t(tabItem.labelKey)}
                 sx={{
                   minHeight: 34,
                   textTransform: 'none',
@@ -574,7 +573,7 @@ export default function ChatMeView() {
                 </Stack>
 
                 <Typography textAlign="center" fontSize={14} color="text.secondary" sx={{ mb: 2 }}>
-                  These are just a few recommended examples of what we can do!
+                  {t('chat_me.examples_note')}
                 </Typography>
               </>
             )}
@@ -588,7 +587,7 @@ export default function ChatMeView() {
                   <>
                     {isLoadingOlderChat && (
                       <Typography textAlign="center" fontSize={12} color="text.disabled">
-                        Loading older messages...
+                        {t('chat_me.loading_older')}
                       </Typography>
                     )}
 
@@ -686,7 +685,7 @@ export default function ChatMeView() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Type here..."
+                placeholder={t('chat_me.placeholder')}
                 inputRef={inputRef}
                 multiline
                 maxRows={4}

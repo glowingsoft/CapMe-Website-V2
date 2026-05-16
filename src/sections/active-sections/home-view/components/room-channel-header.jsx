@@ -1,26 +1,29 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
 
-import Alert from '@mui/material/Alert';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
 import Skeleton from '@mui/material/Skeleton';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import RoomAvatar from 'src/components/room-avatar';
 import { DRAWER_EVENTS } from 'src/utils/drawer-events';
+import { useTranslate } from 'src/locales';
+import { toast } from 'src/components/snackbar';
 
 import UnfollowModal from './unfollow-modal';
 import RoomInformation from './room-information';
 import RoomRequestDrawer from './room-request-drawer';
 import HashtagModal from './hashtag-modal';
 import CreateRoomModal from './create-room-modal';
-import { useGetRoomByIdQuery, useLazyGetRoomByIdQuery, useToggleFavouriteRoomMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
+import { useCancelRoomRequestMutation, useGetRoomByIdQuery, useLazyGetRoomByIdQuery, useToggleFavouriteRoomMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
 const RoomHashtagList = React.lazy(() => import('./room-hashtag-list'));
 
 const getId = (value) => {
@@ -29,7 +32,8 @@ const getId = (value) => {
   return value;
 };
 
-function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, onRoomUnfollow, onDeleteRoom, messages = [], onMessageSelect, isGarage = false, enrichedMembers = null, isRoomAdmin = false, isLoading = false }) {
+function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, onRoomUnfollow, onDeleteRoom, onSearchChange, onFollowToggle, isFollowing, isPending, messages = [], onMessageSelect, isGarage = false, enrichedMembers = null, isRoomAdmin = false, isLoading = false }) {
+  const { t } = useTranslate('common');
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [unfollowOpen, setUnfollowOpen] = useState(false);
   const [unfollowLoading, setUnfollowLoading] = useState(false);
@@ -37,7 +41,6 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
   const [roomRequestOpen, setRoomRequestOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportFeedback, setReportFeedback] = useState('');
-  const [toast, setToast] = useState({ open: false, message: '' });
   const [showHashtagList, setShowHashtagList] = useState(false);
   const [showHashtagModal, setShowHashtagModal] = useState(false);
   const [selectedHashtag, setSelectedHashtag] = useState(null);
@@ -45,6 +48,8 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
   const [showSearch, setShowSearch] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [memberPermissionOverrides, setMemberPermissionOverrides] = useState({});
+  useEffect(() => { onSearchChange?.(searchValue); }, [searchValue]);
+
   const messageRoomId = messages.find((message) => message?.roomId)?.roomId;
 
   const roomId = getId(messagesRoom?._id ?? messagesRoom?.id) ?? getId(room?.roomId) ?? messageRoomId ?? room?.lastMessage?.roomId ?? room?._id ?? room?.id;
@@ -52,6 +57,44 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
   const [fetchRoomById, { isFetching: isRoomDetailFetching }] = useLazyGetRoomByIdQuery();
   const [toggleFavourite] = useToggleFavouriteRoomMutation();
   const [toggleRoomFollow] = useToggleRoomFollowMutation();
+  const [cancelRoomRequest] = useCancelRoomRequestMutation();
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const handleFollowClick = async () => {
+    const roomId = actualRoomId;
+    if (!roomId || followLoading) return;
+    setFollowLoading(true);
+    try {
+      if (isPending) {
+        await cancelRoomRequest(roomId).unwrap();
+        toast.success(t('room_channel_header.toast_request_cancelled'));
+        onFollowToggle?.(roomId, { cancelled: true });
+        window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false, isCancelledRequest: true } }));
+      } else {
+        const result = await toggleRoomFollow(roomId).unwrap();
+        const msg = result?.message ?? '';
+        const isRequestSent = msg.toLowerCase().includes('request') || msg.toLowerCase().includes('sent');
+        if (isRequestSent && !isFollowing) {
+          toast.success(t('room_channel_header.toast_request_sent'));
+          onFollowToggle?.(roomId, { isPending: true });
+          window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
+        } else {
+          if (msg) toast.success(msg);
+          onFollowToggle?.(roomId);
+          window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: !isFollowing, isPending: false } }));
+        }
+      }
+    } catch (err) {
+      const msg = err?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already sent')) {
+        onFollowToggle?.(roomId, { isPending: true });
+      } else {
+        toast.error(t('room_channel_header.toast_follow_error'));
+      }
+    } finally {
+      setFollowLoading(false);
+    }
+  };
   const resolvedRoomDetail = roomDetail?.body?.room ?? roomDetail?.room ?? roomDetail?.body ?? roomDetail;
   const actualRoomId =
     getId(messagesRoom?._id ?? messagesRoom?.id)
@@ -77,8 +120,6 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
     id: actualRoomId,
   }), [room, resolvedRoomDetail, messagesRoom, actualRoomId]);
 
-  const showToast = (message) => setToast({ open: true, message });
-  const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
   const [isFavourite, setIsFavourite] = useState(false);
   React.useEffect(() => {
     setIsFavourite(resolvedRoomDetail?.isFavorite ?? resolvedRoomDetail?.is_favorite ?? room?.favorite ?? false);
@@ -159,10 +200,10 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
     try {
       await toggleFavourite(roomId).unwrap();
       window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', { detail: { roomId, isFavourite: next } }));
-      showToast(next ? 'Added to favourites' : 'Removed from favourites');
+      toast.success(next ? t('room_channel_header.toast_added_fav') : t('room_channel_header.toast_removed_fav'));
     } catch {
       setIsFavourite(!next);
-      showToast('Failed to update favourite. Please try again.');
+      toast.error(t('room_channel_header.toast_fav_error'));
     }
   };
 
@@ -181,12 +222,12 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
       setUnfollowLoading(true);
       await toggleRoomFollow(actualRoomId).unwrap();
       setUnfollowOpen(false);
-      showToast('You have unfollowed the room');
+      toast.success(t('room_channel_header.toast_unfollowed'));
       window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId: actualRoomId, isFollowing: false } }));
       onRoomUnfollow?.(actualRoomId);
     } catch (error) {
       console.error('Failed to unfollow room:', error);
-      showToast('Failed to unfollow. Please try again.');
+      toast.error(t('room_channel_header.toast_unfollow_error'));
     } finally {
       setUnfollowLoading(false);
     }
@@ -202,22 +243,22 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
 
   const menuItems = [
     {
-      label: 'Room Information',
+      label: t('room_channel_header.menu_room_info'),
       icon: 'material-symbols:info-rounded',
       onClick: handleOpenRoomInformation,
     },
     ...(isRoomAdmin ? [{
-      label: 'Room Requests',
+      label: t('room_channel_header.menu_room_requests'),
       icon: 'solar:users-group-rounded-bold',
       onClick: handleOpenRoomRequests,
     }] : []),
     ...(!isRoomAdmin ? [{
-      label: 'Following',
+      label: t('room_channel_header.menu_following'),
       icon: 'mdi:account-star',
       onClick: handleOpenUnfollowModal,
     }] : []),
     {
-      label: 'Share',
+      label: t('room_channel_header.menu_share'),
       icon: 'mingcute:share-forward-fill',
       onClick: () => {
         handleCloseMenu();
@@ -225,7 +266,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
       },
     },
     {
-      label: 'Report',
+      label: t('room_channel_header.menu_report'),
       icon: 'material-symbols:report-rounded',
       onClick: () => {
         handleCloseMenu();
@@ -263,18 +304,12 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           {isLoading ? (
             <Skeleton variant="circular" width={32} height={32} sx={{ bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
           ) : (
-            <Avatar
-              src={resolvedRoomDetail?.image ?? room?.icon ?? room?.image ?? undefined}
-              sx={{
-                width: 32,
-                height: 32,
-                bgcolor: room?.color || '#4C4EFF',
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {room?.name?.charAt(0).toUpperCase()}
-            </Avatar>
+            <RoomAvatar
+              image={resolvedRoomDetail?.image ?? room?.icon ?? room?.image}
+              name={room?.name}
+              size={32}
+              bgcolor={room?.color || '#4C4EFF'}
+            />
           )}
           {isLoading ? (
             <Skeleton variant="text" width={120} height={18} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
@@ -308,7 +343,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
 
           {isGarage && (
             <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5, textTransform: 'capitalize' }}>
-              {room?.visibility ?? 'Personal'} · Only you
+              {room?.visibility ?? t('search.visibility_personal')} · {t('room_channel_header.only_you')}
             </Typography>
           )}
 
@@ -330,7 +365,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
 
                 <input
                   autoFocus
-                  placeholder="Search..."
+                  placeholder={t('room_channel_header.search_placeholder')}
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   style={{
@@ -344,7 +379,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
                   }}
                 />
 
-                <IconButton size="small" onClick={() => setShowSearch(false)}>
+                <IconButton size="small" onClick={() => { setShowSearch(false); setSearchValue(''); }}>
                   <Iconify icon="mdi:close" width={16} />
                 </IconButton>
               </Box>
@@ -358,6 +393,29 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
               </IconButton>
             )}
           </Stack>
+
+          {/* Follow / Request Sent button — only when user is not yet a member */}
+          {(isFollowing === false || isPending) && (
+            <Button
+              size="small"
+              onClick={handleFollowClick}
+              disabled={followLoading}
+              sx={{
+                ml: 0.5, height: 30, px: 2, fontWeight: 600, borderRadius: 1.5, textTransform: 'none',
+                fontSize: isPending ? 11 : 12,
+                bgcolor: isPending ? 'transparent' : '#4C4EFF',
+                color: isPending ? '#FFC107' : '#fff',
+                border: isPending ? '1.5px solid rgba(255,193,7,0.5)' : 'none',
+                '&:hover': { bgcolor: isPending ? 'rgba(255,193,7,0.08)' : '#3739b7' },
+                '&.Mui-disabled': { opacity: 0.6 },
+              }}
+            >
+              {followLoading
+                ? <CircularProgress size={12} color="inherit" />
+                : isPending ? t('room_channel_header.request_sent') : t('room_channel_header.follow')
+              }
+            </Button>
+          )}
 
           {!isGarage && (
             <IconButton
@@ -469,8 +527,8 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
         isRoomAdmin={isRoomAdmin}
         permissionOverrides={memberPermissionOverrides}
         onMemberPermissionUpdate={handleMemberPermissionUpdate}
-        onApprove={(request) => showToast(`${request.name} approved`)}
-        onReject={(request) => showToast(`${request.name} rejected`)}
+        onApprove={(request) => toast.success(t('room_channel_header.toast_approved', { name: request.name }))}
+        onReject={(request) => toast.success(t('room_channel_header.toast_rejected', { name: request.name }))}
       />
 
       <CreateRoomModal
@@ -491,33 +549,18 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
         onConfirm={() => {
           setReportOpen(false);
           setReportFeedback('');
-          showToast('Room reported successfully');
+          toast.success(t('room_channel_header.toast_reported'));
         }}
         roomName={room?.name || 'this room'}
-        title="Report Room"
+        title={t('room_channel_header.report_title')}
         icon="material-symbols:report-rounded"
         iconBgColor="#4C4EFF"
-        confirmLabel="Submit"
+        confirmLabel={t('room_channel_header.report_confirm')}
         confirmColor="#4C4EFF"
         feedback={reportFeedback}
         onFeedbackChange={setReportFeedback}
       />
 
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={hideToast}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={hideToast}
-          severity="success"
-          variant="filled"
-          sx={{ borderRadius: 2, fontWeight: 600 }}
-        >
-          {toast.message}
-        </Alert>
-      </Snackbar>
 
       {/* Hashtag List Dialog */}
       {showHashtagList && (

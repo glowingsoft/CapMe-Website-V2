@@ -9,6 +9,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 import { EmptyContent } from 'src/components/empty-content';
 import CommentDrawer from 'src/sections/active-sections/home-view/components/comment-drawer';
@@ -24,10 +25,10 @@ import { activityCommentsData } from './mock';
 // ----------------------------------------------------------------------
 
 const TABS = [
-  { value: 'all',       label: 'All' },
-  { value: 'myrooms',   label: 'My Rooms' },
-  { value: 'following', label: 'Following' },
-  { value: 'me',        label: 'Me' },
+  { value: 'all',       labelKey: 'activity_feed.tab_all' },
+  { value: 'myrooms',   labelKey: 'activity_feed.tab_my_rooms' },
+  { value: 'following', labelKey: 'activity_feed.tab_following' },
+  { value: 'me',        labelKey: 'activity_feed.tab_me' },
 ];
 
 const CONTENT_MAX_WIDTH = 920;
@@ -74,6 +75,7 @@ function PostCardSkeletonList({ count = 3 }) {
 // ----------------------------------------------------------------------
 
 export default function ActivityFeedView() {
+  const { t } = useTranslate('common');
   const [activeTab, setActiveTab] = React.useState('all');
   const [searchInput, setSearchInput] = React.useState('');
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -269,8 +271,8 @@ export default function ActivityFeedView() {
             <Box sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto', mb: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, gap: 2 }}>
                 <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, flexShrink: 0 }}>
-                  <Box component="span" sx={{ color: '#4C4EFF' }}>Activity</Box>
-                  {' Feed'}
+                  <Box component="span" sx={{ color: '#4C4EFF' }}>{t('activity_feed.title').split(' ')[0]}</Box>
+                  {` ${t('activity_feed.title').split(' ').slice(1).join(' ')}`}
                 </Typography>
 
                 {/* Inline search field */}
@@ -292,7 +294,7 @@ export default function ActivityFeedView() {
                 >
                   <Iconify icon="eva:search-fill" width={18} style={{ color: searchInput ? '#4C4EFF' : '#9e9e9e', flexShrink: 0 }} />
                   <InputBase
-                    placeholder="Search posts..."
+                    placeholder={t('activity_feed.search_placeholder')}
                     value={searchInput}
                     onChange={(e) => setSearchInput(e.target.value)}
                     sx={{ flex: 1, fontSize: 13, '& input': { p: 0 } }}
@@ -316,11 +318,11 @@ export default function ActivityFeedView() {
                   '& .MuiTabs-indicator': { bgcolor: '#4C4EFF', height: 3, borderRadius: 2 },
                 }}
               >
-                {TABS.map((t) => (
+                {TABS.map((tabItem) => (
                   <Tab
-                    key={t.value}
-                    value={t.value}
-                    label={t.label}
+                    key={tabItem.value}
+                    value={tabItem.value}
+                    label={t(tabItem.labelKey)}
                     sx={{
                       minHeight: 34,
                       textTransform: 'none',
@@ -354,8 +356,8 @@ export default function ActivityFeedView() {
                 <PostCardSkeletonList count={4} />
               ) : allPosts.length === 0 ? (
                 <EmptyContent
-                  title="No posts yet"
-                  description="There's nothing to show for this tab."
+                  title={t('activity_feed.no_posts_title')}
+                  description={t('activity_feed.no_posts_subtitle')}
                   sx={{ py: 10 }}
                 />
               ) : (
@@ -370,7 +372,7 @@ export default function ActivityFeedView() {
 
                   {!hasMore && allPosts.length > 0 && !isFetching && (
                     <Typography fontSize={12} align="center" sx={{ color: 'rgba(0,0,0,0.3)', py: 2 }}>
-                      No more posts
+                      {t('activity_feed.no_more_posts')}
                     </Typography>
                   )}
                 </>

@@ -77,8 +77,8 @@ export const roomsApi = createApi({
     }),
 
     getRoomMessages: builder.query({
-      query: ({ roomId, page = 1, limit = 20 } = {}) => ({
-        url: `${API_ROUTES.ROOM_MESSAGES(roomId)}${buildQueryString({ page, limit })}`,
+      query: ({ roomId, page = 1, limit = 20, search = '' } = {}) => ({
+        url: `${API_ROUTES.ROOM_MESSAGES(roomId)}${buildQueryString({ page, limit, ...(search ? { search } : {}) })}`,
         method: 'GET',
       }),
     }),

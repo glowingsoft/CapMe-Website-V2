@@ -11,8 +11,10 @@ import { useState, useEffect } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import { PhoneInput } from 'src/components/phone-input';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 export default function AccountEditModal({ open, onClose, user, onSave, isLoading = false }) {
+    const { t } = useTranslate('common');
     const [form, setForm] = useState({ name: '', phone: '' });
     const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -85,7 +87,6 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                                 height: 96 + size,
                                 borderRadius: '50%',
                                 border: `1px solid rgba(76,78,255,${i === 0 ? 0.35 : 0.14 - i * 0.02})`,
-
                                 pointerEvents: 'none',
                             }}
                         />
@@ -134,7 +135,7 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                     {/* Full Name */}
                     <Box>
                         <Typography fontWeight={600} fontSize={14} mb={1} color="text.secondary">
-                            Full Name
+                            {t('account_edit_modal.full_name_label')}
                         </Typography>
                         <TextField
                             placeholder="Alexa Hales"
@@ -160,7 +161,7 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                     {/* Phone Number */}
                     <Box>
                         <Typography fontWeight={600} fontSize={14} mb={1} color="text.secondary">
-                            Phone Number
+                            {t('account_edit_modal.phone_label')}
                         </Typography>
                         <PhoneInput
                             value={form.phone}
@@ -193,7 +194,7 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                         '&.Mui-disabled': { bgcolor: '#8486ff', color: '#fff' },
                     }}
                 >
-                    {isLoading ? 'Saving…' : 'Save'}
+                    {isLoading ? t('account_edit_modal.saving_btn') : t('account_edit_modal.save_btn')}
                 </Button>
             </Box>
         </Dialog>

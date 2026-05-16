@@ -19,6 +19,7 @@ import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
 import { toast } from 'src/components/snackbar';
 import { useVerifyOtpMutation, useResendOtpMutation } from 'src/store/Reducer/auth';
+import { useTranslate } from 'src/locales';
 
 import { OtpTimer } from './otp-timer';
 
@@ -35,6 +36,7 @@ const OtpSchema = zod.object({
 
 export function JwtVerifyOtpView() {
   const router = useRouter();
+  const { t } = useTranslate('common');
   const email = sessionStorage.getItem('otp_email') ?? '';
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -104,11 +106,10 @@ export function JwtVerifyOtpView() {
 
         {/* Title */}
         <Typography align="center" sx={{ fontSize: 26, fontWeight: 800, mb: 0.8, lineHeight: 1.2 }}>
-          <Box component="span" sx={{ color: '#4C4EFF' }}>Verify</Box>
-          {' Your Email'}
+          {t('auth.verify_otp.title')}
         </Typography>
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: email ? 1 : 2.5, px: 1 }}>
-          We sent a 6-digit verification code to your email. Enter it below to continue.
+          {t('auth.verify_otp.subtitle')}
         </Typography>
         {!!email && (
           <Typography align="center" fontSize={13} fontWeight={700} sx={{ mb: 2.5 }}>
@@ -154,7 +155,7 @@ export function JwtVerifyOtpView() {
                 '&:hover': { bgcolor: '#3739b7' },
               }}
             >
-              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Verify Code'}
+              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : t('auth.verify_otp.submit')}
             </Button>
           </Stack>
         </Form>
@@ -167,7 +168,7 @@ export function JwtVerifyOtpView() {
         {/* Back */}
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mt: 1.5 }}>
           <Link component={RouterLink} href={paths.auth.jwt.signIn} fontWeight={700} color="#4C4EFF" underline="none">
-            ← Back to Sign In
+            {t('auth.verify_otp.back_to_sign_in')}
           </Link>
         </Typography>
       </Box>

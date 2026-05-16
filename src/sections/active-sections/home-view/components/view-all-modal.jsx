@@ -8,6 +8,8 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
+import RoomAvatar from 'src/components/room-avatar';
+
 
 export default function ViewAllModal({
   open,
@@ -78,12 +80,7 @@ export default function ViewAllModal({
                       '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' },
                     }}
                   >
-                    <Avatar
-                      src={room.icon || undefined}
-                      sx={{ width: 38, height: 38, bgcolor: '#e8e9ff', color: '#4C4EFF', fontWeight: 700, fontSize: 15 }}
-                    >
-                      {room.name?.charAt(0).toUpperCase()}
-                    </Avatar>
+                    <RoomAvatar image={room.icon} name={room.name} size={38} bgcolor="#e8e9ff" color="#4C4EFF" />
                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                       <Typography fontWeight={600} fontSize={14} noWrap>
                         {room.name}

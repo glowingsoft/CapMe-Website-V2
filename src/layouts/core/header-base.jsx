@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { selectUser } from 'src/store/slices/userSlice';
+import { useTranslate } from 'src/locales';
 import Box from '@mui/material/Box';
 import Link from '@mui/material/Link';
 import Button from '@mui/material/Button';
@@ -129,11 +130,13 @@ export function HeaderBase({
   const theme = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslate('common');
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchAnchorRef = useRef(null);
+  const searchInputRef = useRef(null);
   const currentUser = useSelector(selectUser);
 
   const handleOpenGarage = () => {
@@ -178,6 +181,20 @@ export function HeaderBase({
   }, [chatHistoryOpen]);
 
   useEffect(() => {
+    const closeSearch = () => {
+      setSearchOpen(false);
+      setSearchQuery('');
+      searchInputRef.current?.blur();
+    };
+    window.addEventListener('openRoom', closeSearch);
+    window.addEventListener('openRoomMessage', closeSearch);
+    return () => {
+      window.removeEventListener('openRoom', closeSearch);
+      window.removeEventListener('openRoomMessage', closeSearch);
+    };
+  }, []);
+
+  useEffect(() => {
     const close = () => setChatHistoryOpen(false);
     window.addEventListener('accountDrawerOpened', close);
     window.addEventListener('openUserProfile', close);
@@ -209,8 +226,8 @@ export function HeaderBase({
               <CapmeBox>
                 <Box sx={{ py: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '15rem' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    <CapmeTitle>Capme</CapmeTitle>
-                    <CapmeSubtitle>Available Tokens</CapmeSubtitle>
+                    <CapmeTitle>{t('app_name')}</CapmeTitle>
+                    <CapmeSubtitle>{t('available_tokens')}</CapmeSubtitle>
                   </Box>
                   <CapmeTokens>{data?.tokens ?? 42}</CapmeTokens>
                 </Box>
@@ -260,26 +277,24 @@ export function HeaderBase({
                 {searchbar && isHomePage && (
                   <Box ref={searchAnchorRef} sx={{ flex: 1, mr: 2 }}>
                     <CustomSearchBar
-                      placeholder="Search Here.."
+                      placeholder={t('header.search_placeholder')}
                       value={searchQuery}
                       onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
                       onFocus={() => setSearchOpen(true)}
+                      inputRef={searchInputRef}
                     />
                   </Box>
                 )}
 
                 {/* -- Help link -- */}
-                {helpLink && (
+                {/* {helpLink && (
                   <Link data-slot="help-link" href={paths.faqs} component={RouterLink} color="inherit" sx={{ typography: 'subtitle2' }}>
                     Need help?
                   </Link>
-                )}
-
-                {/* -- Searchbar -- */}
-                {/* {searchbar && <Searchbar data-slot="searchbar" data={data?.nav} />} */}
+                )} */}
 
                 {/* -- Language popover -- */}
-                {/* {localization && <LanguagePopover data-slot="localization" data={data?.langs} />} */}
+                {localization && <LanguagePopover data-slot="localization" data={data?.langs} />}
 
                 {/* -- Notifications popover -- */}
                 {/* {notifications && (
@@ -305,7 +320,7 @@ export function HeaderBase({
                         color: '#fff',
                         '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                       }}
-                      aria-label="Premium"
+                      aria-label={t('header.premium')}
                       onClick={() => navigate(paths.dashboard.settings.subscription)}
                     >
                       <Icon icon="solar:crown-bold" width={20} />
@@ -320,7 +335,7 @@ export function HeaderBase({
                         color: '#fff',
                         '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                       }}
-                      aria-label="Share"
+                      aria-label={t('header.share')}
                     >
                       <Icon icon="solar:share-bold" width={20} />
                     </IconButton>
@@ -335,7 +350,7 @@ export function HeaderBase({
                         color: '#fff',
                         '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                       }}
-                      aria-label="Chat history"
+                      aria-label={t('header.chat_history')}
                     >
                       <Icon icon="mingcute:menu-line" width={20} />
                     </IconButton>
@@ -354,7 +369,7 @@ export function HeaderBase({
                     color: '#fff',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                   }}
-                  aria-label="Announcements"
+                  aria-label={t('header.announcements')}
                 >
                   <Icon icon="solar:danger-circle-bold" width={20} />
                 </IconButton>
@@ -371,7 +386,7 @@ export function HeaderBase({
                     color: '#fff',
                     '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                   }}
-                  aria-label="Garage Room"
+                  aria-label={t('header.garage_room')}
                 >
                   <Icon icon="solar:garage-bold" width={20} />
                 </IconButton>
@@ -400,7 +415,7 @@ export function HeaderBase({
                       },
                     }}
                   >
-                    Purchase
+                    {t('header.purchase')}
                   </Button>
                 )}
               </Box>

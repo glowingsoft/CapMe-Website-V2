@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { selectUser } from 'src/store/slices/userSlice';
 import { useContactSupportMutation } from 'src/store/Reducer/auth';
 
@@ -46,6 +47,7 @@ const FieldBox = ({ children, disabled }) => (
 );
 
 export default function ContactUsView() {
+  const { t } = useTranslate('common');
   const navigate = useNavigate();
   const currentUser = useSelector(selectUser);
   const [contactSupport, { isLoading }] = useContactSupportMutation();
@@ -122,11 +124,11 @@ export default function ContactUsView() {
           </IconButton>
           <Box>
             <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-              <Box component="span" sx={{ color: '#4C4EFF' }}>Contact</Box>
-              {' Us'}
+              <Box component="span" sx={{ color: '#4C4EFF' }}>{t('contact_us.title').split(' ')[0]}</Box>
+              {` ${t('contact_us.title').split(' ').slice(1).join(' ')}`}
             </Typography>
             <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.3 }}>
-              We&apos;re here to help — reach out any time.
+              {t('contact_us.subtitle')}
             </Typography>
           </Box>
         </Stack>
@@ -137,12 +139,12 @@ export default function ContactUsView() {
           <Box sx={{ flex: 1, minWidth: 0, ...CARD_SX, overflow: 'hidden' }}>
             <Box sx={{ px: 3, pt: 3, pb: 1 }}>
               <Typography fontSize={15} fontWeight={700} sx={{ mb: 2 }}>
-                <Box component="span" sx={{ color: '#4C4EFF' }}>Send</Box>
-                {' a Message'}
+                <Box component="span" sx={{ color: '#4C4EFF' }}>{t('contact_us.section_title').split(' ')[0]}</Box>
+                {` ${t('contact_us.section_title').split(' ').slice(1).join(' ')}`}
               </Typography>
 
               {/* Name — auto-filled, disabled */}
-              <FieldLabel>Name</FieldLabel>
+              <FieldLabel>{t('contact_us.name_label')}</FieldLabel>
               <FieldBox disabled>
                 <Iconify icon="mingcute:user-2-line" width={16} sx={{ mr: 1, color: 'text.disabled', flexShrink: 0 }} />
                 <InputBase
@@ -154,7 +156,7 @@ export default function ContactUsView() {
               </FieldBox>
 
               {/* Email — auto-filled, disabled */}
-              <FieldLabel>Email</FieldLabel>
+              <FieldLabel>{t('contact_us.email_label')}</FieldLabel>
               <FieldBox disabled>
                 <Iconify icon="mingcute:mail-line" width={16} sx={{ mr: 1, color: 'text.disabled', flexShrink: 0 }} />
                 <InputBase
@@ -166,19 +168,19 @@ export default function ContactUsView() {
               </FieldBox>
 
               {/* Subject */}
-              <FieldLabel>Subject</FieldLabel>
+              <FieldLabel>{t('contact_us.subject_label')}</FieldLabel>
               <FieldBox>
                 <InputBase
                   fullWidth
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="What's this about?"
+                  placeholder={t('contact_us.subject_placeholder')}
                   sx={{ fontSize: 14, '& input': { p: 0, color: '#111' } }}
                 />
               </FieldBox>
 
               {/* Message */}
-              <FieldLabel>Message</FieldLabel>
+              <FieldLabel>{t('contact_us.message_label')}</FieldLabel>
               <Box
                 sx={{
                   px: 1.5,
@@ -198,7 +200,7 @@ export default function ContactUsView() {
                   minRows={5}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Describe your issue or question..."
+                  placeholder={t('contact_us.message_placeholder')}
                   sx={{ fontSize: 14, '& textarea': { p: 0, color: '#111' }, alignItems: 'flex-start' }}
                 />
               </Box>
@@ -211,7 +213,7 @@ export default function ContactUsView() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Iconify icon="solar:check-circle-bold" width={20} sx={{ color: '#22c55e' }} />
                   <Typography fontSize={14} color="#22c55e" fontWeight={600}>
-                    Message sent! We&apos;ll get back to you soon.
+                    {t('contact_us.toast_success')}
                   </Typography>
                 </Stack>
               )}
@@ -219,7 +221,7 @@ export default function ContactUsView() {
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Iconify icon="solar:danger-circle-bold" width={20} sx={{ color: '#ef4444' }} />
                   <Typography fontSize={14} color="#ef4444" fontWeight={600}>
-                    Failed to send. Please try again.
+                    {t('contact_us.toast_error')}
                   </Typography>
                 </Stack>
               )}
@@ -242,7 +244,7 @@ export default function ContactUsView() {
                   '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.3)' },
                 }}
               >
-                {isLoading ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : 'Send Message'}
+                {isLoading ? <CircularProgress size={18} sx={{ color: '#fff' }} /> : t('contact_us.submit')}
               </Button>
             </Box>
           </Box>

@@ -3,30 +3,37 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
-const OPTIONS = [
+const getOptions = (t) => [
   {
-    label: 'Attach photo / video',
-    icons: ['solar:gallery-add-bold'],
+    id: 'photo_video',
+    label: t('select_file.attach_photo_video'),
+    icon: 'solar:gallery-add-bold',
     accept: 'image/*,video/*',
   },
   {
-    label: 'Record an audio',
-    icons: ['solar:microphone-bold'],
+    id: 'audio',
+    label: t('select_file.record_audio'),
+    icon: 'solar:microphone-bold',
     accept: 'audio/*',
   },
   {
-    label: 'Upload a file',
-    icons: ['solar:folder-open-bold'],
+    id: 'file',
+    label: t('select_file.upload_file'),
+    icon: 'solar:folder-open-bold',
     accept: '*/*',
   },
 ];
 
 export default function SelectFile({ anchorEl, onClose, onFileSelected, onAudioRecord }) {
+  const { t } = useTranslate('common');
+  const options = getOptions(t);
+
   const handleSelect = (option) => {
     onClose();
 
-    if (option.label === 'Record an audio') {
+    if (option.id === 'audio') {
       onAudioRecord?.();
       return;
     }
@@ -61,9 +68,9 @@ export default function SelectFile({ anchorEl, onClose, onFileSelected, onAudioR
         },
       }}
     >
-      {OPTIONS.map((option) => (
+      {options.map((option) => (
         <MenuItem
-          key={option.label}
+          key={option.id}
           onClick={() => handleSelect(option)}
           sx={{
             gap: 1.5,
@@ -75,11 +82,7 @@ export default function SelectFile({ anchorEl, onClose, onFileSelected, onAudioR
             '&:hover': { bgcolor: '#f5f6f8' },
           }}
         >
-          <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-            {option.icons.map((icon) => (
-              <Iconify key={icon} icon={icon} width={20} style={{ color: '#4C4EFF' }} />
-            ))}
-          </Stack>
+          <Iconify icon={option.icon} width={20} style={{ color: '#4C4EFF', flexShrink: 0 }} />
           {option.label}
         </MenuItem>
       ))}

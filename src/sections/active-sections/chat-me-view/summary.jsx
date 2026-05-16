@@ -7,6 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { useLazyGetAiSummaryQuery } from 'src/store/Reducer/ai-api';
 
 function SummarySkeleton() {
@@ -28,6 +29,7 @@ function SummarySkeleton() {
 }
 
 export default function SummaryTab() {
+  const { t } = useTranslate('common');
   const [fetchSummary, { data: overviewHtml = '', isFetching, isError }] = useLazyGetAiSummaryQuery();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,8 +44,8 @@ export default function SummaryTab() {
   if (isError || !overviewHtml) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 1 }}>
-        <Typography fontSize={14} fontWeight={600} color="text.secondary">No summary available yet.</Typography>
-        <Typography fontSize={13} color="text.disabled">Your AI summary will appear here once generated.</Typography>
+        <Typography fontSize={14} fontWeight={600} color="text.secondary">{t('chat_me.summary_empty_title')}</Typography>
+        <Typography fontSize={13} color="text.disabled">{t('chat_me.summary_empty_subtitle')}</Typography>
       </Box>
     );
   }
@@ -51,7 +53,7 @@ export default function SummaryTab() {
   return (
     <Box>
       <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ mb: 1.5 }}>
-        <Tooltip title="Refresh summary">
+        <Tooltip title={t('chat_me.refresh_summary_tooltip')}>
           <IconButton
             size="small"
             onClick={handleRefresh}

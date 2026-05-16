@@ -4,6 +4,7 @@ import Dialog from '@mui/material/Dialog';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 export default function UnfollowModal({
   open,
@@ -21,6 +22,7 @@ export default function UnfollowModal({
   feedback,
   onFeedbackChange,
 }) {
+  const { t } = useTranslate('common');
   const isReportMode = feedback !== undefined;
   const iconBg = getSoftIconBg(iconBgColor);
 
@@ -68,14 +70,14 @@ export default function UnfollowModal({
         {isReportMode ? (
           <>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 2.5 }}>
-              {description ?? `Please share your feedback about "${roomName}"`}
+              {description ?? t('unfollow_modal.report_description', { roomName })}
             </Typography>
 
             <Box
               component="textarea"
               value={feedback}
               onChange={(e) => onFeedbackChange?.(e.target.value)}
-              placeholder="Describe the issue..."
+              placeholder={t('unfollow_modal.report_placeholder')}
               rows={5}
               sx={{
                 width: '100%',
@@ -97,7 +99,7 @@ export default function UnfollowModal({
           </>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 3 }}>
-            {description ?? `Are you sure you want to unfollow "${roomName}"?`}
+            {description ?? t('unfollow_modal.unfollow_description', { roomName })}
           </Typography>
         )}
 
@@ -119,7 +121,7 @@ export default function UnfollowModal({
               '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
             }}
           >
-            Cancel
+            {t('unfollow_modal.cancel')}
           </Button>
 
           <Button
@@ -141,7 +143,7 @@ export default function UnfollowModal({
               '&.Mui-disabled': { bgcolor: confirmColor, color: '#fff', opacity: 0.45 },
             }}
           >
-            {loading ? 'Submitting...' : (confirmLabel ?? (isReportMode ? 'Submit' : 'Unfollow'))}
+            {loading ? t('unfollow_modal.submitting') : (confirmLabel ?? (isReportMode ? t('unfollow_modal.submit') : t('unfollow_modal.unfollow')))}
           </Button>
         </Box>
       </Box>

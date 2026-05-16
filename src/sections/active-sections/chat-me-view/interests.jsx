@@ -7,6 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { useLazyGetAiInterestsQuery } from 'src/store/Reducer/ai-api';
 import InterestCard from './components/interest-card';
 
@@ -31,6 +32,7 @@ function InterestSkeleton() {
 }
 
 function InterestsTab() {
+  const { t } = useTranslate('common');
   const [fetchInterests, { data: items = [], isFetching, isError }] = useLazyGetAiInterestsQuery();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,8 +53,8 @@ function InterestsTab() {
   if (isError || items.length === 0) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1 }}>
-        <Typography fontSize={14} fontWeight={600} color="text.secondary">No interests found yet.</Typography>
-        <Typography fontSize={13} color="text.disabled">Your AI-detected interests will appear here.</Typography>
+        <Typography fontSize={14} fontWeight={600} color="text.secondary">{t('chat_me.interests_empty_title')}</Typography>
+        <Typography fontSize={13} color="text.disabled">{t('chat_me.interests_empty_subtitle')}</Typography>
       </Box>
     );
   }
@@ -60,7 +62,7 @@ function InterestsTab() {
   return (
     <Box>
       <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ mb: 1.5 }}>
-        <Tooltip title="Refresh interests">
+        <Tooltip title={t('chat_me.refresh_tooltip')}>
           <IconButton
             size="small"
             onClick={handleRefresh}

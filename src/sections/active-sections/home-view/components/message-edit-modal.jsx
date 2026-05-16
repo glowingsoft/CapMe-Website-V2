@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 export default function MessageEditModal({
     open,
@@ -14,6 +15,7 @@ export default function MessageEditModal({
     initialContent = '',
     loading = false,
 }) {
+    const { t } = useTranslate('common');
     const [content, setContent] = useState(initialContent);
 
     useEffect(() => {
@@ -64,11 +66,11 @@ export default function MessageEditModal({
                 </Box>
 
                 <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75, textAlign: 'center' }}>
-                    Edit Message
+                    {t('message_edit_modal.title')}
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 2, textAlign: 'center' }}>
-                    Update your message content
+                    {t('message_edit_modal.subtitle')}
                 </Typography>
 
                 <TextField
@@ -77,7 +79,7 @@ export default function MessageEditModal({
                     rows={5}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder="Edit your message..."
+                    placeholder={t('message_edit_modal.placeholder')}
                     variant="outlined"
                     sx={{ mb: 2.5 }}
                 />
@@ -100,7 +102,7 @@ export default function MessageEditModal({
                             '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
                         }}
                     >
-                        Cancel
+                        {t('message_edit_modal.cancel')}
                     </Button>
                     <Button
                         variant="contained"
@@ -121,7 +123,7 @@ export default function MessageEditModal({
                             '&.Mui-disabled': { bgcolor: '#4C4EFF', color: '#fff', opacity: 0.45 },
                         }}
                     >
-                        {loading ? 'Saving...' : 'Save'}
+                        {loading ? t('message_edit_modal.saving') : t('message_edit_modal.save')}
                     </Button>
                 </Box>
             </Box>

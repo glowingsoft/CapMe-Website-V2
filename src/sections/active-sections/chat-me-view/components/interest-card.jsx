@@ -6,8 +6,10 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 function InterestCard({ title, score, confidence, description, tags = [] }) {
+  const { t } = useTranslate('common');
   const safeScore = Math.max(0, Math.min(100, Number(score ?? 0)));
 
   return (
@@ -56,7 +58,7 @@ function InterestCard({ title, score, confidence, description, tags = [] }) {
       <Box sx={{ mt: 1.3 }}>
         <Chip
           icon={<Iconify icon="solar:heart-bold" width={16} />}
-          label={`Confidence: ${confidence}%`}
+          label={t('chat_me.confidence_label', { value: confidence })}
           sx={{
             height: 26,
             borderRadius: 999,

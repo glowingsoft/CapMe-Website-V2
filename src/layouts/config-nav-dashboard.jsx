@@ -57,19 +57,16 @@ const ICONS = {
 
 // ----------------------------------------------------------------------
 
-export const navData = [
-  /**
-   * Overview
-   */
+export const getNavData = (t) => [
   {
-    // subheader: ' ',
     items: [
-      { title: 'Home', path: paths.dashboard.root, icon: ICONS.home },
-      { title: 'Explore', path: paths.dashboard.explore, icon: ICONS.exploreCustom },
-      { title: 'Activity Feed', path: paths.dashboard.activityFeed, icon: ICONS.activityFeedCustom },
-      { title: 'Chat Me', path: paths.dashboard.chatMe, icon: ICONS.chatCustom },
-      { title: 'Notifications', path: paths.dashboard.notifications, icon: ICONS.notificationCustom },
-      { title: 'Settings', path: paths.dashboard.settings.root, icon: ICONS.settingCustom },
+      { title: t('nav.home'), path: paths.dashboard.root, icon: ICONS.home },
+      { title: t('nav.explore'), path: paths.dashboard.explore, icon: ICONS.exploreCustom },
+      { title: t('nav.activity_feed'), path: paths.dashboard.activityFeed, icon: ICONS.activityFeedCustom },
+      { title: t('nav.chat_me'), path: paths.dashboard.chatMe, icon: ICONS.chatCustom },
+      { title: t('nav.graph'), path: paths.dashboard.settings.knowledgeGraph, icon: <Iconify icon="solar:graph-bold-duotone" /> },
+      { title: t('nav.notifications'), path: paths.dashboard.notifications, icon: ICONS.notificationCustom },
+      { title: t('nav.settings'), path: paths.dashboard.settings.root, icon: ICONS.settingCustom },
     ],
   },
   /**

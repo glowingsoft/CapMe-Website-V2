@@ -19,6 +19,7 @@ import { paths } from 'src/routes/paths';
 import { Field, Form } from 'src/components/hook-form';
 import { Iconify } from 'src/components/iconify';
 import { useForgotPasswordMutation } from 'src/store/Reducer/auth';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -30,6 +31,7 @@ export const ForgotPasswordSchema = zod.object({
 
 export function JwtForgetPasswordView() {
   const router = useRouter();
+  const { t } = useTranslate('common');
   const [errorMsg, setErrorMsg] = useState('');
   const [forgotPassword] = useForgotPasswordMutation();
 
@@ -86,11 +88,10 @@ export function JwtForgetPasswordView() {
 
         {/* Title */}
         <Typography align="center" sx={{ fontSize: 26, fontWeight: 800, mb: 0.8, lineHeight: 1.2 }}>
-          <Box component="span" sx={{ color: '#4C4EFF' }}>Forgot</Box>
-          {' Password?'}
+          {t('auth.forgot_password.title')}
         </Typography>
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5 }}>
-          No worries, We&apos;ll send you reset instructions.
+          {t('auth.forgot_password.subtitle')}
         </Typography>
 
         {/* Error */}
@@ -105,7 +106,7 @@ export function JwtForgetPasswordView() {
           <Stack spacing={2.5}>
             <Box>
               <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>
-                Email Address <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                {t('auth.forgot_password.email_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box>
               </Typography>
               <Field.Text
                 name="email"
@@ -141,16 +142,16 @@ export function JwtForgetPasswordView() {
                 '&:hover': { bgcolor: '#3739b7' },
               }}
             >
-              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Send OTP'}
+              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : t('auth.forgot_password.submit')}
             </Button>
           </Stack>
         </Form>
 
         {/* Back to sign in */}
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mt: 3 }}>
-          Remember your password?{' '}
+          {t('auth.forgot_password.remember_password')}{' '}
           <Link component={RouterLink} href={paths.auth.jwt.signIn} fontWeight={700} color="#4C4EFF" underline="none">
-            Sign In
+            {t('auth.forgot_password.sign_in_link')}
           </Link>
         </Typography>
       </Box>

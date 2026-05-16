@@ -32,6 +32,7 @@ import { useAuthContext } from 'src/auth/hooks';
 import { setUser } from 'src/store/slices/userSlice';
 
 import { handleApiError } from 'src/utils/errorHandler';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +45,7 @@ export function JwtSignInView() {
   const router = useRouter();
   const { checkUserSession } = useAuthContext();
   const dispatch = useDispatch();
+  const { t } = useTranslate('common');
   const [errorMsg, setErrorMsg] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const password = useBoolean();
@@ -142,11 +144,10 @@ export function JwtSignInView() {
           align="center"
           sx={{ fontSize: 26, fontWeight: 800, mb: 0.8, lineHeight: 1.2 }}
         >
-          <Box component="span" sx={{ color: '#4C4EFF' }}>Welcome</Box>
-          {' Back'}
+          {t('auth.sign_in.title')}
         </Typography>
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5 }}>
-          Start by entering the email address you use for work.
+          {t('auth.sign_in.subtitle')}
         </Typography>
 
         {/* Error */}
@@ -162,7 +163,7 @@ export function JwtSignInView() {
             {/* Email */}
             <Box>
               <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>
-                Email Address <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                {t('auth.sign_in.email_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box>
               </Typography>
               <Field.Text
                 name="email"
@@ -187,7 +188,7 @@ export function JwtSignInView() {
             {/* Password */}
             <Box>
               <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>
-                Password <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                {t('auth.sign_in.password_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box>
               </Typography>
               <Field.Text
                 name="password"
@@ -221,7 +222,7 @@ export function JwtSignInView() {
             <Stack direction="row" alignItems="center" justifyContent="space-between">
               <FormControlLabel
                 control={<Checkbox size="small" sx={{ p: 0, mr: 1 }} />}
-                label={<Typography fontSize={13}>Remember Me</Typography>}
+                label={<Typography fontSize={13}>{t('auth.sign_in.remember_me')}</Typography>}
                 sx={{ m: 0, alignItems: 'center' }}
               />
               <Link
@@ -232,7 +233,7 @@ export function JwtSignInView() {
                 color="#4C4EFF"
                 underline="none"
               >
-                Forgot Password?
+                {t('auth.sign_in.forgot_password')}
               </Link>
             </Stack>
 
@@ -251,7 +252,7 @@ export function JwtSignInView() {
                 '&:hover': { bgcolor: '#3739b7' },
               }}
             >
-              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Sign In'}
+              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : t('auth.sign_in.submit')}
             </Button>
           </Stack>
         </Form>
@@ -260,7 +261,7 @@ export function JwtSignInView() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, my: 2 }}>
           <Divider sx={{ flex: 1 }} />
           <Typography fontSize={12} color="text.disabled" fontWeight={500}>
-            Or Continue With
+            {t('auth.sign_in.or_continue_with')}
           </Typography>
           <Divider sx={{ flex: 1 }} />
         </Box>
@@ -283,15 +284,15 @@ export function JwtSignInView() {
               '&:hover': { borderColor: '#ccc', bgcolor: '#fafafa' },
             }}
           >
-            Google
+            {t('auth.sign_in.google')}
           </Button>
         </Stack>
 
         {/* Footer */}
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mt: 2 }}>
-          Don&apos;t Have An Account?{' '}
+          {t('auth.sign_in.no_account')}{' '}
           <Link component={RouterLink} href={paths.auth.jwt.signUp} fontWeight={700} color="#4C4EFF" underline="none">
-            Sign Up
+            {t('auth.sign_in.sign_up_link')}
           </Link>
         </Typography>
       </Box>

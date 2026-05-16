@@ -13,11 +13,13 @@ import React, { useMemo, useState } from 'react';
 
 import { Iconify } from 'src/components/iconify';
 import { toast } from 'src/components/snackbar';
+import { useTranslate } from 'src/locales';
 import { useGetHomeRoomsQuery, useShareMessageMutation } from 'src/store/Reducer/rooms-api';
 
 export default function ShareMessageModal({ open, onClose, messageId }) {
-  const [sharing, setSharing] = useState(null); // roomId currently being shared to
-  const [sharedRooms, setSharedRooms] = useState(new Set()); // rooms already shared in this session
+  const { t } = useTranslate('common');
+  const [sharing, setSharing] = useState(null);
+  const [sharedRooms, setSharedRooms] = useState(new Set());
 
   const { data: roomsData, isLoading } = useGetHomeRoomsQuery(
     { page: 1, limit: 50, type: 'all' },
@@ -45,7 +47,7 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
   const handleCopyLink = () => {
     const link = `${window.location.origin}/message/${messageId}`;
     navigator.clipboard.writeText(link);
-    toast.success('Link copied to clipboard');
+    toast.success(t('share_message_modal.toast_link_copied'));
     handleClose();
   };
 
@@ -58,7 +60,7 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
         res?.body?.shareCount ?? res?.shareCount ?? res?.body?.sharesCount ?? res?.sharesCount;
 
       setSharedRooms((prev) => new Set([...prev, roomId]));
-      toast.success('Shared successfully');
+      toast.success(t('share_message_modal.toast_shared'));
 
       window.dispatchEvent(
         new CustomEvent('shareMessage', {
@@ -66,7 +68,7 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
         })
       );
     } catch {
-      toast.error('Failed to share. Please try again.');
+      toast.error(t('share_message_modal.toast_error'));
     } finally {
       setSharing(null);
     }
@@ -84,7 +86,7 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
         sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
       >
         <Typography fontWeight={700} fontSize={16}>
-          Share Message
+          {t('share_message_modal.title')}
         </Typography>
         <IconButton size="small" onClick={handleClose}>
           <Iconify icon="mdi:close" width={20} />
@@ -108,12 +110,12 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
             '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'rgba(76,78,255,0.04)' },
           }}
         >
-          Copy Link
+          {t('share_message_modal.copy_link')}
         </Button>
 
         <Divider sx={{ mb: 1.5 }}>
           <Typography variant="caption" color="text.secondary">
-            or share to a room
+            {t('share_message_modal.or_share')}
           </Typography>
         </Divider>
 
@@ -123,7 +125,7 @@ export default function ShareMessageModal({ open, onClose, messageId }) {
           </Box>
         ) : rooms.length === 0 ? (
           <Typography variant="body2" color="text.secondary" textAlign="center" py={2}>
-            No rooms found
+            {t('share_message_modal.no_rooms')}
           </Typography>
         ) : (
           <Stack spacing={0.5} sx={{ maxHeight: 320, overflowY: 'auto' }}>

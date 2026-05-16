@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
@@ -12,6 +12,8 @@ import SuggestedRooms from './components/suggested-rooms';
 import NoDataIllustration from '../../../assets/illustrations/no-data-illustration';
 import { commentsData, suggestedRooms } from './mock';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
+import { scrollToBottom } from 'src/utils/scroll-to-bottom';
+import { cleanUrl, withDateSeparators } from 'src/utils/message-utils';
 import PinnedMessagesDisplay from './components/pinned-messages-display';
 import CircularProgress from '@mui/material/CircularProgress';
 import OldMessagesLabel from 'src/sections/chat/old-messages-label';
@@ -21,6 +23,7 @@ import { useGetRoomMessagesQuery, useGetRoomPinnedMessagesQuery } from 'src/stor
 import { getSocket } from 'src/socket/socket';
 import { chatSocketService } from 'src/socket/chatSocketService';
 import { toast } from 'src/components/snackbar';
+import { useTranslate } from 'src/locales';
 import ChatInputBar from './components/chat-input-bar';
 import MessageSkeleton from './components/message-skeleton';
 
@@ -39,42 +42,8 @@ const resolveAttachmentType = (raw) => {
   return ATTACHMENT_TYPE_MAP[t] ?? raw ?? 'application/octet-stream';
 };
 const getEntityId = (item) => String(item?.id ?? item?._id ?? '');
-const cleanUrl = (s) => {
-  if (!s || typeof s !== 'string') return '';
-  // Fix duplicated base URL: https://bucket.com/https://bucket.com/file → https://bucket.com/file
-  return s.replace(/^https?:\/\/[^/]+(\/https?:\/\/.+)$/, (_, rest) => rest.slice(1)).trim();
-};
-
-function formatDateLabel(isoString) {
-  const d = new Date(isoString);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Today';
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
-  });
-}
-
-function withDateSeparators(messages) {
-  const result = [];
-  let lastDateStr = null;
-  messages.forEach((msg) => {
-    if (!msg.createdAt) { result.push(msg); return; }
-    const dateStr = new Date(msg.createdAt).toDateString();
-    if (dateStr !== lastDateStr) {
-      lastDateStr = dateStr;
-      result.push({ type: 'date', id: `date-${dateStr}`, label: formatDateLabel(msg.createdAt) });
-    }
-    result.push(msg);
-  });
-  return result;
-}
 export default function HomeView() {
+  const { t } = useTranslate('common');
   const location = useLocation();
   const currentUser = useSelector(selectUser);
   const currentUserId = String(currentUser?.id ?? currentUser?._id ?? currentUser?.basicInfo?._id ?? '');
@@ -99,20 +68,21 @@ export default function HomeView() {
   const highlightTimerRef = React.useRef(null);
   const [localPosts, setLocalPosts] = React.useState([]);
   const [messagesPage, setMessagesPage] = React.useState(1);
+  const [roomSearchRaw, setRoomSearchRaw] = React.useState('');
+  const [roomSearch, setRoomSearch] = React.useState('');
   const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
-  // true while the first page of a newly-selected room is in flight
-  // initialized true so the skeleton shows immediately if a room is auto-selected on mount
   const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
-  // Refs for scroll management (stable across renders)
-  const prevScrollHeightRef = React.useRef(0);   // saved before prepend
-  const isPrependingRef = React.useRef(false);    // skip scroll-to-bottom during prepend
-  const scrollGuardRef = React.useRef(false);     // prevents duplicate page increments
-  const isInitialLoadRef = React.useRef(false);   // marks first page load for a room → instant scroll to bottom
-  const suppressScrollToBottomRef = React.useRef(false); // skip one scroll-to-bottom after targeted scroll
-  const roomVisibilityRef = React.useRef(null); // visibility from messages API response
-  const pendingScrollMessageRef = React.useRef(null); // message to scroll to after room loads
-  const isJumpingToMessageRef = React.useRef(false);  // suppresses scroll-to-bottom while jumping to a target
 
+  const handleRoomSelectRef = React.useRef(null);
+  const activeRoomRef = React.useRef(null);
+  const prevScrollHeightRef = React.useRef(0);
+  const isPrependingRef = React.useRef(false);
+  const scrollGuardRef = React.useRef(false);
+  const isInitialLoadRef = React.useRef(false);
+  const suppressScrollToBottomRef = React.useRef(false);
+  const roomVisibilityRef = React.useRef(null);
+  const pendingScrollMessageRef = React.useRef(null);
+  const isJumpingToMessageRef = React.useRef(false);
   const normalizeMessage = React.useCallback((msg) => {
     const senderId = msg.senderId ?? msg.sender?._id ?? msg.sender?.id ?? '';
     const isCurrentUser = currentUserId && String(senderId) === currentUserId;
@@ -158,8 +128,18 @@ export default function HomeView() {
     };
   }, [activeRoom?.visibility, currentUserId, currentUserImage]);
 
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setRoomSearch(roomSearchRaw);
+      setMessagesPage(1);
+      setLocalPosts([]);
+      setIsLoadingMessages(true);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [roomSearchRaw]);
+
   const messagesQuery = useGetRoomMessagesQuery(
-    { roomId: activeRoom?.id, page: messagesPage, limit: MESSAGES_LIMIT },
+    { roomId: activeRoom?.id, page: messagesPage, limit: MESSAGES_LIMIT, search: roomSearch },
     { skip: !activeRoom?.id, refetchOnMountOrArgChange: true }
   );
 
@@ -177,24 +157,23 @@ export default function HomeView() {
     setIsPinnedRefetching(false);
   }, [pinnedQuery.data, pinnedQuery.isSuccess, pinnedQuery.isFetching]);
 
-  // Populate / accumulate messages when API responds
   React.useEffect(() => {
     if (!messagesQuery.isSuccess || messagesQuery.isFetching) return;
     const raw = messagesQuery.data?.body?.messages ?? [];
     const roomVisibility = messagesQuery.data?.body?.room?.visibility?.toLowerCase() ?? activeRoom?.visibility ?? null;
     roomVisibilityRef.current = roomVisibility;
-    // API returns newest-first — reverse to show oldest at top
+
     const normalized = [...raw].reverse().map((msg) => ({ ...normalizeMessage(msg), visibility: roomVisibility }));
     setHasMoreMessages(raw.length >= MESSAGES_LIMIT);
     if (messagesPage === 1) {
       isPrependingRef.current = false;
-      isInitialLoadRef.current = true; // first batch → scroll instantly to bottom
+      isInitialLoadRef.current = true;
       setIsLoadingMessages(false);
       setLocalPosts(normalized);
       if (pendingScrollMessageRef.current) {
         const msg = pendingScrollMessageRef.current;
         pendingScrollMessageRef.current = null;
-        isInitialLoadRef.current = false; // don't auto-scroll to bottom
+        isInitialLoadRef.current = false;
         setTimeout(() => handleMessageSelect(msg), 0);
       }
     } else {
@@ -208,15 +187,13 @@ export default function HomeView() {
     scrollGuardRef.current = false;
   }, [messagesQuery.data, messagesQuery.isSuccess, messagesQuery.isFetching, messagesPage, normalizeMessage]);
 
-  // Restore scroll position after prepending older messages (runs synchronously before paint)
   React.useLayoutEffect(() => {
     if (prevScrollHeightRef.current > 0 && postsContainerRef.current) {
       const el = postsContainerRef.current;
       el.scrollTop = el.scrollHeight - prevScrollHeightRef.current;
       prevScrollHeightRef.current = 0;
     }
-    // NOTE: do NOT reset isPrependingRef here — useLayoutEffect fires before useEffect,
-    // so the scroll-to-bottom effect would always see false. It resets there instead.
+
   }, [localPosts]);
 
   // Socket: join room and listen for real-time events
@@ -229,7 +206,7 @@ export default function HomeView() {
     const onMessageReceive = ({ message }) => {
       if (!message) return;
       const msgRoomId = String(message.roomId ?? message.room_id ?? '');
-      console.log('[Socket] messageRecieve →', message._id, '| room:', msgRoomId, '| active:', activeRoom.id);
+      console.log('[Socket] messageRecieve â†’', message._id, '| room:', msgRoomId, '| active:', activeRoom.id);
 
       // Always update the sidebar last-message preview for the correct room
       window.dispatchEvent(new CustomEvent('roomLastMessageUpdate', {
@@ -246,14 +223,14 @@ export default function HomeView() {
     };
 
     const onSocketMessageDeleted = ({ messageId }) => {
-      console.log('[Socket] messageDeleted →', messageId);
+      console.log('[Socket] messageDeleted â†’', messageId);
       setLocalPosts((prev) => prev.filter((m) => getEntityId(m) !== String(messageId)));
       setPinnedMessages((prev) => prev.filter((m) => getEntityId(m) !== String(messageId)));
       setSelectedPost((prev) => (getEntityId(prev) === String(messageId) ? null : prev));
     };
 
     const onSocketMessageEdited = ({ messageId, content, senderId, meta, tags, is_edited }) => {
-      console.log('[Socket] messageEdited →', messageId);
+      console.log('[Socket] messageEdited â†’', messageId);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId)
           ? {
@@ -272,7 +249,7 @@ export default function HomeView() {
     };
 
     const onSocketMessageLiked = ({ messageId, likesCount, action }) => {
-      console.log('[Socket] messageLiked →', messageId, '| count:', likesCount);
+      console.log('[Socket] messageLiked â†’', messageId, '| count:', likesCount);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId)
           ? { ...p, stats: { ...p.stats, likes: likesCount }, likeAction: action }
@@ -283,7 +260,7 @@ export default function HomeView() {
     };
 
     const onSocketMessagePinned = ({ messageId, is_pin, pinnedMessages: serverPinned }) => {
-      console.log('[Socket] messagePinned →', messageId, '| is_pin:', is_pin);
+      console.log('[Socket] messagePinned â†’', messageId, '| is_pin:', is_pin);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId) ? { ...p, is_pin, isPinned: is_pin } : p;
 
@@ -328,11 +305,11 @@ export default function HomeView() {
   React.useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
     const onAccountOpened = () => { setDrawerOpen(false); setRoomInfoOpen(false); setProfileDrawerOpen(false); };
-    const onOpenRoom = (e) => handleRoomSelect(e.detail);
+    const onOpenRoom = (e) => handleRoomSelectRef.current?.(e.detail);
     const onOpenRoomMessage = (e) => {
       const { room, message } = e.detail || {};
       if (message) pendingScrollMessageRef.current = message;
-      handleRoomSelect(room);
+      handleRoomSelectRef.current?.(room);
     };
     const onProfileChange = (e) => setProfileDrawerOpen(e.detail);
     const onNotificationsChange = (e) => setNotificationsDrawerOpen(e.detail);
@@ -409,7 +386,7 @@ export default function HomeView() {
 
   const anyRightDrawerOpen = drawerOpen || roomInfoOpen || accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
 
-  // Sentinel ref — always sits below the last post
+  // Sentinel ref â€” always sits below the last post
   const postsEndRef = React.useRef(null);
   // Track previous room to distinguish room-switch (instant) vs new message (smooth)
   const prevRoomRef = React.useRef(null);
@@ -417,7 +394,7 @@ export default function HomeView() {
   const handleUnpinMessage = React.useCallback(async (messageId) => {
     const socket = getSocket();
     if (!socket?.connected) {
-      toast.error('Not connected. Please try again.');
+      toast.error(t('home_view.toast_not_connected'));
       return;
     }
 
@@ -458,22 +435,39 @@ export default function HomeView() {
     setMessagesPage(1);
     setHasMoreMessages(false);
     setIsLoadingMessages(true);
+    setRoomSearchRaw('');
+    setRoomSearch('');
     prevScrollHeightRef.current = 0;
     scrollGuardRef.current = false;
     isPrependingRef.current = false;
   };
+  handleRoomSelectRef.current = handleRoomSelect;
+  activeRoomRef.current = activeRoom;
 
   React.useEffect(() => {
     const onRoomFollowUpdate = (e) => {
-      const { roomId: updatedId, isFollowing } = e.detail ?? {};
-      if (!updatedId || isFollowing !== false) return;
-      if (String(updatedId) !== String(activeRoom?.id)) return;
-      clearActiveRoomState();
+      const { roomId: updatedId, isFollowing, isPending, isCancelledRequest } = e.detail ?? {};
+      if (!updatedId) return;
+      const currentRoom = activeRoomRef.current;
+      if (!currentRoom?.id) return;
+      if (String(updatedId) !== String(currentRoom.id)) return;
+
+      if (isFollowing === false && !isPending && !isCancelledRequest) {
+        clearActiveRoomState();
+      } else {
+        setActiveRoom((prev) => {
+          if (!prev) return prev;
+          if (isCancelledRequest) return { ...prev, is_following: false, is_requested: false };
+          if (isPending) return { ...prev, is_requested: true, is_following: false };
+          if (isFollowing === true) return { ...prev, is_following: true, is_requested: false };
+          return prev;
+        });
+      }
     };
 
     window.addEventListener('roomFollowUpdate', onRoomFollowUpdate);
     return () => window.removeEventListener('roomFollowUpdate', onRoomFollowUpdate);
-  }, [activeRoom?.id, clearActiveRoomState]);
+  }, [clearActiveRoomState]);
 
   const handleActiveRoomUnfollow = React.useCallback((roomId) => {
     if (!roomId || String(roomId) !== String(activeRoom?.id)) return;
@@ -513,7 +507,6 @@ export default function HomeView() {
     if (!selectedId) return;
     const id = String(selectedId);
 
-    // If message isn't loaded yet, inject it fully normalized so it renders correctly
     setLocalPosts((prev) => {
       const exists = prev.some((p) => String(p.id) === id);
       if (exists) return prev;
@@ -549,7 +542,7 @@ export default function HomeView() {
           + container.scrollTop;
         const centerOffset = (container.clientHeight - messageElement.offsetHeight) / 2;
         container.scrollTop = Math.max(0, msgTop - centerOffset);
-        isJumpingToMessageRef.current = false; // allow scroll-to-bottom behaviour to resume
+        isJumpingToMessageRef.current = false;
       });
 
       setHighlightedMessageId(targetMessageId);
@@ -559,7 +552,6 @@ export default function HomeView() {
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       highlightTimerRef.current = setTimeout(() => setHighlightedMessageId(null), 1800);
     }
-    // Do NOT clear targetMessageId here if not found — the inject may still be rendering
   }, [targetMessageId, localPosts]);
 
   React.useEffect(() => () => {
@@ -568,11 +560,10 @@ export default function HomeView() {
     }
   }, []);
 
-  // Scroll to bottom: instant on room switch or initial load, smooth on new message
   React.useEffect(() => {
     if (!activeRoom) return;
     if (targetMessageId) return;
-    if (isJumpingToMessageRef.current) return; // a targeted message scroll is in progress
+    if (isJumpingToMessageRef.current) return;
     if (suppressScrollToBottomRef.current) {
       suppressScrollToBottomRef.current = false;
       return;
@@ -588,19 +579,21 @@ export default function HomeView() {
     const el = postsContainerRef.current;
     if (!el) return;
     if (roomChanged || isInitial) {
-      el.scrollTop = el.scrollHeight;
-      // Re-pin to bottom as images/link-previews expand (stops after 3s or user scrolls)
+      scrollToBottom(postsContainerRef, postsEndRef, 'auto');
+      const raf1 = requestAnimationFrame(() => scrollToBottom(postsContainerRef, postsEndRef, 'auto'));
+      const raf2 = requestAnimationFrame(() => { requestAnimationFrame(() => scrollToBottom(postsContainerRef, postsEndRef, 'auto')); });
       const observer = new ResizeObserver(() => {
-        if (isJumpingToMessageRef.current) return; // don't fight a targeted scroll
-        const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-        if (distFromBottom < 300) el.scrollTop = el.scrollHeight;
+        if (isJumpingToMessageRef.current) return;
+        const container = postsContainerRef.current;
+        if (!container) return;
+        const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        if (distFromBottom < 300) scrollToBottom(postsContainerRef, postsEndRef, 'auto');
       });
       observer.observe(el);
       const timer = setTimeout(() => observer.disconnect(), 3000);
-      return () => { observer.disconnect(); clearTimeout(timer); };
+      return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); observer.disconnect(); clearTimeout(timer); };
     }
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    scrollToBottom(postsContainerRef, postsEndRef, 'smooth');
   }, [activeRoom, localPosts.length, targetMessageId]);
 
   const postsWithDates = React.useMemo(() => withDateSeparators(localPosts), [localPosts]);
@@ -610,13 +603,11 @@ export default function HomeView() {
     if (!Array.isArray(raw)) return [];
 
     const senderMap = new Map();
-    // Use normalized localPosts first (stable, already formatted)
     localPosts.forEach((p) => {
       const uid = p?.user?.id;
       if (uid) senderMap.set(String(uid), { name: p.user?.name ?? '', avatar: cleanUrl(p.user?.avatar ?? p.user?.image ?? ''), email: p.user?.email ?? '' });
     });
 
-    // Also fall back to raw messages from the API (sender object) — covers initial load before normalization
     const rawMsgs = messagesQuery.data?.body?.messages ?? [];
     rawMsgs.forEach((msg) => {
       const sid = msg?.sender?._id ?? msg?.senderId ?? msg?.sender?.id;
@@ -642,10 +633,8 @@ export default function HomeView() {
     });
   }, [messagesQuery.data, localPosts, activeRoom?.members]);
 
-  // Debug: inspect enriched members in dev only
   try { console.debug && console.debug('enrichedMembers', enrichedMembers); } catch (e) { }
 
-  // Calculate if current user is room admin
   const isRoomAdmin = React.useMemo(() => {
     if (!activeRoom || !currentUser) return false;
     const roomFromMessages = messagesQuery.data?.body?.room;
@@ -655,7 +644,7 @@ export default function HomeView() {
     const rootPermission = String(roomFromMessages?.permission ?? activeRoom.permission ?? '').toLowerCase();
     if (rootPermission === 'admin') return true;
 
-    // Creator check — room.createdby matches current user
+    // Creator check â€” room.createdby matches current user
     const createdBy = String(roomFromMessages?.createdby ?? activeRoom.createdby ?? '');
     if (createdBy && createdBy === userId) return true;
 
@@ -671,8 +660,22 @@ export default function HomeView() {
     });
   }, [activeRoom, currentUser, messagesQuery.data]);
 
+  // Explicit follow state â€” only set for rooms opened from user profile drawer
+  const isRoomNotFollowing = activeRoom?.is_following === false;
+  const isRoomPending = activeRoom?.is_requested === true;
+
+  const handleFollowToggle = React.useCallback((_roomId, patch) => {
+    setActiveRoom((prev) => {
+      if (!prev) return prev;
+      if (patch?.cancelled) return { ...prev, is_following: false, is_requested: false };
+      if (patch?.isPending) return { ...prev, is_requested: true, is_following: false };
+      return { ...prev, is_following: !prev.is_following, is_requested: false };
+    });
+  }, []);
+
   const canPost = React.useMemo(() => {
     if (isRoomAdmin) return true;
+    if (isRoomNotFollowing || isRoomPending) return false; // not a member or pending approval
     const roomFromMessages = messagesQuery.data?.body?.room;
     const members = roomFromMessages?.members ?? activeRoom?.members ?? [];
     if (!Array.isArray(members) || !currentUserId) return false;
@@ -681,11 +684,11 @@ export default function HomeView() {
       const mId = String(userObj?._id ?? userObj?.id ?? (typeof m.user === 'string' ? m.user : null) ?? m.userId ?? m.id ?? m._id ?? '');
       return mId === currentUserId;
     });
-    if (!me) return true; // not yet in list — optimistically allow (e.g. owner not listed)
+    if (!me) return true; // not yet in list â€” optimistically allow (e.g. owner not listed)
     const status = (me.status ?? 'active').toLowerCase();
     const permission = (me.permission ?? me.role ?? 'view').toLowerCase();
     return status === 'active' && (permission === 'edit' || permission === 'admin');
-  }, [isRoomAdmin, activeRoom, currentUserId, messagesQuery.data]);
+  }, [isRoomAdmin, isRoomNotFollowing, activeRoom, currentUserId, messagesQuery.data]);
 
   const leftDrawerWidth = showLeftDrawer && leftDrawerOpen ? DRAWER_WIDTH : 0;
 
@@ -718,10 +721,10 @@ export default function HomeView() {
           marginLeft: { md: `${leftDrawerWidth}px`, xs: 0 },
         }}
       >
-        {/* Two-column row always rendered — sidebar stays at the same position in both states */}
+        {/* Two-column row always rendered â€” sidebar stays at the same position in both states */}
         <Box sx={{ flex: 1, display: 'flex', gap: 3, overflow: 'hidden', minHeight: 0 }}>
 
-          {/* Left column — room content or empty state */}
+          {/* Left column â€” room content or empty state */}
           <Box
             sx={{
               flex: '1 1 0',
@@ -737,6 +740,7 @@ export default function HomeView() {
               <>
                 {/* Room channel header bar */}
                 <RoomChannelHeader
+                  key={activeRoom?.id}
                   room={activeRoom}
                   messagesRoom={messagesQuery.data?.body?.room}
                   enrichedMembers={enrichedMembers}
@@ -746,6 +750,10 @@ export default function HomeView() {
                   onMessageSelect={handleMessageSelect}
                   isRoomAdmin={isRoomAdmin}
                   onRoomUnfollow={handleActiveRoomUnfollow}
+                  onSearchChange={setRoomSearchRaw}
+                  isFollowing={activeRoom?.is_following}
+                  isPending={isRoomPending}
+                  onFollowToggle={handleFollowToggle}
                   onDeleteRoom={() => {
                     const deletedId = activeRoom?._id ?? activeRoom?.id;
                     setActiveRoom(null);
@@ -771,7 +779,7 @@ export default function HomeView() {
                   />
                 </Box>
 
-                {/* Scrollable posts — only this scrolls */}
+                {/* Scrollable posts â€” only this scrolls */}
                 <Box
                   ref={postsContainerRef}
                   onScroll={() => {
@@ -779,7 +787,7 @@ export default function HomeView() {
                     if (!el) return;
                     // Reset guard when user scrolls away from top
                     if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
-                    // Near top — load older messages
+                    // Near top â€” load older messages
                     if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
                     scrollGuardRef.current = true;
                     prevScrollHeightRef.current = el.scrollHeight;
@@ -796,20 +804,17 @@ export default function HomeView() {
                     '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
                   }}
                 >
-                  {/* Spinner at top when loading older pages */}
                   {messagesQuery.isFetching && messagesPage > 1 && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
                       <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
                     </Box>
                   )}
 
-                  {/* Skeleton for initial room load — shown from the moment the room is selected
-                      until the first page of messages arrives, preventing the empty-state flash */}
                   {isLoadingMessages && (
                     <MessageSkeleton count={5} />
                   )}
 
-                  {/* Empty state — only shown after load completes with genuinely no messages */}
+                  {/* Empty state â€” only shown after load completes with genuinely no messages */}
                   {!isLoadingMessages && !messagesQuery.isFetching && messagesQuery.isSuccess && localPosts.length === 0 && (
                     activeRoom?.isGarage ? (
                       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 2 }}>
@@ -828,10 +833,10 @@ export default function HomeView() {
                         </Box>
                         <Box sx={{ textAlign: 'center' }}>
                           <Typography sx={{ fontSize: 17, fontWeight: 700, color: '#111', mb: 0.5 }}>
-                            Your garage is empty
+                            {t('home_view.garage_empty_title')}
                           </Typography>
                           <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 260, lineHeight: 1.6 }}>
-                            This is your private space — jot down notes, ideas, or reminders. Only you can see this.
+                            {t('home_view.garage_empty_subtitle')}
                           </Typography>
                         </Box>
                       </Box>
@@ -852,10 +857,10 @@ export default function HomeView() {
                           <Iconify icon="solar:chat-line-bold-duotone" width={32} style={{ color: '#4C4EFF' }} />
                         </Box>
                         <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
-                          No messages yet
+                          {t('home_view.no_messages_title')}
                         </Typography>
                         <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', maxWidth: 260 }}>
-                          Be the first to say something in <Box component="span" sx={{ color: '#4C4EFF', fontWeight: 600 }}>{activeRoom?.name}</Box>!
+                          {t('home_view.no_messages_subtitle', { roomName: activeRoom?.name })}
                         </Typography>
                       </Box>
                     )
@@ -882,51 +887,67 @@ export default function HomeView() {
                     )
                   )}
 
-                  {/* Sentinel — scrollIntoView targets this to reach the bottom */}
+                  {/* Sentinel â€” scrollIntoView targets this to reach the bottom */}
                   <div ref={postsEndRef} />
                 </Box>
 
-                {/* Message input — pinned at bottom, never scrolls */}
+                {/* Message input â€” pinned at bottom, never scrolls */}
                 {canPost ? (
                   <ChatInputBar activeRoom={activeRoom} />
-                ) : (
-                  <Box
-                    sx={{
-                      flexShrink: 0,
-                      mt: 1.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1.5,
-                      background: 'linear-gradient(90deg, rgba(76,78,255,0.08) 0%, rgba(76,78,255,0.03) 100%)',
-                      border: '1.5px solid rgba(76,78,255,0.18)',
-                      borderRadius: 3,
-                      px: 2,
-                      py: 1.25,
-                    }}
-                  >
-                    <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Iconify icon="solar:lock-bold" width={17} style={{ color: '#4C4EFF' }} />
+                ) : (() => {
+                  let icon = 'solar:lock-bold';
+                  let title = t('home_view.view_access_title');
+                  let subtitle = t('home_view.view_access_subtitle');
+                  if (isRoomPending) {
+                    icon = 'solar:clock-circle-bold';
+                    title = t('home_view.pending_title');
+                    subtitle = t('home_view.pending_subtitle');
+                  } else if (isRoomNotFollowing) {
+                    icon = 'solar:lock-bold';
+                    title = t('home_view.not_following_title');
+                    subtitle = null;
+                  }
+                  return (
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        mt: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        background: 'linear-gradient(90deg, rgba(76,78,255,0.08) 0%, rgba(76,78,255,0.03) 100%)',
+                        border: '1.5px solid rgba(76,78,255,0.18)',
+                        borderRadius: 3,
+                        px: 2,
+                        py: 1.25,
+                      }}
+                    >
+                      <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Iconify icon={icon} width={17} style={{ color: '#4C4EFF' }} />
+                      </Box>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography fontSize={13} fontWeight={700} color="#4C4EFF" lineHeight={1.3}>
+                          {title}
+                        </Typography>
+                        {subtitle && (
+                          <Typography fontSize={11.5} color="text.secondary" lineHeight={1.3} sx={{ mt: 0.25 }}>
+                            {subtitle}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography fontSize={13} fontWeight={700} color="#4C4EFF" lineHeight={1.3}>
-                        View access only
-                      </Typography>
-                      <Typography fontSize={11.5} color="text.secondary" lineHeight={1.3} sx={{ mt: 0.25 }}>
-                        Admin has given you view access only. Contact the admin to get edit permission.
-                      </Typography>
-                    </Box>
-                  </Box>
-                )}
+                  );
+                })()}
               </>
             ) : (
               <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <NoDataIllustration sx={{ mb: 3 }} />
                 <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2, mb: 1 }}>
-                  <Box component="span" sx={{ color: '#4C4EFF' }}>Select</Box>
-                  {' a Room'}
+                  <Box component="span" sx={{ color: '#4C4EFF' }}>{t('home_view.no_room_title_colored')}</Box>
+                  {t('home_view.no_room_title_plain')}
                 </Typography>
                 <Typography variant="body2" color="text.disabled" sx={{ mb: 2.5 }}>
-                  Pick a room from the left to view its content.
+                  {t('home_view.no_room_subtitle')}
                 </Typography>
                 <Box
                   onClick={() => setCreateRoomOpen(true)}
@@ -947,13 +968,13 @@ export default function HomeView() {
                   }}
                 >
                   <Iconify icon="mingcute:add-line" width={18} />
-                  Create a Room
+                  {t('home_view.create_room')}
                 </Box>
               </Box>
             )}
           </Box>
 
-          {/* Sidebar — drawer overlaps this freely; center column above adjusts via mr */}
+          {/* Sidebar â€” drawer overlaps this freely; center column above adjusts via mr */}
           <Box sx={{ flex: '0 0 300px', display: { xs: 'none', lg: 'block' } }}>
             <SuggestedRooms rooms={suggestedRooms} />
           </Box>
@@ -987,6 +1008,8 @@ export default function HomeView() {
         />
       </Box>
 
-    </Box>
+    </Box >
   );
 }
+
+

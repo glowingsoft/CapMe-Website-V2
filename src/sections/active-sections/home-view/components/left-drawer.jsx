@@ -5,15 +5,19 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
-import Snackbar from '@mui/material/Snackbar';
-import { Alert } from '@mui/material';
+import { toast } from 'src/components/snackbar';
+import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
 import ViewAllModal from 'src/layouts/components/view-all';
+import { selectUser } from 'src/store/slices/userSlice';
 import { useGetHomeRoomsQuery, useToggleFavouriteRoomMutation } from 'src/store/Reducer/rooms-api';
+import { useTranslate } from 'src/locales';
 import LeftDrawerSkeleton from './left-drawer-skeleton';
+import RoomAvatar from 'src/components/room-avatar';
+
 
 const LIMIT = 10;
-const DRAWER_PREVIEW = 5;
+const DRAWER_PREVIEW = 10;
 
 function getLastMessageDesc(lastMessage) {
   const text = lastMessage?.text_representation ?? lastMessage?.content ?? '';
@@ -26,6 +30,13 @@ function getLastMessageDesc(lastMessage) {
   if (ft === 'video' || ft.startsWith('video/')) return { text: name, isFile: true, icon: 'solar:video-frame-bold' };
   if (ft === 'audio' || ft.startsWith('audio/')) return { text: name, isFile: true, icon: 'solar:music-note-bold' };
   return { text: name, isFile: true, icon: 'solar:paperclip-bold' };
+}
+
+// Handles both { body: { rooms: [...] } } and { body: [...] } API shapes
+function extractRooms(data) {
+  if (Array.isArray(data?.body?.rooms)) return data.body.rooms;
+  if (Array.isArray(data?.body)) return data.body;
+  return [];
 }
 
 function normalizeRoom(room) {
@@ -47,6 +58,9 @@ function normalizeRoom(room) {
     icon: roomSource?.image ?? room?.image ?? '',
     unread: room?.unreadCount ?? 0,
     favorite: !!(room?.isFavorite ?? room?.is_favorite),
+    is_following: (room?.is_following ?? roomSource?.is_following) === true ? true : undefined,
+    is_requested: !!(room?.is_requested ?? roomSource?.is_requested),
+    createdby: room?.createdby ?? roomSource?.createdby ?? '',
     visibility: roomSource?.visibility?.toLowerCase() ?? room?.visibility?.toLowerCase() ?? null,
     lastMessage: room?.last_message ?? null,
     lastMessageAt: room?.last_message?.createdAt ?? roomSource?.updatedAt ?? room?.updatedAt ?? roomSource?.createdAt ?? room?.createdAt ?? '',
@@ -62,6 +76,9 @@ const sortByLastMessage = (list) =>
   });
 
 export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect, onCreateRoom }) {
+  const { t } = useTranslate('common');
+  const currentUser = useSelector(selectUser);
+  const currentUserId = String(currentUser?._id ?? currentUser?.id ?? currentUser?.basicInfo?._id ?? '');
   const [tab, setTab] = useState('all');
   const [visitedTabs, setVisitedTabs] = useState({ myRooms: false, following: false });
   const [pages, setPages] = useState({ all: 1, myRooms: 1, following: 1 });
@@ -70,7 +87,6 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
   const [loadingTabs, setLoadingTabs] = useState({ all: true, myRooms: false, following: false });
   // section: 'favourite' | 'other' | 'myRooms' | 'following'
   const [viewAll, setViewAll] = useState({ open: false, label: '', section: null, tabKey: 'all', search: '' });
-  const [toast, setToast] = useState({ open: false, message: '' });
   const [toggleFavouriteRoom] = useToggleFavouriteRoomMutation();
 
   // "all" always active; myRooms/following are lazy — only fire once the tab is first visited
@@ -87,7 +103,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
   // Accumulate pages — replace on page 1, append on subsequent pages, always sort
   useEffect(() => {
     if (allQuery.isSuccess && !allQuery.isFetching) {
-      const rooms = (allQuery.data?.body?.rooms ?? []).map(normalizeRoom);
+      const rooms = extractRooms(allQuery.data).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
         all: sortByLastMessage(pages.all === 1 ? rooms : [...prev.all, ...rooms]),
@@ -98,7 +114,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
 
   useEffect(() => {
     if (myRoomsQuery.isSuccess && !myRoomsQuery.isFetching) {
-      const rooms = (myRoomsQuery.data?.body?.rooms ?? []).map(normalizeRoom);
+      const rooms = extractRooms(myRoomsQuery.data).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
         myRooms: sortByLastMessage(pages.myRooms === 1 ? rooms : [...prev.myRooms, ...rooms]),
@@ -109,7 +125,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
 
   useEffect(() => {
     if (followingQuery.isSuccess && !followingQuery.isFetching) {
-      const rooms = (followingQuery.data?.body?.rooms ?? []).map(normalizeRoom);
+      const rooms = extractRooms(followingQuery.data).map(normalizeRoom);
       setAccRooms((prev) => ({
         ...prev,
         following: sortByLastMessage(pages.following === 1 ? rooms : [...prev.following, ...rooms]),
@@ -136,8 +152,8 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
 
   useEffect(() => {
     const onFollowUpdate = (e) => {
-      const { roomId, isFollowing } = e.detail ?? {};
-      if (!roomId || isFollowing !== false) return;
+      const { roomId, isFollowing, isCancelledRequest } = e.detail ?? {};
+      if (!roomId || isFollowing !== false || isCancelledRequest) return;
 
       const removeRoom = (list) => list.filter((room) => String(room.id ?? room._id) !== String(roomId));
       setAccRooms((prev) => ({
@@ -248,14 +264,14 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     try {
       await toggleFavouriteRoom(roomId).unwrap();
       window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', { detail: { roomId, isFavourite: next } }));
-      showToast(next ? 'Added to favourites' : 'Removed from favourites');
+      toast.success(next ? t('left_drawer.toast_added_fav') : t('left_drawer.toast_removed_fav'));
     } catch {
       setAccRooms((prev) => ({
         all: setFav(isFav)(prev.all),
         myRooms: setFav(isFav)(prev.myRooms),
         following: setFav(isFav)(prev.following),
       }));
-      showToast('Failed to update favourite. Please try again.');
+      toast.error(t('left_drawer.toast_fav_error'));
     }
   };
 
@@ -270,23 +286,58 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     if (onRoomSelect) onRoomSelect(room);
   };
 
-  const showToast = (msg) => setToast({ open: true, message: msg });
-  const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   // Derive favourite/other split for the "all" tab (already sorted by last message)
   const favourite = accRooms.all.filter((r) => r.favorite);
   const other = accRooms.all.filter((r) => !r.favorite);
 
-  // Live-derived data for the modal — updates as more pages load
+  // Cross-reference sets for enriching "all" tab data
+  const followingIdSet = React.useMemo(() => new Set(accRooms.following.map((r) => String(r.id))), [accRooms.following]);
+  const myRoomIdSet = React.useMemo(() => new Set(accRooms.myRooms.map((r) => String(r.id))), [accRooms.myRooms]);
+
+  // Live-derived data for the modal — enriched with follow state from cross-referencing
   const viewAllData = React.useMemo(() => {
     switch (viewAll.section) {
-      case 'favourite': return favourite;
-      case 'other': return other;
-      case 'myRooms': return accRooms.myRooms;
-      case 'following': return accRooms.following;
+      case 'following':
+        return accRooms.following.map((r) => ({ ...r, is_following: true }));
+      case 'following_favourite':
+        return accRooms.following.filter((r) => r.favorite).map((r) => ({ ...r, is_following: true }));
+      case 'following_other':
+        return accRooms.following.filter((r) => !r.favorite).map((r) => ({ ...r, is_following: true }));
+      case 'myRooms':
+        return accRooms.myRooms.map((r) => ({ ...r, createdby: r.createdby || currentUserId }));
+      case 'myRooms_favourite':
+        return accRooms.myRooms.filter((r) => r.favorite).map((r) => ({ ...r, createdby: r.createdby || currentUserId }));
+      case 'myRooms_other':
+        return accRooms.myRooms.filter((r) => !r.favorite).map((r) => ({ ...r, createdby: r.createdby || currentUserId }));
+      case 'favourite':
+      case 'other': {
+        const list = viewAll.section === 'favourite' ? favourite : other;
+        return list.map((r) => {
+          const id = String(r.id);
+          return {
+            ...r,
+            is_following: followingIdSet.has(id) ? true : r.is_following,
+            createdby: myRoomIdSet.has(id) ? currentUserId : r.createdby,
+          };
+        });
+      }
       default: return [];
     }
-  }, [viewAll.section, favourite, other, accRooms.myRooms, accRooms.following]);
+  }, [viewAll.section, favourite, other, accRooms.myRooms, accRooms.following, followingIdSet, myRoomIdSet, currentUserId]);
+
+  // Pre-load following + myRooms tabs so cross-referencing works immediately
+  const handleViewAll = (label, section, tabKey) => {
+    setViewAll({ open: true, label, section, tabKey, search: '' });
+    if (!visitedTabs.following) {
+      setVisitedTabs((prev) => ({ ...prev, following: true }));
+      setLoadingTabs((prev) => ({ ...prev, following: true }));
+    }
+    if (!visitedTabs.myRooms) {
+      setVisitedTabs((prev) => ({ ...prev, myRooms: true }));
+      setLoadingTabs((prev) => ({ ...prev, myRooms: true }));
+    }
+  };
 
   const handleModalLoadMore = () => {
     setPages((prev) => ({ ...prev, [viewAll.tabKey]: prev[viewAll.tabKey] + 1 }));
@@ -299,9 +350,9 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
 
   // If the last fetched page returned a full batch, there may be more
   const hasMore = {
-    all: (allQuery.data?.body?.rooms?.length ?? 0) >= LIMIT,
-    myRooms: (myRoomsQuery.data?.body?.rooms?.length ?? 0) >= LIMIT,
-    following: (followingQuery.data?.body?.rooms?.length ?? 0) >= LIMIT,
+    all: extractRooms(allQuery.data).length >= LIMIT,
+    myRooms: extractRooms(myRoomsQuery.data).length >= LIMIT,
+    following: extractRooms(followingQuery.data).length >= LIMIT,
   };
 
   const isFetching = {
@@ -315,13 +366,23 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
   let roomSections = [];
   if (tab === 'all') {
     roomSections = [
-      { label: 'Starred Rooms', data: favourite, isFav: true, sectionKey: 'favourite' },
-      { label: 'Rooms', data: other, isFav: false, sectionKey: 'other' },
+      { label: t('left_drawer.section_starred'), data: favourite, isFav: true, sectionKey: 'favourite', tabKey: 'all' },
+      { label: t('left_drawer.section_rooms'), data: other, isFav: false, sectionKey: 'other', tabKey: 'all' },
     ];
   } else if (tab === 'myRooms') {
-    roomSections = [{ label: 'My Rooms', data: accRooms.myRooms, isFav: false, sectionKey: 'myRooms' }];
+    const myFav = accRooms.myRooms.filter((r) => r.favorite);
+    const myOther = accRooms.myRooms.filter((r) => !r.favorite);
+    roomSections = [
+      { label: t('left_drawer.section_starred'), data: myFav, isFav: true, sectionKey: 'myRooms_favourite', tabKey: 'myRooms' },
+      { label: t('left_drawer.section_rooms'), data: myOther, isFav: false, sectionKey: 'myRooms_other', tabKey: 'myRooms' },
+    ];
   } else if (tab === 'following') {
-    roomSections = [{ label: 'Following', data: accRooms.following, isFav: false, sectionKey: 'following' }];
+    const followFav = accRooms.following.filter((r) => r.favorite);
+    const followOther = accRooms.following.filter((r) => !r.favorite);
+    roomSections = [
+      { label: t('left_drawer.section_starred'), data: followFav, isFav: true, sectionKey: 'following_favourite', tabKey: 'following' },
+      { label: t('left_drawer.section_rooms'), data: followOther, isFav: false, sectionKey: 'following_other', tabKey: 'following' },
+    ];
   }
 
   const drawerWidth = open ? 420 : 0;
@@ -347,21 +408,6 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
           display: { xs: 'none', md: 'flex' },
         }}
       >
-        <Snackbar
-          open={toast.open}
-          autoHideDuration={3000}
-          onClose={hideToast}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <Alert
-            onClose={hideToast}
-            severity="success"
-            variant="filled"
-            sx={{ borderRadius: 2, fontWeight: 600 }}
-          >
-            {toast.message}
-          </Alert>
-        </Snackbar>
 
         <Iconify icon={open ? 'mingcute:left-line' : 'mingcute:right-line'} width={24} />
       </IconButton>
@@ -392,7 +438,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
               <Box sx={{ p: 3, pt: 4, flexShrink: 0 }}>
                 <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
                   <Typography sx={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
-                    <Box component="span" sx={{ color: '#a5b4fc' }}>Rooms</Box>
+                    <Box component="span" sx={{ color: '#a5b4fc' }}>{t('left_drawer.title')}</Box>
                   </Typography>
                   <Box
                     onClick={onCreateRoom}
@@ -413,39 +459,40 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                     }}
                   >
                     <Iconify icon="mingcute:add-line" width={14} />
-                    New
+                    {t('left_drawer.new')}
                   </Box>
                 </Stack>
                 <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
-                  Discover and manage your rooms.
+                  {t('left_drawer.subtitle')}
                 </Typography>
 
                 {/* Tabs */}
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                   {[
-                    { key: 'all', label: `All (${totalCount})` },
-                    { key: 'myRooms', label: `My Rooms (${myRoomsCount})` },
-                    { key: 'following', label: `Following (${followingCount})` },
-                  ].map((t) => (
+                    { key: 'all', label: t('left_drawer.tab_all', { count: totalCount }) },
+                    { key: 'myRooms', label: t('left_drawer.tab_my_rooms', { count: myRoomsCount }) },
+                    { key: 'following', label: t('left_drawer.tab_following', { count: followingCount }) },
+                  ].map((tabItem) => (
                     <Button
-                      key={t.key}
-                      variant={tab === t.key ? 'contained' : 'text'}
+                      key={tabItem.key}
+                      variant={tab === tabItem.key ? 'contained' : 'text'}
                       size="small"
-                      onClick={() => handleTabChange(t.key)}
+                      onClick={() => handleTabChange(tabItem.key)}
                       sx={{
-                        bgcolor: tab === t.key ? '#4C4EFF' : 'transparent',
+                        bgcolor: tab === tabItem.key ? '#4C4EFF' : 'transparent',
                         color: '#fff',
                         borderRadius: 2,
-                        fontWeight: tab === t.key ? 700 : 500,
+                        fontWeight: tab === tabItem.key ? 700 : 500,
                         fontSize: 13,
                         px: 2,
                         py: 0.5,
                         minWidth: 0,
+                        whiteSpace: 'nowrap',
                         boxShadow: 'none',
-                        '&:hover': { bgcolor: tab === t.key ? '#3b3bd6' : 'rgba(255,255,255,0.08)' },
+                        '&:hover': { bgcolor: tab === tabItem.key ? '#3b3bd6' : 'rgba(255,255,255,0.08)' },
                       }}
                     >
-                      {t.label}
+                      {tabItem.label}
                     </Button>
                   ))}
                 </Stack>
@@ -495,7 +542,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                           {section.data.length > DRAWER_PREVIEW && (
                             <Button
                               size="small"
-                              onClick={() => setViewAll({ open: true, label: section.label, section: section.sectionKey, tabKey: tab, search: '' })}
+                              onClick={() => handleViewAll(section.label, section.sectionKey, section.tabKey ?? tab)}
                               sx={{
                                 fontSize: 11,
                                 fontWeight: 600,
@@ -508,7 +555,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                                 '&:hover': { bgcolor: 'rgba(165,180,252,0.12)' },
                               }}
                             >
-                              See All
+                              {t('left_drawer.see_all')}
                             </Button>
                           )}
                         </Stack>
@@ -516,7 +563,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                         <Stack spacing={0.3} sx={{ mb: 2 }}>
                           {preview.length === 0 ? (
                             <Box sx={{ textAlign: 'center', py: 3, color: '#bdbdbd', fontSize: 14 }}>
-                              No rooms found.
+                              {t('left_drawer.no_rooms')}
                             </Box>
                           ) : (
                             preview.map((room) => {
@@ -542,20 +589,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                                   }}
                                   onClick={() => handleRoomClick(room)}
                                 >
-                                  <Avatar
-                                    src={room.icon || undefined}
-                                    sx={{
-                                      width: 38,
-                                      height: 38,
-                                      mr: 1,
-                                      bgcolor: '#4C4EFF',
-                                      fontSize: 15,
-                                      fontWeight: 700,
-                                      color: '#fff',
-                                    }}
-                                  >
-                                    {room.name?.charAt(0).toUpperCase()}
-                                  </Avatar>
+                                  <RoomAvatar image={room.icon} name={room.name} size={38} />
                                   <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                                     <Typography
                                       fontWeight={600}
@@ -579,7 +613,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                                         </Typography>
                                       </Stack>
                                     ) : (
-                                      <Typography fontSize={12} color="#616161" noWrap>No messages yet</Typography>
+                                      <Typography fontSize={12} color="#616161" noWrap>{t('left_drawer.no_messages')}</Typography>
                                     )}
                                   </Box>
                                   {room.unread > 0 && activeRoomId !== roomId && (
@@ -638,6 +672,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
         title={viewAll.label}
         type="rooms"
         data={viewAllData}
+        currentUserId={currentUserId}
         search={viewAll.search}
         setSearch={(s) => setViewAll((prev) => ({ ...prev, search: s }))}
         hasMore={hasMore[viewAll.tabKey]}

@@ -1,33 +1,21 @@
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
-import Snackbar from '@mui/material/Snackbar';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Iconify } from 'src/components/iconify';
+import { allLangs } from 'src/locales/all-langs';
+import { useTranslate } from 'src/locales';
 
-const LANGUAGES = [
-  { code: 'en', label: 'English', native: 'English', country: 'gb' },
-  { code: 'es', label: 'Spanish', native: 'Español', country: 'es' },
-  { code: 'fr', label: 'French', native: 'Français', country: 'fr' },
-  { code: 'de', label: 'German', native: 'Deutsch', country: 'de' },
-  { code: 'it', label: 'Italian', native: 'Italiano', country: 'it' },
-  { code: 'id', label: 'Indonesian', native: 'Bahasa Indonesia', country: 'id' },
-  { code: 'ms', label: 'Malay', native: 'Bahasa Melayu', country: 'my' },
-  { code: 'ur', label: 'Urdu', native: 'اردو', country: 'pk' },
-];
-
-const flagUrl = (country) => `https://flagcdn.com/w40/${country}.png`;
+const flagUrl = (countryCode) => `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 
 export default function LanguageView() {
   const navigate = useNavigate();
-  const [selected, setSelected] = useState('en');
-  const [saved, setSaved] = useState('en');
-  const [toast, setToast] = useState(false);
+  const { t, onChangeLang, currentLang } = useTranslate('common');
+  const [selected, setSelected] = useState(currentLang.value);
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
@@ -49,8 +37,7 @@ export default function LanguageView() {
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
 
   const handleUpdate = () => {
-    setSaved(selected);
-    setToast(true);
+    onChangeLang(selected);
   };
 
   return (
@@ -87,23 +74,23 @@ export default function LanguageView() {
           </IconButton>
           <Box>
             <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-              <Box component="span" sx={{ color: '#4C4EFF' }}>App</Box>
-              {' Language'}
+              <Box component="span" sx={{ color: '#4C4EFF' }}>{t('language_view.title').split(' ')[0]}</Box>
+              {` ${t('language_view.title').split(' ').slice(1).join(' ')}`}
             </Typography>
             <Typography fontSize={13} color="text.secondary">
-              Choose your preferred display language.
+              {t('language_view.subtitle')}
             </Typography>
           </Box>
         </Stack>
 
         {/* Language list */}
         <Box sx={{ bgcolor: '#fff', borderRadius: 4, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.10)', mb: 3 }}>
-          {LANGUAGES.map((lang, i) => {
-            const isSelected = selected === lang.code;
+          {allLangs.map((lang, i) => {
+            const isSelected = selected === lang.value;
             return (
-              <Box key={lang.code}>
+              <Box key={lang.value}>
                 <Box
-                  onClick={() => setSelected(lang.code)}
+                  onClick={() => setSelected(lang.value)}
                   sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -119,7 +106,7 @@ export default function LanguageView() {
                   {/* Flag image */}
                   <Box
                     component="img"
-                    src={flagUrl(lang.country)}
+                    src={flagUrl(lang.countryCode)}
                     alt={lang.label}
                     sx={{
                       width: 36,
@@ -135,9 +122,6 @@ export default function LanguageView() {
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 15, fontWeight: isSelected ? 700 : 500, color: isSelected ? '#4C4EFF' : '#111', lineHeight: 1.3 }}>
                       {lang.label}
-                    </Typography>
-                    <Typography sx={{ fontSize: 12, color: 'text.disabled', mt: 0.2 }}>
-                      {lang.native}
                     </Typography>
                   </Box>
 
@@ -169,7 +153,7 @@ export default function LanguageView() {
                     />
                   )}
                 </Box>
-                {i < LANGUAGES.length - 1 && <Divider sx={{ mx: 3 }} />}
+                {i < allLangs.length - 1 && <Divider sx={{ mx: 3 }} />}
               </Box>
             );
           })}
@@ -179,7 +163,7 @@ export default function LanguageView() {
         <Stack direction="row" justifyContent="flex-end">
           <Button
             variant="contained"
-            disabled={selected === saved}
+            disabled={selected === currentLang.value}
             onClick={handleUpdate}
             sx={{
               bgcolor: '#4C4EFF',
@@ -195,22 +179,12 @@ export default function LanguageView() {
               '&.Mui-disabled': { bgcolor: '#c5c6ff', color: '#fff' },
             }}
           >
-            Update Language
+            {t('language_view.update_btn')}
           </Button>
         </Stack>
 
       </Box>
 
-      <Snackbar
-        open={toast}
-        autoHideDuration={3000}
-        onClose={() => setToast(false)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert onClose={() => setToast(false)} severity="success" variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
-          Language updated successfully.
-        </Alert>
-      </Snackbar>
 
     </Box>
   );

@@ -3,9 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
+import { useTranslate } from 'src/locales';
+
 // ----------------------------------------------------------------------
 
 export function OtpTimer({ onResend, seconds = 30 }) {
+  const { t } = useTranslate('common');
   const [timeLeft, setTimeLeft] = useState(seconds);
   const [isRunning, setIsRunning] = useState(true);
   const intervalRef = useRef(null);
@@ -40,20 +43,20 @@ export function OtpTimer({ onResend, seconds = 30 }) {
     <Typography align="center" fontSize={13} color="text.secondary">
       {isRunning ? (
         <>
-          Resend code in{' '}
+          {t('auth.otp_timer.resend_in')}{' '}
           <Box component="span" sx={{ fontWeight: 700, color: '#4C4EFF' }}>
             {timeLeft}s
           </Box>
         </>
       ) : (
         <>
-          Didn&apos;t receive the code?{' '}
+          {t('auth.otp_timer.not_received')}{' '}
           <Box
             component="span"
             onClick={handleResend}
             sx={{ fontWeight: 700, color: '#4C4EFF', cursor: 'pointer', userSelect: 'none' }}
           >
-            Resend
+            {t('auth.otp_timer.resend')}
           </Box>
         </>
       )}

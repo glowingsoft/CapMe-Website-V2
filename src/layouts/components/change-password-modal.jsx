@@ -13,8 +13,10 @@ import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 import { useChangePasswordMutation } from 'src/store/Reducer/auth';
 import { toast } from 'src/components/snackbar';
+import { useTranslate } from 'src/locales';
 
 export default function ChangePasswordModal({ open, onClose }) {
+  const { t } = useTranslate('common');
   const [form, setForm] = useState({ old_password: '', newpassword: '', confirmpassword: '' });
   const [show, setShow] = useState({ old_password: false, newpassword: false, confirmpassword: false });
   const [errors, setErrors] = useState({});
@@ -30,11 +32,11 @@ export default function ChangePasswordModal({ open, onClose }) {
 
   const validate = () => {
     const errs = {};
-    if (!form.old_password) errs.old_password = 'Current password is required';
-    if (!form.newpassword) errs.newpassword = 'New password is required';
-    else if (form.newpassword.length < 6) errs.newpassword = 'Password must be at least 6 characters';
-    if (!form.confirmpassword) errs.confirmpassword = 'Please confirm your new password';
-    else if (form.newpassword !== form.confirmpassword) errs.confirmpassword = 'Passwords do not match';
+    if (!form.old_password) errs.old_password = t('change_password_modal.error_current_required');
+    if (!form.newpassword) errs.newpassword = t('change_password_modal.error_new_required');
+    else if (form.newpassword.length < 6) errs.newpassword = t('change_password_modal.error_new_min');
+    if (!form.confirmpassword) errs.confirmpassword = t('change_password_modal.error_confirm_required');
+    else if (form.newpassword !== form.confirmpassword) errs.confirmpassword = t('change_password_modal.error_confirm_mismatch');
     return errs;
   };
 
@@ -47,10 +49,10 @@ export default function ChangePasswordModal({ open, onClose }) {
         newpassword: form.newpassword,
         confirmpassword: form.confirmpassword,
       }).unwrap();
-      toast.success('Password updated successfully');
+      toast.success(t('change_password_modal.toast_success'));
       handleClose();
     } catch (err) {
-      toast.error(err?.data?.message ?? 'Failed to update password');
+      toast.error(err?.data?.message ?? t('change_password_modal.toast_error'));
     }
   };
 
@@ -62,9 +64,9 @@ export default function ChangePasswordModal({ open, onClose }) {
   };
 
   const fields = [
-    { name: 'old_password', label: 'Current Password' },
-    { name: 'newpassword', label: 'New Password' },
-    { name: 'confirmpassword', label: 'Confirm New Password' },
+    { name: 'old_password', label: t('change_password_modal.current_password_label') },
+    { name: 'newpassword', label: t('change_password_modal.new_password_label') },
+    { name: 'confirmpassword', label: t('change_password_modal.confirm_password_label') },
   ];
 
   const inputSx = {
@@ -150,7 +152,7 @@ export default function ChangePasswordModal({ open, onClose }) {
             '&.Mui-disabled': { bgcolor: '#8486ff', color: '#fff' },
           }}
         >
-          {isLoading ? 'Updating…' : 'Update Password'}
+          {isLoading ? t('change_password_modal.updating_btn') : t('change_password_modal.update_btn')}
         </Button>
       </Box>
     </Dialog>

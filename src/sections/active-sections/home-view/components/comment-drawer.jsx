@@ -22,6 +22,7 @@ import { useGetCommentsQuery, useLikeCommentMutation, useGetUrlMetaMutation } fr
 import { useUploadChatFilesMutation } from 'src/store/Reducer/auth';
 import { getSocket } from 'src/socket/socket';
 import { chatSocketService } from 'src/socket/chatSocketService';
+import { useTranslate } from 'src/locales';
 import LinkPreview from './link-preview';
 import { AutoLinkPreview } from './message-link-preview';
 import MessageDeleteModal from './message-delete-modal';
@@ -108,7 +109,8 @@ function getAttachments(item) {
   return item.file ? [normalizeAttachment(item.file)].filter(Boolean) : [];
 }
 
-export default function CommentDrawer({ open, onClose, selectedPost, commentsData, roomId }) {
+export default function CommentDrawer({ open, onClose, selectedPost, commentsData, roomId, locked = false }) {
+  const { t } = useTranslate('common');
   const currentUser = useSelector(selectUser);
   const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
 
@@ -264,7 +266,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   const handleFileSelected = useCallback(async (fileInput) => {
     const file = fileInput?.file ?? fileInput;
     if (!(file instanceof File)) {
-      toast.error('Could not read the selected file. Please try again.');
+      toast.error(t('comment_drawer.toast_file_read_error'));
       return;
     }
 
@@ -293,7 +295,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
     } catch {
       clearInterval(uploadTimerRef.current);
       setUpload({ file: null, progress: 0 });
-      toast.error('File upload failed. Please try again.');
+      toast.error(t('comment_drawer.toast_upload_failed'));
     }
   }, [uploadChatFiles]);
 
@@ -306,7 +308,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   const handleSendComment = useCallback(async () => {
     const socket = getSocket();
     if (!socket?.connected) {
-      toast.error('Not connected. Please try again.');
+      toast.error(t('comment_drawer.toast_not_connected'));
       return;
     }
 
@@ -315,7 +317,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
     const text = rawText;
 
     if (upload.file) {
-      toast.error('File is still uploading, please wait.');
+      toast.error(t('comment_drawer.toast_uploading'));
       return;
     }
 
@@ -323,7 +325,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
     try {
       let attachments = [];
       if (attachedFile && !attachedFile.uploadedData) {
-        toast.error('File is still preparing, please wait.');
+        toast.error(t('comment_drawer.toast_preparing'));
         return;
       }
       if (attachedFile?.uploadedData) {
@@ -345,7 +347,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
       lastFetchedUrlRef.current = null;
     } catch (err) {
       console.error('Send comment error:', err);
-      toast.error('Failed to send comment. Please try again.');
+      toast.error(t('comment_drawer.toast_send_failed'));
     } finally {
       setIsSending(false);
     }
@@ -356,7 +358,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
 
     const socket = getSocket();
     if (!socket?.connected) {
-      toast.error('Not connected. Please try again.');
+      toast.error(t('comment_drawer.toast_not_connected'));
       return;
     }
 
@@ -402,7 +404,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
           return { ...c, isLiked: !wasLiked, likes: wasLiked ? Math.max(0, (c.likes ?? 0) - 1) : (c.likes ?? 0) + 1 };
         })
       );
-      toast.error('Could not update like. Please try again.');
+      toast.error(t('comment_drawer.toast_like_error'));
     }
   }, [likeCommentApi]);
 
@@ -414,7 +416,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
   const handleConfirmDeleteComment = useCallback(() => {
     const socket = getSocket();
     if (!socket?.connected) {
-      toast.error('Not connected. Please try again.');
+      toast.error(t('comment_drawer.toast_not_connected'));
       return;
     }
 
@@ -448,7 +450,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
           },
         }}
       >
-      <DrawerHeader title="Comment" onBack={onClose} showEdit={false} showShare={false} />
+      <DrawerHeader title={t('comment_drawer.title')} onBack={onClose} showEdit={false} showShare={false} />
 
       {selectedPost && (
         <>
@@ -557,7 +559,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
             </Stack>
 
             <Typography sx={{ mb: 1, mt: 2, color: '#888', fontSize: 13 }}>
-              {localComments.length} Replies
+              {t('comment_drawer.replies', { count: localComments.length })}
             </Typography>
             <Box sx={{ borderBottom: '1px solid #eee', mb: 2 }} />
 
@@ -649,83 +651,107 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
 
           {/* Pinned input */}
           <Box sx={{ flexShrink: 0, px: 2, py: 1.5, borderTop: '1px solid #f0f0f0' }}>
-            {upload.file && (
-              <FileUploadProgress file={upload.file} progress={upload.progress} onCancel={cancelUpload} />
-            )}
-
-            {attachedFile && !upload.file && (
-              <AttachedFileChip file={attachedFile} onRemove={() => setAttachedFile(null)} />
-            )}
-
-            {linkMeta && !linkMetaDismissed && (
-              <LinkPreview
-                meta={linkMeta}
-                onDismiss={() => { setLinkMetaDismissed(true); setLinkMeta(null); }}
-              />
-            )}
-
-            {audioRecorderOpen ? (
-              <AudioRecorder
-                onDone={(file) => { setAudioRecorderOpen(false); handleFileSelected(file); }}
-                onCancel={() => setAudioRecorderOpen(false)}
-              />
-            ) : (
+            {locked ? (
               <Box
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1,
-                  bgcolor: '#fff',
-                  border: '1px solid #e8e8e8',
+                  gap: 1.5,
+                  background: 'linear-gradient(90deg, rgba(76,78,255,0.08) 0%, rgba(76,78,255,0.03) 100%)',
+                  border: '1.5px solid rgba(76,78,255,0.18)',
                   borderRadius: 3,
-                  px: 1.5,
-                  py: 0.75,
-                  boxShadow: '0px 1px 8px rgba(0,0,0,0.06)',
+                  px: 2,
+                  py: 1.25,
                 }}
               >
-                <IconButton size="small" onClick={(e) => setFileMenuAnchor(e.currentTarget)} sx={{ color: '#9e9e9e', flexShrink: 0 }}>
-                  <Iconify icon="mingcute:add-line" width={22} />
-                </IconButton>
-
-                <SelectFile
-                  anchorEl={fileMenuAnchor}
-                  onClose={() => setFileMenuAnchor(null)}
-                  onFileSelected={handleFileSelected}
-                  onAudioRecord={() => setAudioRecorderOpen(true)}
-                />
-
-                <InputBase
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !upload.file && !isSending) { e.preventDefault(); handleSendComment(); } }}
-                  placeholder="Write a comment..."
-                  fullWidth
-                  multiline
-                  maxRows={4}
-                  sx={{ flex: 1, fontSize: 14, color: 'text.primary', '& textarea': { p: 0 } }}
-                />
-
-                <IconButton
-                  onClick={handleSendComment}
-                  disabled={isSending || !!upload.file || (!commentText.trim() && !attachedFile && !linkMeta)}
-                  size="small"
-                  sx={{
-                    flexShrink: 0,
-                    bgcolor: '#4C4EFF',
-                    color: '#fff',
-                    width: 34,
-                    height: 34,
-                    borderRadius: '50%',
-                    '&:hover': { bgcolor: '#3739b7' },
-                    '&.Mui-disabled': { bgcolor: '#c5c6ff', color: '#fff' },
-                  }}
-                >
-                  {isSending
-                    ? <CircularProgress size={16} sx={{ color: '#fff' }} />
-                    : <Iconify icon="mingcute:send-line" width={18} />
-                  }
-                </IconButton>
+                <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Iconify icon="solar:lock-bold" width={17} style={{ color: '#4C4EFF' }} />
+                </Box>
+                <Typography fontSize={13} fontWeight={600} color="#4C4EFF" lineHeight={1.3}>
+                  {t('comment_drawer.locked_message')}
+                </Typography>
               </Box>
+            ) : (
+              <>
+                {upload.file && (
+                  <FileUploadProgress file={upload.file} progress={upload.progress} onCancel={cancelUpload} />
+                )}
+
+                {attachedFile && !upload.file && (
+                  <AttachedFileChip file={attachedFile} onRemove={() => setAttachedFile(null)} />
+                )}
+
+                {linkMeta && !linkMetaDismissed && (
+                  <LinkPreview
+                    meta={linkMeta}
+                    onDismiss={() => { setLinkMetaDismissed(true); setLinkMeta(null); }}
+                  />
+                )}
+
+                {audioRecorderOpen ? (
+                  <AudioRecorder
+                    onDone={(file) => { setAudioRecorderOpen(false); handleFileSelected(file); }}
+                    onCancel={() => setAudioRecorderOpen(false)}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      bgcolor: '#fff',
+                      border: '1px solid #e8e8e8',
+                      borderRadius: 3,
+                      px: 1.5,
+                      py: 0.75,
+                      boxShadow: '0px 1px 8px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <IconButton size="small" onClick={(e) => setFileMenuAnchor(e.currentTarget)} sx={{ color: '#9e9e9e', flexShrink: 0 }}>
+                      <Iconify icon="mingcute:add-line" width={22} />
+                    </IconButton>
+
+                    <SelectFile
+                      anchorEl={fileMenuAnchor}
+                      onClose={() => setFileMenuAnchor(null)}
+                      onFileSelected={handleFileSelected}
+                      onAudioRecord={() => setAudioRecorderOpen(true)}
+                    />
+
+                    <InputBase
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !upload.file && !isSending) { e.preventDefault(); handleSendComment(); } }}
+                      placeholder={t('comment_drawer.input_placeholder')}
+                      fullWidth
+                      multiline
+                      maxRows={4}
+                      sx={{ flex: 1, fontSize: 14, color: 'text.primary', '& textarea': { p: 0 } }}
+                    />
+
+                    <IconButton
+                      onClick={handleSendComment}
+                      disabled={isSending || !!upload.file || (!commentText.trim() && !attachedFile && !linkMeta)}
+                      size="small"
+                      sx={{
+                        flexShrink: 0,
+                        bgcolor: '#4C4EFF',
+                        color: '#fff',
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        '&:hover': { bgcolor: '#3739b7' },
+                        '&.Mui-disabled': { bgcolor: '#c5c6ff', color: '#fff' },
+                      }}
+                    >
+                      {isSending
+                        ? <CircularProgress size={16} sx={{ color: '#fff' }} />
+                        : <Iconify icon="mingcute:send-line" width={18} />
+                      }
+                    </IconButton>
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         </>
@@ -736,8 +762,8 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
         open={!!deleteCommentId}
         onClose={() => setDeleteCommentId(null)}
         onConfirm={handleConfirmDeleteComment}
-        title="Delete Comment"
-        description="Are you sure you want to delete this comment? This action cannot be undone."
+        title={t('comment_drawer.delete_title')}
+        description={t('comment_drawer.delete_description')}
       />
     </>
   );

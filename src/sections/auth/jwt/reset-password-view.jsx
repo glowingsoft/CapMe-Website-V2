@@ -22,6 +22,7 @@ import { Iconify } from 'src/components/iconify';
 import { useBoolean } from 'src/hooks/use-boolean';
 import { toast } from 'src/components/snackbar';
 import { useResetPasswordMutation } from 'src/store/Reducer/auth';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -39,6 +40,7 @@ export const ResetPasswordSchema = zod
 
 export function JwtResetPasswordView() {
   const router = useRouter();
+  const { t } = useTranslate('common');
   const newPassword = useBoolean();
   const confirmPassword = useBoolean();
   const [errorMsg, setErrorMsg] = useState('');
@@ -110,11 +112,10 @@ export function JwtResetPasswordView() {
 
         {/* Title */}
         <Typography align="center" sx={{ fontSize: 26, fontWeight: 800, mb: 0.8, lineHeight: 1.2 }}>
-          <Box component="span" sx={{ color: '#4C4EFF' }}>Reset</Box>
-          {' Password'}
+          {t('auth.reset_password.title')}
         </Typography>
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mb: 2.5 }}>
-          Your new password must be different from your previous password.
+          {t('auth.reset_password.subtitle')}
         </Typography>
 
         {/* Error */}
@@ -129,7 +130,7 @@ export function JwtResetPasswordView() {
           <Stack spacing={2.5}>
             {/* New Password */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>New Password <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.reset_password.new_password_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Text
                 name="newPassword"
                 placeholder="6+ characters"
@@ -155,7 +156,7 @@ export function JwtResetPasswordView() {
 
             {/* Confirm Password */}
             <Box>
-              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>Confirm Password <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
+              <Typography fontSize={13} fontWeight={600} sx={{ mb: 0.8 }}>{t('auth.reset_password.confirm_password_label')} <Box component="span" sx={{ color: 'error.main' }}>*</Box></Typography>
               <Field.Text
                 name="confirmPassword"
                 placeholder="Re-enter your password"
@@ -194,7 +195,7 @@ export function JwtResetPasswordView() {
                 '&:hover': { bgcolor: '#3739b7' },
               }}
             >
-              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Reset Password'}
+              {isSubmitting ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : t('auth.reset_password.submit')}
             </Button>
           </Stack>
         </Form>
@@ -202,7 +203,7 @@ export function JwtResetPasswordView() {
         {/* Back */}
         <Typography align="center" fontSize={13} color="text.secondary" sx={{ mt: 3 }}>
           <Link component={RouterLink} href={paths.auth.jwt.signIn} fontWeight={700} color="#4C4EFF" underline="none">
-            ← Back to Sign In
+            {t('auth.reset_password.back_to_sign_in')}
           </Link>
         </Typography>
       </Box>

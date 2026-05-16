@@ -5,7 +5,7 @@ import DialogContent from '@mui/material/DialogContent';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { signOut } from 'src/auth/context/jwt';
@@ -13,17 +13,18 @@ import { useAuthContext } from 'src/auth/hooks';
 import { Iconify } from 'src/components/iconify';
 import { paths } from 'src/routes/paths';
 import { logout } from 'src/store/slices/userSlice';
+import { useTranslate } from 'src/locales';
 
-const GENERAL_ITEMS = [
-  { label: 'App Language', icon: 'mingcute:translate-2-line', subtitle: 'English', path: paths.dashboard.settings.language },
-  { label: 'Subscription', icon: 'solar:crown-bold', subtitle: 'Free plan', path: paths.dashboard.settings.subscription },
-  { label: 'Knowledge Graph', icon: 'solar:graph-bold', subtitle: 'View your interest graph', path: paths.dashboard.settings.knowledgeGraph },
+const getGeneralItems = (t, currentLangLabel) => [
+  { label: t('settings.language_label'), icon: 'mingcute:translate-2-line', subtitle: currentLangLabel, path: paths.dashboard.settings.language },
+  { label: t('settings.subscription_label'), icon: 'solar:crown-bold', subtitle: t('settings.subscription_subtitle'), path: paths.dashboard.settings.subscription },
+  { label: t('settings.knowledge_graph_label'), icon: 'solar:graph-bold', subtitle: t('settings.knowledge_graph_subtitle'), path: paths.dashboard.settings.knowledgeGraph },
 ];
 
-const SUPPORT_ITEMS = [
-  { label: 'Contact Us', icon: 'mingcute:mail-line', subtitle: 'Get help from our team', path: paths.dashboard.settings.contact },
-  { label: 'Terms & Conditions', icon: 'solar:document-text-bold', subtitle: 'Read our terms', path: paths.dashboard.settings.terms },
-  { label: 'Privacy Policy', icon: 'solar:shield-bold', subtitle: 'How we handle your data', path: paths.dashboard.settings.privacy },
+const getSupportItems = (t) => [
+  { label: t('settings.contact_label'), icon: 'mingcute:mail-line', subtitle: t('settings.contact_subtitle'), path: paths.dashboard.settings.contact },
+  { label: t('settings.terms_label'), icon: 'solar:document-text-bold', subtitle: t('settings.terms_subtitle'), path: paths.dashboard.settings.terms },
+  { label: t('settings.privacy_label'), icon: 'solar:shield-bold', subtitle: t('settings.privacy_subtitle'), path: paths.dashboard.settings.privacy },
 ];
 
 function SettingsGroup({ title, items }) {
@@ -100,6 +101,7 @@ function SettingsGroup({ title, items }) {
 }
 
 function LogoutConfirmModal({ open, onClose, onConfirm }) {
+  const { t } = useTranslate('common');
   return (
     <Dialog
       open={open}
@@ -128,10 +130,10 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
           </Box>
 
           <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}>
-            Log Out
+            {t('settings.logout_modal_title')}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 3 }}>
-            Are you sure you want to log out? You will need to sign in again to access your account.
+            {t('settings.logout_modal_description')}
           </Typography>
 
           <Stack direction="row" spacing={1.5}>
@@ -152,7 +154,7 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
                 '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
               }}
             >
-              Cancel
+              {t('settings.logout_modal_cancel')}
             </Button>
             <Button
               fullWidth
@@ -172,7 +174,7 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
                 '&:hover': { bgcolor: '#c62828', boxShadow: 'none' },
               }}
             >
-              Log Out
+              {t('settings.logout_modal_confirm')}
             </Button>
           </Stack>
         </Box>
@@ -182,6 +184,7 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
 }
 
 export default function SettingsView() {
+  const { t, currentLang } = useTranslate('common');
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
@@ -189,6 +192,9 @@ export default function SettingsView() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { checkUserSession } = useAuthContext();
+
+  const generalItems = useMemo(() => getGeneralItems(t, currentLang.label), [t, currentLang.label]);
+  const supportItems = useMemo(() => getSupportItems(t), [t]);
 
   useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -218,23 +224,23 @@ export default function SettingsView() {
       <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 4 }, pt: { xs: 2, md: 3 }, pb: { xs: 2, md: 4 } }}>
         <Stack spacing={0.5} sx={{ mb: 4 }}>
           <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-            <Box component="span" sx={{ color: '#4C4EFF' }}>App</Box>
-            {' Settings'}
+            <Box component="span" sx={{ color: '#4C4EFF' }}>{t('settings.title').split(' ')[0]}</Box>
+            {` ${t('settings.title').split(' ').slice(1).join(' ')}`}
           </Typography>
           <Typography fontSize={13} color="text.secondary">
-            Manage your preferences and account options.
+            {t('settings.subtitle')}
           </Typography>
         </Stack>
 
-        <SettingsGroup title="General" items={GENERAL_ITEMS} />
-        <SettingsGroup title="Support & Legal" items={SUPPORT_ITEMS} />
+        <SettingsGroup title={t('settings.section_general')} items={generalItems} />
+        <SettingsGroup title={t('settings.section_support')} items={supportItems} />
 
         {/* Log Out */}
         <Box sx={{ mb: 3 }}>
           <Typography
             sx={{ fontSize: 12, fontWeight: 700, color: 'text.disabled', mb: 1.5, px: 0.5, textTransform: 'uppercase', letterSpacing: 0.8 }}
           >
-            Account
+            {t('settings.section_account')}
           </Typography>
           <Box sx={{ bgcolor: '#fff', borderRadius: 4, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>
             <Box
@@ -267,10 +273,10 @@ export default function SettingsView() {
 
               <Box sx={{ flex: 1 }}>
                 <Typography sx={{ fontSize: 15, fontWeight: 600, color: '#e53935', lineHeight: 1.3 }}>
-                  Log Out
+                  {t('settings.logout_label')}
                 </Typography>
                 <Typography sx={{ fontSize: 13, color: 'text.disabled', mt: 0.3 }}>
-                  Sign out of your account
+                  {t('settings.logout_subtitle')}
                 </Typography>
               </Box>
 

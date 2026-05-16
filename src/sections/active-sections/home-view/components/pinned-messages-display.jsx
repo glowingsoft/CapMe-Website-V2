@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import Avatar from '@mui/material/Avatar';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 function AttachmentPreview({ attachments = [] }) {
     if (!attachments.length) return null;
@@ -60,6 +61,7 @@ function PinnedMessageSkeleton() {
 }
 
 export default function PinnedMessagesDisplay({ pinnedMessages = [], isFetching = false, onUnpin, onMessageClick }) {
+    const { t } = useTranslate('common');
     const [expanded, setExpanded] = useState(false);
     const count = pinnedMessages.length;
 
@@ -84,7 +86,7 @@ export default function PinnedMessagesDisplay({ pinnedMessages = [], isFetching 
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: expanded ? 1.15 : 0 }}>
                 <Typography fontSize={12.5} fontWeight={700} color="#4C4EFF" sx={{ display: 'flex', alignItems: 'center' }}>
                     <Iconify icon="solar:pin-bold" width={16} sx={{ mr: 0.8, verticalAlign: 'middle' }} />
-                    Pinned Messages {isFetching ? <Skeleton variant="text" width={20} height={16} sx={{ ml: 0.5, display: 'inline-block' }} /> : `(${count})`}
+                    {t('pinned_messages.title')} {isFetching ? <Skeleton variant="text" width={20} height={16} sx={{ ml: 0.5, display: 'inline-block' }} /> : `(${count})`}
                 </Typography>
 
                 <IconButton
@@ -100,7 +102,7 @@ export default function PinnedMessagesDisplay({ pinnedMessages = [], isFetching 
                         flexShrink: 0,
                         '&:hover': { bgcolor: 'rgba(76,78,255,0.16)' },
                     }}
-                    aria-label={expanded ? 'Collapse pinned messages' : 'Expand pinned messages'}
+                    aria-label={expanded ? t('pinned_messages.collapse') : t('pinned_messages.expand')}
                 >
                     <Iconify icon={expanded ? 'solar:alt-arrow-up-bold' : 'solar:alt-arrow-down-bold'} width={16} />
                 </IconButton>

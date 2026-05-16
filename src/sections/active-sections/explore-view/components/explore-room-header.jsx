@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import Alert from '@mui/material/Alert';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import Popover from '@mui/material/Popover';
-import Snackbar from '@mui/material/Snackbar';
+import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
+import RoomAvatar from 'src/components/room-avatar';
 import UnfollowModal from 'src/sections/active-sections/home-view/components/unfollow-modal';
 import { useCancelRoomRequestMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
+import { useTranslate } from 'src/locales';
+import { toast } from 'src/components/snackbar';
 
 export default function ExploreRoomHeader({
   room,
@@ -21,18 +22,15 @@ export default function ExploreRoomHeader({
   onFollowToggle,
   onFilterOpen,
   filterActive = false,
+  isLoading = false,
 }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportFeedback, setReportFeedback] = useState('');
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success', key: 0 });
   const [toggleRoomFollow] = useToggleRoomFollowMutation();
   const [cancelRoomRequest] = useCancelRoomRequestMutation();
-
-  const showToast = (message, severity = 'success') =>
-    setToast((p) => ({ open: true, message, severity, key: p.key + 1 }));
-  const hideToast = () => setToast((p) => ({ ...p, open: false }));
+  const { t } = useTranslate('common');
 
   const handleFollow = async () => {
     const roomId = room?._id ?? room?.id;
@@ -42,12 +40,12 @@ export default function ExploreRoomHeader({
     if (isPending) {
       setLoading(true);
       try {
-        const result = await cancelRoomRequest(roomId).unwrap();
-        if (result?.message) showToast(result.message, 'success');
+        await cancelRoomRequest(roomId).unwrap();
+        toast.success(t('room_channel_header.toast_request_cancelled'));
         onFollowToggle(roomId, { cancelled: true });
         window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: false } }));
       } catch {
-        showToast('Failed to cancel request. Please try again.', 'error');
+        toast.error(t('explore_drawer.toast_cancel_error'));
       } finally {
         setLoading(false);
       }
@@ -62,24 +60,24 @@ export default function ExploreRoomHeader({
 
       if (isRequestSent && !isFollowing) {
         // Pending request — not yet following
-        showToast(msg, 'info');
+        toast.info(t('room_channel_header.toast_request_sent'));
         onFollowToggle(roomId, { isPending: true });
         window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
       } else {
         // Actual follow/unfollow
         const nextFollowing = !isFollowing;
-        if (msg) showToast(msg, 'success');
+        toast.success(nextFollowing ? t('explore_drawer.toast_followed') : t('explore_drawer.toast_unfollowed'));
         onFollowToggle(roomId);
         window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: nextFollowing, isPending: false } }));
       }
     } catch (err) {
-      const msg = err?.data?.message ?? err?.message ?? '';
-      if (msg.toLowerCase().includes('already sent')) {
-        showToast(msg, 'info');
+      const errMsg = err?.data?.message ?? err?.message ?? '';
+      if (errMsg.toLowerCase().includes('already sent')) {
+        toast.info(t('room_channel_header.toast_request_sent'));
         onFollowToggle(roomId, { isPending: true });
         window.dispatchEvent(new CustomEvent('roomFollowUpdate', { detail: { roomId, isFollowing: false, isPending: true } }));
       } else {
-        showToast('Failed to update. Please try again.', 'error');
+        toast.error(t('explore_drawer.toast_update_error'));
       }
     } finally {
       setLoading(false);
@@ -88,19 +86,19 @@ export default function ExploreRoomHeader({
 
   const menuItems = [
     {
-      label: 'Share',
+      label: t('room_channel_header.menu_share'),
       icon: 'mingcute:share-forward-fill',
       onClick: () => setMenuAnchor(null),
     },
     {
-      label: 'Report',
+      label: t('room_channel_header.menu_report'),
       icon: 'material-symbols:report-rounded',
       onClick: () => { setMenuAnchor(null); setReportOpen(true); },
     },
   ];
 
-  let followLabel = isFollowing ? 'Following' : 'Follow';
-  if (isPending && !isFollowing) followLabel = 'Request Sent';
+  let followLabel = isFollowing ? t('explore_drawer.btn_following') : t('explore_drawer.btn_follow');
+  if (isPending && !isFollowing) followLabel = t('explore_drawer.btn_request_sent');
   const memberCount = Number(room?.memberCount ?? 0);
   const showMemberCount = Number.isFinite(memberCount) && memberCount > 0;
 
@@ -121,112 +119,101 @@ export default function ExploreRoomHeader({
       >
         {/* Left: avatar + name */}
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <Avatar
-            sx={{
-              width: 32,
-              height: 32,
-              bgcolor: room?.color || '#4C4EFF',
-              fontSize: 13,
-              fontWeight: 700,
-            }}
-          >
-            {room?.name?.charAt(0).toUpperCase()}
-          </Avatar>
+          {isLoading ? (
+            <Skeleton variant="circular" width={32} height={32} sx={{ bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
+          ) : (
+            <RoomAvatar image={room?.image ?? room?.icon} name={room?.name} size={32} bgcolor={room?.color || '#4C4EFF'} />
+          )}
           <Box>
-            <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>
-              {room?.name}
-            </Typography>
-            {room?.hashtag && (
-              <Typography fontSize={11} color="rgba(255,255,255,0.5)">
-                {room.hashtag}
-              </Typography>
+            {isLoading ? (
+              <Skeleton variant="text" width={130} height={20} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
+            ) : (
+              <>
+                <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>{room?.name}</Typography>
+                {room?.hashtag && (
+                  <Typography fontSize={11} color="rgba(255,255,255,0.5)">{room.hashtag}</Typography>
+                )}
+              </>
             )}
           </Box>
         </Stack>
 
         {/* Right: members + follow + menu */}
         <Stack direction="row" spacing={0.5} alignItems="center">
-          {showMemberCount && (
+          {isLoading ? (
             <>
-              <Typography fontSize={12} fontWeight={600} color="rgba(255,255,255,0.7)" sx={{ mr: 1 }}>
-                {memberCount}
-              </Typography>
-              <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.15)', mx: 0.5 }} />
+              <Skeleton variant="text" width={36} height={18} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
+              <Skeleton variant="rounded" width={80} height={30} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1.5 }} />
+              <Skeleton variant="circular" width={30} height={30} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
+            </>
+          ) : (
+            <>
+              {showMemberCount && (
+                <>
+                  <Typography fontSize={12} fontWeight={600} color="rgba(255,255,255,0.7)" sx={{ mr: 1 }}>
+                    {memberCount}
+                  </Typography>
+                  <Box sx={{ width: '1px', height: 20, bgcolor: 'rgba(255,255,255,0.15)', mx: 0.5 }} />
+                </>
+              )}
+
+              {onFilterOpen && (
+                <IconButton
+                  size="small"
+                  onClick={onFilterOpen}
+                  sx={{
+                    position: 'relative',
+                    width: 34,
+                    height: 34,
+                    borderRadius: 1.5,
+                    bgcolor: filterActive ? 'rgba(76,78,255,0.22)' : 'rgba(255,255,255,0.10)',
+                    color: '#fff',
+                    '&:hover': { bgcolor: filterActive ? 'rgba(76,78,255,0.30)' : 'rgba(255,255,255,0.16)' },
+                  }}
+                  aria-label="Open filters"
+                >
+                  <Iconify icon="solar:filter-bold" width={18} />
+                  {filterActive && (
+                    <Box sx={{ position: 'absolute', top: 7, right: 7, width: 7, height: 7, borderRadius: '50%', bgcolor: '#4C4EFF' }} />
+                  )}
+                </IconButton>
+              )}
+
+              <Button
+                size="small"
+                onClick={handleFollow}
+                disabled={loading}
+                sx={{
+                  ml: 0.5,
+                  height: 30,
+                  px: 2,
+                  fontWeight: 600,
+                  fontSize: isPending ? 11 : 12,
+                  textTransform: 'none',
+                  borderRadius: 1.5,
+                  bgcolor: isPending ? 'transparent' : isFollowing ? 'transparent' : '#4C4EFF',
+                  color: isPending ? '#FFC107' : '#fff',
+                  border: isPending
+                    ? '1.5px solid rgba(255,193,7,0.5)'
+                    : isFollowing ? '1.5px solid rgba(255,255,255,0.3)' : 'none',
+                  '&:hover': {
+                    bgcolor: isPending ? 'rgba(255,193,7,0.08)' : isFollowing ? 'rgba(255,255,255,0.08)' : '#3739b7',
+                  },
+                  '&.Mui-disabled': { opacity: 0.6 },
+                }}
+              >
+                {loading ? <CircularProgress size={12} color="inherit" /> : followLabel}
+              </Button>
+
+              <IconButton
+                size="small"
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+                sx={{ color: '#bdbdbd', '&:hover': { color: '#fff' } }}
+              >
+                <Iconify icon="ph:dots-three-vertical-bold" width={18} />
+              </IconButton>
             </>
           )}
-
-          {/* Filter */}
-          {onFilterOpen && (
-            <IconButton
-              size="small"
-              onClick={onFilterOpen}
-              sx={{
-                position: 'relative',
-                width: 34,
-                height: 34,
-                borderRadius: 1.5,
-                bgcolor: filterActive ? 'rgba(76,78,255,0.22)' : 'rgba(255,255,255,0.10)',
-                color: '#fff',
-                '&:hover': { bgcolor: filterActive ? 'rgba(76,78,255,0.30)' : 'rgba(255,255,255,0.16)' },
-              }}
-              aria-label="Open filters"
-            >
-              <Iconify icon="solar:filter-bold" width={18} />
-              {filterActive && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: 7,
-                    right: 7,
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    bgcolor: '#4C4EFF',
-                  }}
-                />
-              )}
-            </IconButton>
-          )}
-
-          {/* Follow button */}
-          <Button
-            size="small"
-            onClick={handleFollow}
-            disabled={loading}
-            sx={{
-              ml: 0.5,
-              height: 30,
-              px: 2,
-              fontWeight: 600,
-              fontSize: isPending ? 11 : 12,
-              textTransform: 'none',
-              borderRadius: 1.5,
-              bgcolor: isPending ? 'transparent' : isFollowing ? 'transparent' : '#4C4EFF',
-              color: isPending ? '#FFC107' : '#fff',
-              border: isPending
-                ? '1.5px solid rgba(255,193,7,0.5)'
-                : isFollowing
-                  ? '1.5px solid rgba(255,255,255,0.3)'
-                  : 'none',
-              '&:hover': {
-                bgcolor: isPending
-                  ? 'rgba(255,193,7,0.08)'
-                  : isFollowing ? 'rgba(255,255,255,0.08)' : '#3739b7',
-              },
-              '&.Mui-disabled': { opacity: 0.6 },
-            }}
-          >
-            {loading ? <CircularProgress size={12} color="inherit" /> : followLabel}
-          </Button>
-
-          {/* Menu */}
-          <IconButton
-            size="small"
-            onClick={(e) => setMenuAnchor(e.currentTarget)}
-            sx={{ color: '#bdbdbd', '&:hover': { color: '#fff' } }}
-          >
-            <Iconify icon="ph:dots-three-vertical-bold" width={18} />
-          </IconButton>
         </Stack>
       </Box>
 
@@ -290,29 +277,18 @@ export default function ExploreRoomHeader({
         onConfirm={() => {
           setReportOpen(false);
           setReportFeedback('');
-          showToast('Room reported successfully');
+          toast.success(t('room_channel_header.toast_reported'));
         }}
         roomName={room?.name}
-        title="Report Room"
+        title={t('room_info.report_modal_title')}
         icon="material-symbols:report-rounded"
         iconBgColor="#4C4EFF"
-        confirmLabel="Submit"
+        confirmLabel={t('room_info.report_modal_confirm')}
         confirmColor="#4C4EFF"
         feedback={reportFeedback}
         onFeedbackChange={setReportFeedback}
       />
 
-      <Snackbar
-        key={toast.key}
-        open={toast.open}
-        autoHideDuration={2500}
-        onClose={hideToast}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert onClose={hideToast} severity={toast.severity} variant="filled" sx={{ borderRadius: 2, fontWeight: 600 }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
     </>
   );
 }

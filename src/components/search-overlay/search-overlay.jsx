@@ -17,6 +17,7 @@ import Typography from '@mui/material/Typography';
 
 import { Icon } from '@iconify/react';
 import { useLazySearchOverlayQuery, useGetRoomByIdQuery } from 'src/store/Reducer/rooms-api';
+import { useTranslate } from 'src/locales';
 
 // ----------------------------------------------------------------------
 
@@ -40,10 +41,10 @@ function formatTime(iso) {
 }
 
 const VISIBILITY_CONFIG = {
-  public:          { icon: 'solar:global-bold',                label: 'Public',   color: '#43a047' },
-  private:         { icon: 'solar:lock-bold',                  label: 'Private',  color: '#29b6f6' },
-  private_friends: { icon: 'solar:users-group-rounded-bold',   label: 'Friends',  color: '#7b5ea7' },
-  personal:        { icon: 'solar:garage-bold',                label: 'Personal', color: '#4C4EFF' },
+  public:          { icon: 'solar:global-bold',                labelKey: 'search.visibility_public',          color: '#43a047' },
+  private:         { icon: 'solar:lock-bold',                  labelKey: 'search.visibility_private',         color: '#29b6f6' },
+  private_friends: { icon: 'solar:users-group-rounded-bold',   labelKey: 'search.visibility_private_friends', color: '#7b5ea7' },
+  personal:        { icon: 'solar:garage-bold',                labelKey: 'search.visibility_personal',        color: '#4C4EFF' },
 };
 
 const S3_BASE = 'https://capmes3.s3.us-east-1.amazonaws.com/';
@@ -80,6 +81,7 @@ function getItemType(item) {
 }
 
 function MessageVisibilityBadge({ item }) {
+  const { t } = useTranslate('common');
   const needsFetch = !item?.visibility && !item?.roomVisibility && !!item?.roomId;
   const { data: room } = useGetRoomByIdQuery(item?.roomId, { skip: !needsFetch });
   const source = needsFetch ? (room ?? item) : item;
@@ -91,7 +93,7 @@ function MessageVisibilityBadge({ item }) {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4, flexShrink: 0 }}>
         <Icon icon={cfg.icon} width={12} style={{ color: cfg.color }} />
         <Typography component="span" fontSize={11} fontWeight={600} sx={{ color: cfg.color, lineHeight: 1 }}>
-          {cfg.label}
+          {t(cfg.labelKey)}
         </Typography>
       </Box>
     </>
@@ -155,6 +157,7 @@ function MessageRow({ item, onClose }) {
 }
 
 function UserRow({ item, onClose }) {
+  const { t } = useTranslate('common');
   const avatarSrc = buildUrl(item.image);
 
   return (
@@ -184,13 +187,14 @@ function UserRow({ item, onClose }) {
         )}
       </Box>
       <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0, ml: 1 }}>
-        User
+        {t('search.type_user')}
       </Typography>
     </Box>
   );
 }
 
 function RoomRow({ item, onClose, openRoom }) {
+  const { t } = useTranslate('common');
   const avatarSrc = buildUrl(item.image);
 
   return (
@@ -209,13 +213,14 @@ function RoomRow({ item, onClose, openRoom }) {
         )}
       </Box>
       <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0, ml: 1 }}>
-        Room
+        {t('search.type_room')}
       </Typography>
     </Box>
   );
 }
 
 function AttachmentRow({ item, onClose }) {
+  const { t } = useTranslate('common');
   const navigate = useNavigate();
   const location = useLocation();
   const displayName = item.originalFileName ?? item.fileName ?? item.content ?? '—';
@@ -273,7 +278,7 @@ function AttachmentRow({ item, onClose }) {
         </Box>
       </Box>
       <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0, ml: 1 }}>
-        File
+        {t('search.type_file')}
       </Typography>
     </Box>
   );
@@ -325,6 +330,14 @@ function ResultItem({ item, onClose, openRoom }) {
 export default function SearchOverlay({ open, onClose, anchorEl, query }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslate('common');
+
+  const categoryLabels = {
+    All: t('search.category_all'),
+    Rooms: t('search.category_rooms'),
+    Files: t('search.category_files'),
+    People: t('search.category_people'),
+  };
 
   const [category, setCategory] = useState('All');
   const [tab, setTab] = useState(0);
@@ -445,7 +458,7 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
                 <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.4, overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.07)', '&::-webkit-scrollbar': { display: 'none' } }}>
                   {CATEGORIES.map((cat) => (
                     <Chip
-                      key={cat} label={cat} size="small"
+                      key={cat} label={categoryLabels[cat]} size="small"
                       onClick={() => setCategory(cat)}
                       sx={{
                         flexShrink: 0, fontWeight: 600, fontSize: 12, height: 28, borderRadius: 1.5,
@@ -471,8 +484,8 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
                     '& .MuiTabs-indicator': { bgcolor: '#4C4EFF', height: 2.5, borderRadius: 1, transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)' },
                   }}
                 >
-                  <Tab label="Home" />
-                  <Tab label="Explore" />
+                  <Tab label={t('search.tab_home')} />
+                  <Tab label={t('search.tab_explore')} />
                 </Tabs>
 
                 {/* Results */}
@@ -500,12 +513,12 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
                       {isFetching && (
                         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, py: 1.5 }}>
                           <CircularProgress size={16} sx={{ color: '#4C4EFF' }} />
-                          <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)' }}>Loading more…</Typography>
+                          <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)' }}>{t('search.loading_more')}</Typography>
                         </Box>
                       )}
                       {!hasMore && (
                         <Typography fontSize={11} align="center" sx={{ color: 'rgba(255,255,255,0.2)', py: 1.5 }}>
-                          End of results
+                          {t('search.end_of_results')}
                         </Typography>
                       )}
                     </>
@@ -515,7 +528,7 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
                         <Icon icon="eva:search-fill" width={22} color="rgba(255,255,255,0.25)" />
                       </Box>
                       <Typography fontSize={13} fontWeight={600} sx={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {query ? 'No results found' : 'Start typing to search'}
+                        {query ? t('search.no_results') : t('search.start_typing')}
                       </Typography>
                     </Box>
                   )}

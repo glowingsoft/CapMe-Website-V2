@@ -7,9 +7,11 @@ import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 import { useTermsAndConditionsQuery } from 'src/store/Reducer/auth';
 
 export default function TermsView() {
+  const { t } = useTranslate('common');
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
@@ -66,8 +68,8 @@ export default function TermsView() {
           </IconButton>
           <Box>
             <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-              <Box component="span" sx={{ color: '#4C4EFF' }}>Terms</Box>
-              {' & Conditions'}
+              <Box component="span" sx={{ color: '#4C4EFF' }}>{t('settings.terms_label').split(' ')[0]}</Box>
+              {` ${t('settings.terms_label').split(' ').slice(1).join(' ')}`}
             </Typography>
           </Box>
         </Stack>

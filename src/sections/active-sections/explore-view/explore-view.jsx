@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+﻿import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { scrollToBottom } from 'src/utils/scroll-to-bottom';
+import { cleanUrl, withDateSeparators } from 'src/utils/message-utils';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Drawer from '@mui/material/Drawer';
-import Skeleton from '@mui/material/Skeleton';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
@@ -18,63 +19,21 @@ import ExploreRoomHeader from './components/explore-room-header';
 import ExploreLeftDrawer from './components/explore-left-drawer';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
 import { useGetRoomMessagesQuery, useLazyGetRoomByIdQuery } from 'src/store/Reducer/rooms-api';
+import MessageSkeleton from 'src/sections/active-sections/home-view/components/message-skeleton';
+import { useTranslate } from 'src/locales';
 
 const DRAWER_WIDTH = 420;
-const MESSAGES_LIMIT = 30;
+const MESSAGES_LIMIT = 10;
 const DEFAULT_FILTERS = { query: '', date: null, memberCount: null, contentType: null };
 const countActiveFilters = (f) => Object.values(f).filter(Boolean).length;
 
-const cleanUrl = (s) => {
-    if (!s || typeof s !== 'string') return '';
-    return s.replace(/^https?:\/\/[^/]+(\/https?:\/\/.+)$/, (_, rest) => rest.slice(1)).trim();
-};
 
-function formatDateLabel(isoString) {
-    const d = new Date(isoString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return 'Today';
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString(undefined, {
-        weekday: 'long', month: 'long', day: 'numeric',
-        ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}),
-    });
-}
-
-function withDateSeparators(messages) {
-    const result = [];
-    let lastDateStr = null;
-    messages.forEach((msg) => {
-        if (!msg.createdAt) { result.push(msg); return; }
-        const dateStr = new Date(msg.createdAt).toDateString();
-        if (dateStr !== lastDateStr) {
-            lastDateStr = dateStr;
-            result.push({ type: 'date', id: `date-${dateStr}`, label: formatDateLabel(msg.createdAt) });
-        }
-        result.push(msg);
-    });
-    return result;
-}
-
-function MessageSkeleton() {
-    return (
-        <Box sx={{ display: 'flex', gap: 1.5, px: 1, py: 1 }}>
-            <Skeleton variant="circular" width={38} height={38} sx={{ flexShrink: 0 }} />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Skeleton variant="text" width="30%" height={14} sx={{ mb: 0.75 }} />
-                <Skeleton variant="text" width="85%" height={13} />
-                <Skeleton variant="text" width="60%" height={13} />
-            </Box>
-        </Box>
-    );
-}
-
-// ── ExploreView ───────────────────────────────────────────────────────────────
+// â”€â”€ ExploreView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ExploreView() {
     const currentUser = useSelector(selectUser);
     const currentUserId = String(currentUser?.id ?? currentUser?._id ?? currentUser?.basicInfo?._id ?? '');
     const currentUserImage = currentUser?.photoURL ?? currentUser?.image ?? currentUser?.basicInfo?.image ?? currentUser?.avatar ?? '';
+    const { t } = useTranslate('common');
 
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -87,15 +46,24 @@ export default function ExploreView() {
 
     const [localPosts, setLocalPosts] = useState([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    const [messagesPage, setMessagesPage] = useState(1);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
 
+    const postsContainerRef = useRef(null);
     const postsEndRef = useRef(null);
+    const prevScrollHeightRef = useRef(0);
+    const isPrependingRef = useRef(false);
     const isInitialLoadRef = useRef(false);
+    const prevRoomRef = useRef(null);
+    const scrollGuardRef = useRef(false);
+    const selectedRoomRef = useRef(null);
+    selectedRoomRef.current = selectedRoom;
 
     const roomId = selectedRoom?._id ?? selectedRoom?.id ?? null;
 
     // Fetch messages for selected room
     const messagesQuery = useGetRoomMessagesQuery(
-        { roomId, page: 1, limit: MESSAGES_LIMIT },
+        { roomId, page: messagesPage, limit: MESSAGES_LIMIT },
         { skip: !roomId, refetchOnMountOrArgChange: true }
     );
 
@@ -153,27 +121,86 @@ export default function ExploreView() {
         if (!messagesQuery.isSuccess || messagesQuery.isFetching) return;
         const raw = messagesQuery.data?.body?.messages ?? [];
         const normalized = [...raw].reverse().map((msg) => normalizeMessage(msg));
-        setLocalPosts(normalized);
-        setIsLoadingMessages(false);
-        isInitialLoadRef.current = true;
-    }, [messagesQuery.data, messagesQuery.isSuccess, messagesQuery.isFetching, normalizeMessage]);
+        setHasMoreMessages(raw.length >= MESSAGES_LIMIT);
+        if (messagesPage === 1) {
+            isPrependingRef.current = false;
+            isInitialLoadRef.current = true;
+            setLocalPosts(normalized);
+            setIsLoadingMessages(false);
+        } else {
+            isPrependingRef.current = true;
+            setLocalPosts((prev) => {
+                const existingIds = new Set(prev.map((m) => String(m.id)));
+                const unique = normalized.filter((m) => !existingIds.has(String(m.id)));
+                return [...unique, ...prev];
+            });
+        }
+        scrollGuardRef.current = false;
+    }, [messagesQuery.data, messagesQuery.isSuccess, messagesQuery.isFetching, messagesPage, normalizeMessage]);
 
-    // Scroll to bottom on initial load
-    useEffect(() => {
-        if (isInitialLoadRef.current && localPosts.length > 0) {
-            isInitialLoadRef.current = false;
-            setTimeout(() => postsEndRef.current?.scrollIntoView({ behavior: 'instant' }), 50);
+    // Restore scroll position after prepending older messages
+    useLayoutEffect(() => {
+        if (prevScrollHeightRef.current > 0 && postsContainerRef.current) {
+            const el = postsContainerRef.current;
+            el.scrollTop = el.scrollHeight - prevScrollHeightRef.current;
+            prevScrollHeightRef.current = 0;
         }
     }, [localPosts]);
 
-    // When room changes — reset and start loading
+    // Scroll to bottom: instant on room switch or initial load, smooth on new message.
+    // Mirrors home-view exactly â€” isInitialLoadRef is set by the populate effect (page 1)
+    // and consumed here; no other signals needed.
+    useEffect(() => {
+        if (!selectedRoom) return;
+        if (isPrependingRef.current) {
+            isPrependingRef.current = false;
+            return;
+        }
+        const roomChanged = selectedRoom !== prevRoomRef.current;
+        prevRoomRef.current = selectedRoom;
+        const isInitial = isInitialLoadRef.current;
+        isInitialLoadRef.current = false;
+        const el = postsContainerRef.current;
+        if (!el) return;
+        if (roomChanged || isInitial) {
+            scrollToBottom(postsContainerRef, postsEndRef, 'auto');
+            const raf1 = requestAnimationFrame(() => scrollToBottom(postsContainerRef, postsEndRef, 'auto'));
+            const raf2 = requestAnimationFrame(() => { requestAnimationFrame(() => scrollToBottom(postsContainerRef, postsEndRef, 'auto')); });
+            const observer = new ResizeObserver(() => {
+                const container = postsContainerRef.current;
+                if (!container) return;
+                const distFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+                if (distFromBottom < 300) scrollToBottom(postsContainerRef, postsEndRef, 'auto');
+            });
+            if (el) observer.observe(el);
+            const timer = setTimeout(() => observer.disconnect(), 3000);
+            return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); observer.disconnect(); clearTimeout(timer); };
+        }
+        scrollToBottom(postsContainerRef, postsEndRef, 'smooth');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedRoom, localPosts.length]);
+
+    // When room changes â€” reset and start loading
     const prevRoomIdRef = useRef(null);
     useEffect(() => {
-        if (!roomId) { setLocalPosts([]); setIsLoadingMessages(false); return; }
+        if (!roomId) {
+            setLocalPosts([]);
+            setIsLoadingMessages(false);
+            setMessagesPage(1);
+            setHasMoreMessages(false);
+            prevScrollHeightRef.current = 0;
+            isPrependingRef.current = false;
+            isInitialLoadRef.current = false;
+            prevRoomRef.current = null;
+            return;
+        }
         if (roomId === prevRoomIdRef.current) return;
         prevRoomIdRef.current = roomId;
-        setIsLoadingMessages(true);
-        setLocalPosts([]);
+        setMessagesPage(1);
+        setHasMoreMessages(false);
+        scrollGuardRef.current = false;
+        prevScrollHeightRef.current = 0;
+        isPrependingRef.current = false;
         fetchRoomById(roomId);
     }, [roomId, fetchRoomById]);
 
@@ -202,7 +229,21 @@ export default function ExploreView() {
         const onAccountOpened = () => { setFilterDrawerOpen(false); setCommentDrawerOpen(false); setSelectedPost(null); setProfileDrawerOpen(false); };
         const onProfileChange = (e) => setProfileDrawerOpen(e.detail);
         const onNotificationsChange = (e) => setNotificationsDrawerOpen(e.detail);
-        const onOpenRoom = (e) => { setSelectedRoom(e.detail); setProfileDrawerOpen(false); };
+        const onOpenRoom = (e) => {
+            const incomingId = e.detail?._id ?? e.detail?.id;
+            const current = selectedRoomRef.current;
+            const currentId = current?._id ?? current?.id;
+            if (incomingId && incomingId === currentId) return;
+            isPrependingRef.current = false;
+            prevScrollHeightRef.current = 0;
+            scrollGuardRef.current = false;
+            setIsLoadingMessages(true);
+            setLocalPosts([]);
+            setMessagesPage(1);
+            setHasMoreMessages(false);
+            setSelectedRoom(e.detail);
+            setProfileDrawerOpen(false);
+        };
         const onCloseComment = () => { setCommentDrawerOpen(false); setSelectedPost(null); };
         const onCloseFilter = () => setFilterDrawerOpen(false);
         const onRoomFollowUpdate = (e) => {
@@ -239,7 +280,19 @@ export default function ExploreView() {
         };
     }, []);
 
-    const handleRoomSelect = (room) => setSelectedRoom(room);
+    const handleRoomSelect = (room) => {
+        const incomingId = room?._id ?? room?.id;
+        const currentId = selectedRoom?._id ?? selectedRoom?.id;
+        if (incomingId && incomingId === currentId) return;
+        isPrependingRef.current = false;
+        prevScrollHeightRef.current = 0;
+        scrollGuardRef.current = false;
+        setIsLoadingMessages(true);
+        setLocalPosts([]);
+        setMessagesPage(1);
+        setHasMoreMessages(false);
+        setSelectedRoom(room);
+    };
 
     const openFilterDrawer = () => {
         setCommentDrawerOpen(false);
@@ -300,7 +353,7 @@ export default function ExploreView() {
                 filters={filters}
             />
 
-            {/* ── Main content ── */}
+            {/* â”€â”€ Main content â”€â”€ */}
             <Box
                 sx={{
                     flexGrow: 1,
@@ -319,7 +372,6 @@ export default function ExploreView() {
             >
                 {selectedRoom ? (
                     <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxWidth: { md: 950 }, ml: { md: 5 }, mr: { md: contentRightOffset ? `${contentRightOffset}px` : 0 }, transition: 'margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
-
                         <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, flex: 1 }}>
                             {/* Header */}
                             <ExploreRoomHeader
@@ -327,10 +379,21 @@ export default function ExploreView() {
                                 isFollowing={selectedRoom.isFollowing}
                                 isPending={selectedRoom.isPending}
                                 onFollowToggle={handleFollowToggle}
+                                isLoading={isLoadingMessages}
                             />
 
                             {/* Messages */}
                             <Box
+                                ref={postsContainerRef}
+                                onScroll={() => {
+                                    const el = postsContainerRef.current;
+                                    if (!el) return;
+                                    if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
+                                    if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
+                                    scrollGuardRef.current = true;
+                                    prevScrollHeightRef.current = el.scrollHeight;
+                                    setMessagesPage((p) => p + 1);
+                                }}
                                 sx={{
                                     flex: 1,
                                     minHeight: 0,
@@ -342,18 +405,21 @@ export default function ExploreView() {
                                     '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
                                 }}
                             >
+                                {messagesQuery.isFetching && messagesPage > 1 && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                        <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
+                                    </Box>
+                                )}
                                 {isLoadingMessages ? (
-                                    <Stack spacing={0.5} sx={{ pt: 1 }}>
-                                        {Array.from({ length: 6 }).map((_, i) => <MessageSkeleton key={i} />)}
-                                    </Stack>
-                                ) : localPosts.length === 0 && messagesQuery.isSuccess ? (
+                                    <MessageSkeleton count={5} />
+                                ) : localPosts.length === 0 && messagesQuery.isSuccess && !messagesQuery.isFetching ? (
                                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1.5 }}>
                                         <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <Iconify icon="solar:chat-line-bold-duotone" width={32} style={{ color: '#4C4EFF' }} />
                                         </Box>
-                                        <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#111' }}>No messages yet</Typography>
+                                        <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{t('explore_view.no_messages_title')}</Typography>
                                         <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', maxWidth: 260 }}>
-                                            Be the first to say something in <Box component="span" sx={{ color: '#4C4EFF', fontWeight: 600 }}>{selectedRoom.name}</Box>!
+                                            {t('explore_view.no_messages_subtitle', { roomName: selectedRoom.name })}
                                         </Typography>
                                     </Box>
                                 ) : (
@@ -384,17 +450,17 @@ export default function ExploreView() {
                             const isViewOnly = isFollowing && memberStatus === 'active' && memberPermission === 'view';
 
                             let icon = 'solar:lock-bold';
-                            let title = 'Follow this room to join the conversation';
+                            let title = t('explore_view.not_following_title');
                             let subtitle = null;
 
                             if (isPending) {
                                 icon = 'solar:clock-circle-bold';
-                                title = 'Request sent — Waiting for admin approval';
-                                subtitle = 'Your follow request is pending. You\'ll be able to join the conversation once approved.';
+                                title = t('explore_view.pending_title');
+                                subtitle = t('explore_view.pending_subtitle');
                             } else if (isViewOnly) {
                                 icon = 'solar:eye-bold';
-                                title = 'View access only';
-                                subtitle = 'Admin has given you view access only. Contact the admin for edit permission.';
+                                title = t('explore_view.view_access_title');
+                                subtitle = t('explore_view.view_access_subtitle');
                             }
 
                             return (
@@ -447,6 +513,7 @@ export default function ExploreView() {
                     onClose={closeCommentDrawer}
                     selectedPost={selectedPost}
                     commentsData={[]}
+                    locked={!canPost}
                 />
 
                 <Drawer
@@ -470,7 +537,7 @@ export default function ExploreView() {
                         },
                     }}
                 >
-                    <DrawerHeader title="Filter" onBack={closeFilterDrawer} showEdit={false} showShare={false} />
+                    <DrawerHeader title={t('explore_filter.title')} onBack={closeFilterDrawer} showEdit={false} showShare={false} />
                     <ExploreFilter
                         filters={filters}
                         onChange={handleFilterChange}
@@ -482,3 +549,5 @@ export default function ExploreView() {
         </Box>
     );
 }
+
+

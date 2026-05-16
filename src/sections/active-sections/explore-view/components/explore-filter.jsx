@@ -6,28 +6,30 @@ import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
 import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 const DATE_OPTIONS = [
-  { value: 'today', label: 'Today' },
-  { value: 'thisWeek', label: 'This Week' },
-  { value: 'thisMonth', label: 'This Month' },
-  { value: 'thisYear', label: 'This Year' },
+  { value: 'today', labelKey: 'explore_filter.today' },
+  { value: 'thisWeek', labelKey: 'explore_filter.this_week' },
+  { value: 'thisMonth', labelKey: 'explore_filter.this_month' },
+  { value: 'thisYear', labelKey: 'explore_filter.this_year' },
 ];
 
 const MEMBER_OPTIONS = [
-  { value: 'small', label: 'Small (eg., 1–10 Members)' },
-  { value: 'medium', label: 'Medium (eg., 10–50 Members)' },
-  { value: 'large', label: 'Large (50+ Members)' },
+  { value: 'small', labelKey: 'explore_filter.small' },
+  { value: 'medium', labelKey: 'explore_filter.medium' },
+  { value: 'large', labelKey: 'explore_filter.large' },
 ];
 
 const CONTENT_OPTIONS = [
-  { value: 'image', label: 'Image' },
-  { value: 'video', label: 'Video' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'file', label: 'File' },
+  { value: 'image', labelKey: 'explore_filter.image' },
+  { value: 'video', labelKey: 'explore_filter.video' },
+  { value: 'audio', labelKey: 'explore_filter.audio' },
+  { value: 'file', labelKey: 'explore_filter.file' },
 ];
 
 function FilterChipGroup({ label, options, value, onChange }) {
+  const { t } = useTranslate('common');
   return (
     <Box sx={{ mb: 3 }}>
       <Typography fontSize={13} fontWeight={600} color="text.primary" sx={{ mb: 1.5 }}>
@@ -39,7 +41,7 @@ function FilterChipGroup({ label, options, value, onChange }) {
           return (
             <Chip
               key={opt.value}
-              label={opt.label}
+              label={t(opt.labelKey)}
               onClick={() => onChange(selected ? null : opt.value)}
               sx={{
                 borderRadius: '20px',
@@ -64,6 +66,7 @@ function FilterChipGroup({ label, options, value, onChange }) {
 }
 
 export default function ExploreFilter({ filters, onChange, onClearAll, showHeader = true }) {
+  const { t } = useTranslate('common');
   return (
     <Box
       sx={{
@@ -89,7 +92,7 @@ export default function ExploreFilter({ filters, onChange, onClearAll, showHeade
             }}
           >
             <Typography fontSize={16} fontWeight={700} color="text.primary">
-              Filter
+              {t('explore_filter.title')}
             </Typography>
             <Button
               size="small"
@@ -104,7 +107,7 @@ export default function ExploreFilter({ filters, onChange, onClearAll, showHeade
                 '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
               }}
             >
-              Clear All
+              {t('explore_filter.clear_all')}
             </Button>
           </Box>
 
@@ -129,7 +132,7 @@ export default function ExploreFilter({ filters, onChange, onClearAll, showHeade
                 '&:hover': { bgcolor: 'transparent', textDecoration: 'underline' },
               }}
             >
-              Clear All
+              {t('explore_filter.clear_all')}
             </Button>
           </Box>
         )}
@@ -152,7 +155,7 @@ export default function ExploreFilter({ filters, onChange, onClearAll, showHeade
           <InputBase
             value={filters.query ?? ''}
             onChange={(e) => onChange('query', e.target.value)}
-            placeholder="Search rooms, topics..."
+            placeholder={t('explore_filter.search_placeholder')}
             sx={{ fontSize: 14, flex: 1 }}
           />
           {!!filters.query && (
@@ -168,21 +171,21 @@ export default function ExploreFilter({ filters, onChange, onClearAll, showHeade
         </Box>
 
         <FilterChipGroup
-          label="Date Created"
+          label={t('explore_filter.date_created')}
           options={DATE_OPTIONS}
           value={filters.date}
           onChange={(val) => onChange('date', val)}
         />
 
         <FilterChipGroup
-          label="Member Count"
+          label={t('explore_filter.member_count')}
           options={MEMBER_OPTIONS}
           value={filters.memberCount}
           onChange={(val) => onChange('memberCount', val)}
         />
 
         <FilterChipGroup
-          label="Content Type Focus"
+          label={t('explore_filter.content_type')}
           options={CONTENT_OPTIONS}
           value={filters.contentType}
           onChange={(val) => onChange('contentType', val)}

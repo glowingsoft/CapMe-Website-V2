@@ -75,19 +75,21 @@ export const NavItem = forwardRef(
         )}
 
         {title && (
-          <Box component="span" className={navSectionClasses.item.texts}>
-            <Box component="span" className={navSectionClasses.item.title}>
-              {title}
-            </Box>
+          <Tooltip title={title} placement="right" arrow enterDelay={300}>
+            <Box component="span" className={navSectionClasses.item.texts}>
+              <Box component="span" className={navSectionClasses.item.title}>
+                {title}
+              </Box>
 
-            {caption && (
-              <Tooltip title={caption} placement="top-start">
-                <Box component="span" className={navSectionClasses.item.caption}>
-                  {caption}
-                </Box>
-              </Tooltip>
-            )}
-          </Box>
+              {caption && (
+                <Tooltip title={caption} placement="top-start">
+                  <Box component="span" className={navSectionClasses.item.caption}>
+                    {caption}
+                  </Box>
+                </Tooltip>
+              )}
+            </Box>
+          </Tooltip>
         )}
 
         {info && (

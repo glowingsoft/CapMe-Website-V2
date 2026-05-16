@@ -74,9 +74,11 @@ export const NavItem = forwardRef(
         )}
 
         {title && (
-          <Box component="span" className={navSectionClasses.item.title}>
-            {title}
-          </Box>
+          <Tooltip title={title} placement="right" arrow enterDelay={300}>
+            <Box component="span" className={navSectionClasses.item.title}>
+              {title}
+            </Box>
+          </Tooltip>
         )}
 
         {caption && (
@@ -190,9 +192,10 @@ const StyledNavItem = styled(ButtonBase, {
           margin: '0 0 6px 0',
         },
         [`& .${navSectionClasses.item.title}`]: {
-          fontWeight: 'semibold',
+          ...sharedStyles.noWrap,
+          fontWeight: theme.typography.fontWeightSemiBold,
           color: '#fff',
-          fontSize: theme.typography.pxToRem(11),
+          fontSize: theme.typography.pxToRem(10),
         },
       }),
       ...(open && {

@@ -4,15 +4,17 @@ import Dialog from '@mui/material/Dialog';
 import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
+import { useTranslate } from 'src/locales';
 
 export default function MessageDeleteModal({
     open,
     onClose,
     onConfirm,
     loading = false,
-    title = 'Delete Message',
-    description = 'Are you sure you want to delete this message? This action cannot be undone.',
+    title,
+    description,
 }) {
+    const { t } = useTranslate('common');
     return (
         <Dialog
             open={open}
@@ -51,11 +53,11 @@ export default function MessageDeleteModal({
                 </Box>
 
                 <Typography sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}>
-                    {title}
+                    {title ?? t('message_delete_modal.title')}
                 </Typography>
 
                 <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, mb: 2.5 }}>
-                    {description}
+                    {description ?? t('message_delete_modal.description')}
                 </Typography>
 
                 <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
@@ -76,7 +78,7 @@ export default function MessageDeleteModal({
                             '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
                         }}
                     >
-                        Cancel
+                        {t('message_delete_modal.cancel')}
                     </Button>
                     <Button
                         variant="contained"
@@ -96,7 +98,7 @@ export default function MessageDeleteModal({
                             '&.Mui-disabled': { opacity: 0.45 },
                         }}
                     >
-                        {loading ? 'Deleting...' : 'Delete'}
+                        {loading ? t('message_delete_modal.deleting') : t('message_delete_modal.delete')}
                     </Button>
                 </Box>
             </Box>

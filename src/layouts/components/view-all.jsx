@@ -28,6 +28,7 @@ export default function ViewAllModal({
     title,
     type = 'rooms',
     data = [],
+    currentUserId = '',
     onImport,
     onExport,
     search = '',
@@ -52,10 +53,24 @@ export default function ViewAllModal({
         if (open) {
             setPage(1);
             setItemStates({});
-            // Scroll list back to top when reopened
             if (listRef.current) listRef.current.scrollTop = 0;
         }
     }, [open]);
+
+    // Init button states from API flags once data is available (handles both eager and lazy loads)
+    useEffect(() => {
+        if (!open || data.length === 0) return;
+        setItemStates((prev) => {
+            const updates = {};
+            data.forEach((item) => {
+                const id = item.id ?? item._id;
+                if (!id || prev[id] !== undefined) return;
+                if (item.is_following) updates[id] = 'active';
+                else if (item.is_requested) updates[id] = 'requested';
+            });
+            return Object.keys(updates).length ? { ...prev, ...updates } : prev;
+        });
+    }, [open, data]);
 
     // Reset to first batch when search changes
     useEffect(() => {
@@ -229,11 +244,12 @@ export default function ViewAllModal({
                             {displayItems.map((item, i) => {
                                 if (renderItem) return renderItem(item, i);
 
-                                const key = `item-${i}`;
+                                const key = item.id ?? item._id ?? `item-${i}`;
                                 const state = itemStates[key];
-                                const btnLabel = state === 'active' ? labels.active : state === 'requested' ? labels.requested : labels.default;
                                 const isActive = state === 'active';
                                 const isRequested = state === 'requested';
+                                const btnLabel = isActive ? labels.active : isRequested ? labels.requested : labels.default;
+                                const isOwner = currentUserId && String(item.createdby) === currentUserId;
 
                                 const handleClick = () => {
                                     if (type === 'friends') {
@@ -275,28 +291,30 @@ export default function ViewAllModal({
                                                 <Typography fontSize={12} color="text.secondary" noWrap>{item.desc}</Typography>
                                             )}
                                         </Stack>
-                                        <Button
-                                            size="small"
-                                            variant={state ? 'outlined' : 'contained'}
-                                            onClick={(e) => { e.stopPropagation(); cycleItem(key); }}
-                                            sx={{
-                                                minWidth: 100,
-                                                height: 30,
-                                                borderRadius: 2,
-                                                fontSize: 12,
-                                                fontWeight: 700,
-                                                textTransform: 'none',
-                                                flexShrink: 0,
-                                                boxShadow: 'none',
-                                                ...(isActive
-                                                    ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                                                    : isRequested
-                                                        ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                                                        : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                                            }}
-                                        >
-                                            {btnLabel}
-                                        </Button>
+                                        {!isOwner && (
+                                            <Button
+                                                size="small"
+                                                variant={state ? 'outlined' : 'contained'}
+                                                onClick={(e) => { e.stopPropagation(); cycleItem(key); }}
+                                                sx={{
+                                                    minWidth: 100,
+                                                    height: 30,
+                                                    borderRadius: 2,
+                                                    fontSize: isRequested ? 11 : 12,
+                                                    fontWeight: 700,
+                                                    textTransform: 'none',
+                                                    flexShrink: 0,
+                                                    boxShadow: 'none',
+                                                    ...(isActive
+                                                        ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
+                                                        : isRequested
+                                                            ? { bgcolor: 'transparent', color: '#43A047', border: '1px solid rgba(76,175,80,0.6)', '&:hover': { bgcolor: 'rgba(76,175,80,0.08)' } }
+                                                            : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
+                                                }}
+                                            >
+                                                {btnLabel}
+                                            </Button>
+                                        )}
                                     </Stack>
                                 );
                             })}

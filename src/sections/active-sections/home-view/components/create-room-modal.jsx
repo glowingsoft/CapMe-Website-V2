@@ -1,4 +1,4 @@
-import { Alert } from '@mui/material';
+import { toast } from 'src/components/snackbar';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import React, { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
-import Snackbar from '@mui/material/Snackbar';
+import { useTranslate } from 'src/locales';
 import { useCreateRoomMutation, useUpdateRoomMutation } from 'src/store/Reducer/rooms-api';
 import { useLazySearchUsersQuery, useUploadChatFilesMutation } from 'src/store/Reducer/auth';
 import { selectUser } from 'src/store/slices/userSlice';
@@ -45,13 +45,14 @@ function Field({ label, hint, children }) {
 }
 
 const VISIBILITY_OPTIONS = [
-  { id: 'public', icon: 'solar:global-bold', label: 'Public', note: 'Anyone in the workspace can join' },
-  { id: 'private', icon: 'solar:lock-bold', label: 'Private', note: 'Only invited members can see this room' },
-  { id: 'private_friends', icon: 'solar:users-group-rounded-bold', label: 'Friends', note: 'Only your friends can see and join this room' },
+  { id: 'public', icon: 'solar:global-bold', labelKey: 'search.visibility_public', noteKey: 'create_room_modal.visibility_public_note' },
+  { id: 'private', icon: 'solar:lock-bold', labelKey: 'search.visibility_private', noteKey: 'create_room_modal.visibility_private_note' },
+  { id: 'private_friends', icon: 'solar:users-group-rounded-bold', labelKey: 'search.visibility_private_friends', noteKey: 'create_room_modal.visibility_friends_note' },
 ];
 
 
 export default function CreateRoomModal({ open, onClose, onCreate, editMode = false, initialValues = null }) {
+  const { t } = useTranslate('common');
   const currentUser = useSelector(selectUser);
   const currentUserId = String(currentUser?.basicInfo?._id ?? currentUser?._id ?? currentUser?.id ?? currentUser?.userId ?? currentUser?.user?._id ?? '');
   const [createRoom, { isLoading: isCreating }] = useCreateRoomMutation();
@@ -76,7 +77,6 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
 
   const photoInputRef = useRef(null);
   const tagInputRef = useRef(null);
-  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     if (open && editMode && initialValues) {
@@ -113,7 +113,6 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
       setInvited([]);
       setSuggestions([]);
     }
-    setToast({ open: false, message: '', severity: 'success' });
   }, [open]);
 
   useEffect(() => {
@@ -199,8 +198,6 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
   const removeInvitee = (id) => setInvited((prev) => prev.filter((i) => i.id !== id));
 
 
-  const showToast = (message, severity = 'success') => setToast({ open: true, message, severity });
-  const hideToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleCreate = async () => {
     if (!name.trim()) return;
@@ -227,12 +224,12 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
         ? await updateRoom({ id: initialValues?._id ?? initialValues?.id, ...payload }).unwrap()
         : await createRoom({ ...payload, image: imageName }).unwrap();
 
-      showToast(editMode ? 'Room updated successfully' : 'Room created successfully');
+      toast.success(editMode ? t('create_room_modal.toast_updated') : t('create_room_modal.toast_created'));
       onCreate?.(result?.body ?? result);
       setTimeout(() => onClose(), 300);
     } catch {
       setIsUploading(false);
-      showToast(editMode ? 'Failed to update room. Please try again.' : 'Failed to create room. Please try again.', 'error');
+      toast.error(editMode ? t('create_room_modal.toast_update_error') : t('create_room_modal.toast_create_error'));
     }
   };
 
@@ -249,21 +246,6 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
 
       }}
     >
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={3000}
-        onClose={hideToast}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert
-          onClose={hideToast}
-          severity={toast.severity ?? 'success'}
-          variant="filled"
-          sx={{ borderRadius: 2, fontWeight: 600 }}
-        >
-          {toast.message}
-        </Alert>
-      </Snackbar>
 
       <DialogContent sx={{ p: 0 }}>
 
@@ -271,11 +253,11 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
         <Box sx={{ px: 3, pt: 3, pb: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <Box>
             <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>
-              <Box component="span" sx={{ color: '#4C4EFF' }}>{editMode ? 'Edit' : 'Create'}</Box>
-              {editMode ? ' Room' : ' a Room'}
+              <Box component="span" sx={{ color: '#4C4EFF' }}>{editMode ? t('create_room_modal.title_verb_edit') : t('create_room_modal.title_verb_create')}</Box>
+              {editMode ? t('create_room_modal.title_suffix_edit') : t('create_room_modal.title_suffix_create')}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {editMode ? 'Update the details for this room.' : 'Set up a space for your team to connect.'}
+              {editMode ? t('create_room_modal.subtitle_edit') : t('create_room_modal.subtitle_create')}
             </Typography>
           </Box>
           <IconButton
@@ -303,7 +285,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
           <Stack spacing={2.5}>
 
             {/* Room Photo */}
-            <Field label="Room Photo" hint="Optional">
+            <Field label={t('create_room_modal.photo_label')} hint={t('create_room_modal.optional')}>
               <Stack direction="row" alignItems="center" spacing={2}>
                 <Box
                   onClick={() => photoInputRef.current?.click()}
@@ -355,9 +337,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                 </Box>
                 <Box>
                   <Typography fontSize={13} color="text.secondary" lineHeight={1.5}>
-                    Upload a photo to represent your room.
-                    <br />
-                    JPG, PNG or GIF — max 5 MB.
+                    {t('create_room_modal.photo_hint')}
                   </Typography>
                   {photo && (
                     <Button
@@ -365,7 +345,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                       onClick={() => setPhoto(null)}
                       sx={{ mt: 0.5, p: 0, minWidth: 0, fontSize: 12, color: '#e53935', textTransform: 'none' }}
                     >
-                      Remove
+                      {t('create_room_modal.remove')}
                     </Button>
                   )}
                 </Box>
@@ -380,7 +360,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
             </Field>
 
             {/* Room Name */}
-            <Field label="Room Name" hint="Required">
+            <Field label={t('create_room_modal.name_label')} hint={t('create_room_modal.required')}>
               <Box
                 sx={{
                   bgcolor: '#f4f5f9',
@@ -395,7 +375,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                 <InputBase
                   value={name}
                   onChange={handleNameChange}
-                  placeholder="e.g. design-talk"
+                  placeholder={t('create_room_modal.name_placeholder')}
                   fullWidth
                   autoFocus
                   sx={{ fontSize: 14, '& input': { p: 0 } }}
@@ -410,7 +390,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
             </Field>
 
             {/* Description */}
-            <Field label="Description" hint="Optional">
+            <Field label={t('create_room_modal.description_label')} hint={t('create_room_modal.optional')}>
               <Box
                 sx={{
                   bgcolor: '#f4f5f9',
@@ -425,7 +405,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                 <InputBase
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's this room about?"
+                  placeholder={t('create_room_modal.description_placeholder')}
                   fullWidth
                   multiline
                   rows={2}
@@ -435,7 +415,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
             </Field>
 
             {/* Tags */}
-            <Field label="Tags" hint="Space or Enter to add">
+            <Field label={t('create_room_modal.tags_label')} hint={t('create_room_modal.tags_hint')}>
               <Box
                 onClick={() => tagInputRef.current?.focus()}
                 sx={{
@@ -477,14 +457,14 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                   onChange={(e) => setTagInput(e.target.value.replace(/\s/, ''))}
                   onKeyDown={handleTagKeyDown}
                   onBlur={commitTag}
-                  placeholder={tags.length === 0 ? 'e.g. design, ux, frontend' : ''}
+                  placeholder={tags.length === 0 ? t('create_room_modal.tags_placeholder') : ''}
                   sx={{ fontSize: 13, flex: '1 1 80px', minWidth: 80, '& input': { p: 0 } }}
                 />
               </Box>
             </Field>
 
             {/* Visibility */}
-            <Field label="Visibility">
+            <Field label={t('create_room_modal.visibility_label')}>
               <Stack direction="row" spacing={1}>
                 {VISIBILITY_OPTIONS.map((opt) => {
                   const isActive = visibility === opt.id;
@@ -515,19 +495,19 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                         fontWeight={700}
                         sx={{ color: isActive ? '#4C4EFF' : '#111' }}
                       >
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </Typography>
                     </Box>
                   );
                 })}
               </Stack>
               <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.75 }}>
-                {selectedVisibility?.note}
+                {selectedVisibility ? t(selectedVisibility.noteKey) : ''}
               </Typography>
             </Field>
 
             {/* Invite People */}
-            <Field label="Invite People" hint="Optional">
+            <Field label={t('create_room_modal.invite_label')} hint={t('create_room_modal.optional')}>
               {/* Invited chips */}
               {invited.length > 0 && (
                 <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mb: 1 }}>
@@ -578,7 +558,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                     value={inviteInput}
                     onChange={handleInviteInput}
                     onKeyDown={handleInviteKeyDown}
-                    placeholder="Enter email or name..."
+                    placeholder={t('create_room_modal.invite_placeholder')}
                     fullWidth
                     sx={{ fontSize: 14, '& input': { p: 0 } }}
                   />
@@ -656,7 +636,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                 '&:hover': { borderColor: '#4C4EFF', color: '#4C4EFF', bgcolor: 'transparent' },
               }}
             >
-              Cancel
+              {t('create_room_modal.cancel')}
             </Button>
             <Button
               fullWidth
@@ -676,7 +656,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                 '&.Mui-disabled': { bgcolor: '#c5c6ff', color: '#fff' },
               }}
             >
-              {editMode ? 'Save Changes' : 'Create Room'}
+              {editMode ? t('create_room_modal.save') : t('create_room_modal.create_btn')}
             </Button>
           </Stack>
         </Box>

@@ -53,7 +53,7 @@ export default function SuggestedRooms({ rooms }) {
             >
               <ListItemAvatar>
                 <Avatar
-                  src={room.icon || undefined}
+                  src={typeof room.icon === 'string' && room.icon.startsWith('http') ? room.icon : undefined}
                   sx={{ width: 36, height: 36, bgcolor: '#4C4EFF', color: '#fff', fontWeight: 700, fontSize: 15 }}
                 >
                   {room.name?.charAt(0).toUpperCase()}

@@ -6,7 +6,7 @@ import { iconButtonClasses } from '@mui/material/IconButton';
 
 import { useBoolean } from 'src/hooks/use-boolean';
 
-import { allLangs } from 'src/locales';
+import { allLangs, useTranslate } from 'src/locales';
 import { _contacts, _notifications } from 'src/_mock';
 import { varAlpha, stylesMode } from 'src/theme/styles';
 
@@ -26,8 +26,8 @@ import { _account } from '../config-nav-account';
 import { HeaderBase } from '../core/header-base';
 import { _workspaces } from '../config-nav-workspace';
 import { LayoutSection } from '../core/layout-section';
-import { navData as dashboardNavData } from '../config-nav-dashboard';
-import { navDataAdmin as dashboardNavDataAdmin } from '../config-nav-admin-dashboard';
+import { getNavData } from '../config-nav-dashboard';
+import { getNavDataAdmin } from '../config-nav-admin-dashboard';
 
 // ----------------------------------------------------------------------
 
@@ -44,6 +44,8 @@ export function DashboardLayout({ sx, children, data }) {
 
   const layoutQuery = 'lg';
 
+  const { t } = useTranslate('common');
+
   const userId = user?._id ?? user?.id;
   useEffect(() => {
     if (userId) {
@@ -53,17 +55,12 @@ export function DashboardLayout({ sx, children, data }) {
     }
   }, [userId]);
 
-  // const navData = data?.nav ?? dashboardNavDataAdmin;
-
   const navData = useMemo(() => {
     if (user?.permission === 1) {
-      return dashboardNavDataAdmin;
+      return getNavDataAdmin(t);
     }
-    // else if (user?.permission === 2) {
-    //   return dashboardNavData;
-    // }
-    return data?.nav ?? dashboardNavData;
-  }, [user?.permission, data?.nav]);
+    return data?.nav ?? getNavData(t);
+  }, [user?.permission, data?.nav, t]);
 
   const isNavMini = settings.navLayout === 'mini';
 

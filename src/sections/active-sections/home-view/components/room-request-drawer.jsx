@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
+import { useTranslate } from 'src/locales';
 import { useSelector } from 'react-redux';
 import { selectUser } from 'src/store/slices/userSlice';
 import { toast } from 'src/components/snackbar';
@@ -61,6 +62,7 @@ export default function RoomRequestDrawer({
     onApprove,
     onReject,
 }) {
+    const { t } = useTranslate('common');
     const [activeTab, setActiveTab] = useState('requests');
     const [requests, setRequests] = useState([]);
     const [isLoadingRequests, setIsLoadingRequests] = useState(true);
@@ -121,9 +123,9 @@ export default function RoomRequestDrawer({
             await updateRoomRequestPermission({ roomId, userId: request.id, permission: 'view' }).unwrap();
             setRequests((prev) => prev.filter((item) => item.id !== request.id));
             onApprove?.(request);
-            toast.success(`${request.name} approved`);
+            toast.success(t('room_channel_header.toast_approved', { name: request.name }));
         } catch {
-            toast.error('Failed to approve request');
+            toast.error(t('room_requests.toast_approve_error'));
         } finally {
             setProcessingIds((prev) => { const next = new Set(prev); next.delete(request.id); return next; });
         }
@@ -136,9 +138,9 @@ export default function RoomRequestDrawer({
             await updateRoomRequestPermission({ roomId, userId: request.id, permission: 'decline' }).unwrap();
             setRequests((prev) => prev.filter((item) => item.id !== request.id));
             onReject?.(request);
-            toast.success(`${request.name} rejected`);
+            toast.success(t('room_channel_header.toast_rejected', { name: request.name }));
         } catch {
-            toast.error('Failed to reject request');
+            toast.error(t('room_requests.toast_reject_error'));
         } finally {
             setProcessingIds((prev) => { const next = new Set(prev); next.delete(request.id); return next; });
         }
@@ -170,10 +172,10 @@ export default function RoomRequestDrawer({
             setMembers((prev) => prev.map((member) => (
                 member.id === memberId || member.id === updatedUserId ? { ...member, role: updatedPermission } : member
             )));
-            toast.success('Member access updated');
+            toast.success(t('room_requests.toast_access_updated'));
         } catch (error) {
             setMembers(previousMembers);
-            toast.error('Failed to update member access');
+            toast.error(t('room_requests.toast_access_error'));
         } finally {
             setUpdatingAccess(null);
         }
@@ -219,7 +221,7 @@ export default function RoomRequestDrawer({
             }}
         >
             <DrawerHeader
-                title="Room Requests"
+                title={t('room_requests.title')}
                 onBack={onClose}
                 showEdit={false}
                 showShare={false}
@@ -245,7 +247,7 @@ export default function RoomRequestDrawer({
                                 },
                             }}
                         >
-                            Requests ({requestsCount})
+                            {t('room_requests.tab_requests', { count: requestsCount })}
                         </Button>
 
                         {isRoomAdmin ? (
@@ -266,7 +268,7 @@ export default function RoomRequestDrawer({
                                     },
                                 }}
                             >
-                                Members ({membersCount})
+                                {t('room_requests.tab_members', { count: membersCount })}
                             </Button>
                         ) : null}
                     </Stack>
@@ -288,7 +290,7 @@ export default function RoomRequestDrawer({
                                 <Iconify icon="eva:search-fill" width={20} sx={{ color: '#6B7280' }} />
                                 <InputBase
                                     fullWidth
-                                    placeholder="Search requests..."
+                                    placeholder={t('room_requests.search_requests')}
                                     value={requestSearch}
                                     onChange={(e) => setRequestSearch(e.target.value)}
                                     sx={{ fontSize: 14, color: '#111827' }}
@@ -296,7 +298,7 @@ export default function RoomRequestDrawer({
                             </Box>
 
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Pending approvals for this room
+                                {t('room_requests.requests_subtitle')}
                             </Typography>
 
                             <Stack spacing={1.5}>
@@ -319,11 +321,11 @@ export default function RoomRequestDrawer({
                                         }}
                                     >
                                         <Typography fontWeight={700} sx={{ mb: 0.5 }}>
-                                            {requestSearch ? 'No matching requests' : 'No pending requests'}
+                                            {requestSearch ? t('room_requests.no_match_title') : t('room_requests.no_requests_title')}
                                         </Typography>
 
                                         <Typography variant="body2" color="text.secondary">
-                                            {requestSearch ? 'Try another search term.' : 'New join requests will appear here.'}
+                                            {requestSearch ? t('room_requests.no_match_subtitle') : t('room_requests.no_requests_subtitle')}
                                         </Typography>
                                     </Box>
                                 )}
@@ -348,7 +350,7 @@ export default function RoomRequestDrawer({
                                                 </Typography>
 
                                                 <Typography variant="caption" color="text.secondary">
-                                                    Requested {request.requestedAt}
+                                                    {t('room_requests.requested_at', { date: request.requestedAt })}
                                                 </Typography>
                                             </Box>
                                         </Stack>
@@ -372,7 +374,7 @@ export default function RoomRequestDrawer({
                                             >
                                                 {processingIds.has(request.id)
                                                     ? <CircularProgress size={12} sx={{ color: '#111827' }} />
-                                                    : 'Reject'}
+                                                    : t('room_requests.reject')}
                                             </Button>
 
                                             <Button
@@ -393,7 +395,7 @@ export default function RoomRequestDrawer({
                                             >
                                                 {processingIds.has(request.id)
                                                     ? <CircularProgress size={12} color="inherit" />
-                                                    : 'Approve'}
+                                                    : t('room_requests.approve')}
                                             </Button>
                                         </Stack>
                                     </Box>
@@ -418,7 +420,7 @@ export default function RoomRequestDrawer({
                                 <Iconify icon="eva:search-fill" width={20} sx={{ color: '#6B7280' }} />
                                 <InputBase
                                     fullWidth
-                                    placeholder="Search members..."
+                                    placeholder={t('room_requests.search_members')}
                                     value={memberSearch}
                                     onChange={(e) => setMemberSearch(e.target.value)}
                                     sx={{ fontSize: 14, color: '#111827' }}
@@ -444,11 +446,11 @@ export default function RoomRequestDrawer({
                                     }}
                                 >
                                     <Typography fontWeight={700} sx={{ mb: 0.5 }}>
-                                        {memberSearch ? 'No matching members' : 'No members found'}
+                                        {memberSearch ? t('room_requests.no_match_members_title') : t('room_requests.no_members_title')}
                                     </Typography>
 
                                     <Typography variant="body2" color="text.secondary">
-                                        {memberSearch ? 'Try another search term.' : 'Members will appear here once they join.'}
+                                        {memberSearch ? t('room_requests.no_match_subtitle') : t('room_requests.no_members_subtitle')}
                                     </Typography>
                                 </Box>
                             )}
@@ -481,7 +483,7 @@ export default function RoomRequestDrawer({
                                                 </Typography>
 
                                                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                                                    Current access: {permissionLabel(member.role)}
+                                                    {t('room_requests.current_access', { role: permissionLabel(member.role) })}
                                                 </Typography>
                                             </Box>
                                         </Stack>
@@ -505,7 +507,7 @@ export default function RoomRequestDrawer({
                                                     },
                                                 }}
                                             >
-                                                {isUpdatingEditor ? 'Saving...' : 'Editor'}
+                                                {isUpdatingEditor ? t('room_requests.saving') : t('room_requests.role_editor')}
                                             </Button>
 
                                             <Button
@@ -526,7 +528,7 @@ export default function RoomRequestDrawer({
                                                     },
                                                 }}
                                             >
-                                                {isUpdatingViewer ? 'Saving...' : 'Viewer'}
+                                                {isUpdatingViewer ? t('room_requests.saving') : t('room_requests.role_viewer')}
                                             </Button>
                                         </Stack>
                                     </Box>

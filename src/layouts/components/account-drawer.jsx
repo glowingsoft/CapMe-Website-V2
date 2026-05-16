@@ -26,6 +26,8 @@ import { Iconify } from 'src/components/iconify';
 import { Label } from 'src/components/label';
 import { Scrollbar } from 'src/components/scrollbar';
 
+import { useTranslate } from 'src/locales';
+
 import { useMockedUser } from 'src/auth/hooks';
 import { useUserProfileQuery, useConnectionsQuery, useUpdateProfileMutation, useUploadFileMutation } from 'src/store/Reducer/auth';
 import { toast } from 'src/components/snackbar';
@@ -66,6 +68,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
   const [viewType, setViewType] = useState('rooms');
   const [viewSearch, setViewSearch] = useState('');
 
+  const { t } = useTranslate('common');
   const { user } = useMockedUser();
   const [updateProfile, { isLoading: isUpdating }] = useUpdateProfileMutation();
   const [uploadFile, { isLoading: isUploading }] = useUploadFileMutation();
@@ -204,10 +207,10 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           email: profileBody?.email ?? user?.basicInfo?.email,
         },
       }));
-      toast.success('Profile updated successfully');
+      toast.success(t('account_drawer.toast_updated'));
       handleEditClose();
     } catch (err) {
-      toast.error(err?.data?.message || 'Failed to update profile');
+      toast.error(err?.data?.message || t('account_drawer.toast_update_error'));
     }
   };
 
@@ -334,7 +337,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
 
       <Drawer open={open} onClose={handleCloseDrawer} anchor="right" hideBackdrop disableEnforceFocus disableAutoFocus disableScrollLock ModalProps={{ sx: { pointerEvents: 'none' } }} PaperProps={{ sx: { width: 420, borderTopLeftRadius: 20, mt: '105px', height: 'calc(100vh - 105px)', pointerEvents: 'auto' } }}>
         <DrawerHeader
-          title="Profile"
+          title={t('account_drawer.title')}
           onBack={handleCloseDrawer}
           onEdit={handleEditOpen}
           onChangePassword={() => setChangePasswordOpen(true)}
@@ -422,7 +425,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
             >
               <Stack alignItems="center" sx={{ flex: 1 }}>
                 <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>{profileStats.rooms}</Typography>
-                <Typography variant="body2" color="text.secondary">Rooms</Typography>
+                <Typography variant="body2" color="text.secondary">{t('account_drawer.stat_rooms')}</Typography>
               </Stack>
 
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
@@ -431,7 +434,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>
                   {profileStats.friends}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">Friends</Typography>
+                <Typography variant="body2" color="text.secondary">{t('account_drawer.stat_friends')}</Typography>
               </Stack>
 
               <Box sx={{ height: 36, borderLeft: '1px dashed #ccc' }} />
@@ -440,7 +443,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 <Typography variant="h6" fontWeight={700} sx={{ color: '#4C4EFF' }}>
                   {profileStats.following}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">Following</Typography>
+                <Typography variant="body2" color="text.secondary">{t('account_drawer.stat_following')}</Typography>
               </Stack>
             </Stack>
           )}
@@ -449,7 +452,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           <Box sx={{ px: 2, pb: 2 }}>
             <InputBase
               fullWidth
-              placeholder="Search here.."
+              placeholder={t('account_drawer.search_placeholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               sx={{
@@ -485,7 +488,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 0 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Friends ({isProfileDataLoading ? '...' : profileStats.friends})
+              {t('account_drawer.tab_friends', { count: isProfileDataLoading ? '...' : profileStats.friends })}
             </Button>
             <Button
               size="small"
@@ -502,7 +505,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                 '&:hover': { bgcolor: tab === 1 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
               }}
             >
-              Following ({isProfileDataLoading ? '...' : profileStats.following})
+              {t('account_drawer.tab_following', { count: isProfileDataLoading ? '...' : profileStats.following })}
             </Button>
           </Stack>
 
@@ -520,7 +523,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                       .map((f, i) => {
                         const key = `friend-${i}`;
                         const state = followedItems[key];
-                        const label = state === 'active' ? 'Friends' : state === 'requested' ? 'Cancel request' : 'Add';
+                        const label = state === 'active' ? t('account_drawer.btn_friends') : state === 'requested' ? t('account_drawer.btn_cancel_request') : t('account_drawer.btn_add');
                         const isActive = state === 'active';
                         const isRequested = state === 'requested';
                         return (
@@ -583,7 +586,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                         '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
                       }}
                     >
-                      See All Friends ({transformedFollowers.length})
+                      {t('account_drawer.see_all_friends', { count: transformedFollowers.length })}
                     </Button>
                   )}
                 </>
@@ -640,7 +643,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                         '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
                       }}
                     >
-                      See All Following ({transformedFollowings.length})
+                      {t('account_drawer.see_all_following', { count: transformedFollowings.length })}
                     </Button>
                   )}
                 </>
@@ -658,9 +661,9 @@ export function AccountDrawer({ data = [], sx, ...other }) {
         open={viewAllOpen}
         onClose={handleCloseViewAll}
         title={
-          viewType === 'rooms' ? 'All Rooms' :
-            viewType === 'friends' ? 'All Friends' :
-              'All Following'
+          viewType === 'rooms' ? t('account_drawer.view_all_rooms') :
+            viewType === 'friends' ? t('account_drawer.view_all_friends') :
+              t('account_drawer.view_all_following')
         }
         type={viewType}
         data={viewType === 'friends' ? friends : following}

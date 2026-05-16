@@ -5,6 +5,7 @@ import InputBase from '@mui/material/InputBase';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Iconify } from 'src/components/iconify';
 import { toast } from 'src/components/snackbar';
+import { useTranslate } from 'src/locales';
 import { getSocket } from 'src/socket/socket';
 import { chatSocketService } from 'src/socket/chatSocketService';
 import { useUploadChatFilesMutation } from 'src/store/Reducer/auth';
@@ -20,6 +21,7 @@ import LinkPreview from './link-preview';
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/;
 
 export default function ChatInputBar({ activeRoom }) {
+  const { t } = useTranslate('common');
   const inputRef = React.useRef(null);
   const [message, setMessage] = React.useState('');
   const [fileMenuAnchor, setFileMenuAnchor] = React.useState(null);
@@ -46,7 +48,7 @@ export default function ChatInputBar({ activeRoom }) {
   const handleFileSelected = async (fileInput) => {
     const file = fileInput?.file ?? fileInput;
     if (!(file instanceof File)) {
-      toast.error('Could not read the selected file. Please try again.');
+      toast.error(t('chat_input.toast_file_read_error'));
       return;
     }
 
@@ -77,7 +79,7 @@ export default function ChatInputBar({ activeRoom }) {
     } catch {
       clearInterval(uploadTimerRef.current);
       setUpload({ file: null, progress: 0 });
-      toast.error('File upload failed. Please try again.');
+      toast.error(t('chat_input.toast_upload_failed'));
     }
   };
 
@@ -126,12 +128,12 @@ export default function ChatInputBar({ activeRoom }) {
 
     const socket = getSocket();
     if (!socket?.connected) {
-      toast.error('Not connected. Please try again.');
+      toast.error(t('chat_input.toast_not_connected'));
       return;
     }
 
     if (upload.file) {
-      toast.error('File is still uploading, please wait.');
+      toast.error(t('chat_input.toast_uploading'));
       return;
     }
 
@@ -139,7 +141,7 @@ export default function ChatInputBar({ activeRoom }) {
     try {
       let attachments = [];
       if (attachedFile && !attachedFile.uploadedData) {
-        toast.error('File is still preparing, please wait.');
+        toast.error(t('chat_input.toast_preparing'));
         return;
       }
       if (attachedFile?.uploadedData) {
@@ -163,7 +165,7 @@ export default function ChatInputBar({ activeRoom }) {
       lastFetchedUrlRef.current = null;
     } catch (err) {
       console.error('Send message error:', err);
-      toast.error('Failed to send message. Please try again.');
+      toast.error(t('chat_input.toast_send_failed'));
     } finally {
       setIsSending(false);
     }
@@ -239,7 +241,7 @@ export default function ChatInputBar({ activeRoom }) {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !upload.file && !isSending) { e.preventDefault(); handleSend(); } }}
-            placeholder="Type a message..."
+            placeholder={t('chat_input.placeholder')}
             inputRef={inputRef}
             fullWidth
             multiline
