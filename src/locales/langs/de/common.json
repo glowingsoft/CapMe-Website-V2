@@ -47,7 +47,7 @@
     "search_placeholder": "Suchen...",
     "only_you": "Nur du",
     "follow": "Folgen",
-    "request_sent": "Anfrage gesendet",
+    "request_sent": "Anfrage abbrechen",
     "menu_room_info": "Raum-Information",
     "menu_room_requests": "Raum-Anfragen",
     "menu_following": "Gefolgt",
@@ -105,7 +105,8 @@
     "no_rooms": "Keine Räume gefunden",
     "toast_link_copied": "Link in die Zwischenablage kopiert",
     "toast_shared": "Erfolgreich geteilt",
-    "toast_error": "Teilen fehlgeschlagen. Bitte versuchen Sie es erneut."
+    "toast_error": "Teilen fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "search_placeholder": "Räume suchen..."
   },
   "chat_input": {
     "placeholder": "Nachricht eingeben...",
@@ -209,11 +210,17 @@
     "btn_friends": "Freunde",
     "btn_add_friend": "Freund hinzufügen",
     "btn_follow": "Folgen",
-    "btn_request_sent": "Anfrage gesendet",
+    "btn_request_sent": "Anfrage abbrechen",
     "btn_following": "Folge ich",
     "search_placeholder": "Hier suchen..",
     "no_results": "Keine Ergebnisse gefunden.",
-    "load_more": "Mehr laden"
+    "load_more": "Mehr laden",
+    "empty_created_title": "Keine erstellten Räume",
+    "empty_created_desc": "Dieser Benutzer hat noch keine Räume erstellt.",
+    "empty_following_rooms_title": "Keine gefolgten Räume",
+    "empty_following_rooms_desc": "Dieser Benutzer folgt noch keinen Räumen.",
+    "empty_search_title": "Keine Ergebnisse",
+    "empty_search_desc": "Keine Übereinstimmungen für Ihre Suche gefunden."
   },
   "home_view": {
     "garage_empty_title": "Ihre Garage ist leer",
@@ -222,6 +229,9 @@
     "no_messages_subtitle": "Seien Sie der Erste, der etwas in {{roomName}} sagt!",
     "view_access_title": "Nur Lesezugriff",
     "view_access_subtitle": "Der Admin hat Ihnen nur Lesezugriff erteilt. Kontaktieren Sie den Admin, um Bearbeitungsberechtigung zu erhalten.",
+    "blocked_title": "Sie wurden vom Administrator gesperrt",
+    "blocked_subtitle": "Folgen Sie dem Rauminhaber, um Zugang zurückzufordern.",
+    "blocked_follow_owner": "Rauminhaber folgen",
     "pending_title": "Anfrage gesendet — Warte auf Admin-Genehmigung",
     "pending_subtitle": "Ihre Folgeanfrage ist ausstehend. Sie können beitreten, sobald sie genehmigt wurde.",
     "not_following_title": "Folgen Sie diesem Raum, um am Gespräch teilzunehmen",
@@ -252,7 +262,13 @@
     "view_all_friends": "Alle Freunde",
     "view_all_following": "Alle Folgenden",
     "toast_updated": "Profil erfolgreich aktualisiert",
-    "toast_update_error": "Profil konnte nicht aktualisiert werden"
+    "toast_update_error": "Profil konnte nicht aktualisiert werden",
+    "empty_friends_title": "Noch keine Freunde",
+    "empty_friends_desc": "Wenn Personen Ihnen folgen, erscheinen sie hier.",
+    "empty_following_title": "Sie folgen niemandem",
+    "empty_following_desc": "Personen, denen Sie folgen, erscheinen hier.",
+    "empty_search_title": "Keine Ergebnisse",
+    "empty_search_desc": "Keine Übereinstimmungen für Ihre Suche gefunden."
   },
   "account_edit_modal": {
     "full_name_label": "Vollständiger Name",
@@ -421,7 +437,10 @@
     "pending_title": "Anfrage gesendet — Warten auf Admin-Genehmigung",
     "pending_subtitle": "Deine Folgeanfrage ist ausstehend. Du kannst an der Unterhaltung teilnehmen, sobald sie genehmigt wurde.",
     "view_access_title": "Nur Lesezugriff",
-    "view_access_subtitle": "Der Admin hat dir nur Lesezugriff erteilt. Kontaktiere den Admin für Bearbeitungsrechte."
+    "view_access_subtitle": "Der Admin hat dir nur Lesezugriff erteilt. Kontaktiere den Admin für Bearbeitungsrechte.",
+    "blocked_title": "Sie wurden vom Administrator gesperrt",
+    "blocked_subtitle": "Folgen Sie dem Rauminhaber, um Zugang zurückzufordern.",
+    "blocked_follow_owner": "Rauminhaber folgen"
   },
   "explore_filter": {
     "title": "Filtern",
@@ -452,13 +471,14 @@
     "no_rooms": "Keine Räume gefunden",
     "no_rooms_subtitle": "Versuche einen anderen Tab oder passe deine Filter an.",
     "btn_follow": "Folgen",
-    "btn_request_sent": "Anfrage gesendet",
+    "btn_request_sent": "Anfrage abbrechen",
     "btn_following": "Folge ich",
     "toast_cancel_error": "Anfrage konnte nicht abgebrochen werden. Bitte versuche es erneut.",
     "toast_update_error": "Update fehlgeschlagen. Bitte versuche es erneut.",
     "toast_followed": "Raum erfolgreich gefolgt",
     "toast_unfollowed": "Raum erfolgreich entfolgt",
-    "open_filters": "Filter öffnen"
+    "open_filters": "Filter öffnen",
+    "end_of_list": "Sie haben alle Räume gesehen"
   },
   "select_file": {
     "attach_photo_video": "Foto / Video anhängen",

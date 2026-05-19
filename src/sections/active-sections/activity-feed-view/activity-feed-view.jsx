@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
+import CircularProgress from '@mui/material/CircularProgress';
 import InputBase from '@mui/material/InputBase';
 import Skeleton from '@mui/material/Skeleton';
 import Tab from '@mui/material/Tab';
@@ -108,6 +109,7 @@ export default function ActivityFeedView() {
     setPage(1);
     setHasMore(false);
     setIsLoading(true);
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [activeTab, searchQuery]);
 
   // Fetch whenever page/tab/search changes
@@ -368,7 +370,11 @@ export default function ActivityFeedView() {
                     </Box>
                   ))}
 
-                  {isPaginating && <PostCardSkeletonList count={2} />}
+                  {isPaginating && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                      <CircularProgress size={28} sx={{ color: '#4C4EFF' }} />
+                    </Box>
+                  )}
 
                   {!hasMore && allPosts.length > 0 && !isFetching && (
                     <Typography fontSize={12} align="center" sx={{ color: 'rgba(0,0,0,0.3)', py: 2 }}>

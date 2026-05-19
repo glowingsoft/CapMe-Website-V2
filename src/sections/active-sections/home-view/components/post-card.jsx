@@ -11,6 +11,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+
+import { paths } from 'src/routes/paths';
 
 import { Iconify } from 'src/components/iconify';
 import HashtagAction from 'src/components/hashtags/hashtag-action';
@@ -101,8 +104,9 @@ function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName })
     );
 }
 
-function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hideRoomName = false, menuActions = null }) {
+function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hideRoomName = false, menuActions = null, canInteract = true }) {
     const { t } = useTranslate('common');
+    const navigate = useNavigate();
     const currentUser = useSelector(selectUser);
     const currentUserId = currentUser?._id ?? currentUser?.id ?? '';
 
@@ -160,6 +164,12 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
     const handleComment = useCallback(() => {
         onCommentClick?.(post);
     }, [onCommentClick, post]);
+
+    const handleCapme = useCallback(() => {
+        const query = `${post.content || ''} ${post.hashtags || ''}`.trim();
+        if (!query) return;
+        navigate(paths.dashboard.chatMe, { state: { query, createNewChat: true, source: 'post' } });
+    }, [navigate, post.content, post.hashtags]);
 
     const handleOpen = useCallback((e) => {
         e.stopPropagation();
@@ -437,7 +447,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                     </CardContent>
                 )}
 
-                <Box sx={{ px: 2.5, pt: 0.5, pb: 1.5 }}>
+                {canInteract && <Box sx={{ px: 2.5, pt: 0.5, pb: 1.5 }}>
                     <Stack direction="row" spacing={3} alignItems="center">
                         <Stack
                             direction="row"
@@ -480,14 +490,13 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                             onHashtagOpen={setHashtagModalTag}
                         />
 
-                        <Stack direction="row" spacing={0.7} alignItems="center" sx={{ cursor: 'pointer' }}>
-                            <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
-                            <Typography variant="body2" fontWeight={600} color="text.secondary">
-                                {post.stats?.capme ?? 0}
-                            </Typography>
-                        </Stack>
+                        {(post.content || post.hashtags) && (
+                            <Stack direction="row" spacing={0.7} alignItems="center" sx={{ cursor: 'pointer' }} onClick={handleCapme}>
+                                <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
+                            </Stack>
+                        )}
                     </Stack>
-                </Box>
+                </Box>}
             </Card>
 
             <MessageDeleteModal
@@ -506,7 +515,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
             <ShareMessageModal
                 open={shareOpen}
                 onClose={() => setShareOpen(false)}
-                messageId={post.id ?? post._id}
+                post={post}
             />
 
             <HashtagModal

@@ -42,6 +42,10 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadingIds, setLoadingIds] = useState(() => new Set());
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const loadingMoreRef = useRef(false);
     const { t } = useTranslate('common');
 
     const [fetchRooms] = useLazyGetExploreRoomListQuery();
@@ -67,26 +71,6 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
         return () => window.removeEventListener('roomFollowUpdate', onFollowUpdate);
     }, []);
 
-    const load = React.useCallback(
-        (type, extraFilters = {}) => {
-            setIsLoading(true);
-            fetchRooms({
-                type,
-                page: 1,
-                limit: PAGE_SIZE,
-                ...(extraFilters.search ? { search: extraFilters.search } : {}),
-                ...(extraFilters.dateCreated ? { dateCreated: extraFilters.dateCreated } : {}),
-                ...(extraFilters.memberCount ? { memberCount: extraFilters.memberCount } : {}),
-                ...(extraFilters.contentFocus ? { contentFocus: extraFilters.contentFocus } : {}),
-            })
-                .unwrap()
-                .then((data) => setRooms(data.rooms ?? []))
-                .catch(() => setRooms([]))
-                .finally(() => setIsLoading(false));
-        },
-        [fetchRooms]
-    );
-
     const buildFilterParams = React.useCallback(
         (search) => ({
             search: search ?? filters.query ?? '',
@@ -97,11 +81,91 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
         [filters]
     );
 
+    const hasMoreRef = useRef(false);
+    const pageRef = useRef(1);
+    const tabRef = useRef('all');
+    const sentinelRef = useRef(null);
+
+    const load = React.useCallback(
+        (type, extraFilters = {}) => {
+            setIsLoading(true);
+            pageRef.current = 1;
+            hasMoreRef.current = false;
+            loadingMoreRef.current = false;
+            setPage(1);
+            setHasMore(false);
+            tabRef.current = type;
+            fetchRooms({
+                type,
+                page: 1,
+                limit: PAGE_SIZE,
+                ...(extraFilters.search ? { search: extraFilters.search } : {}),
+                ...(extraFilters.dateCreated ? { dateCreated: extraFilters.dateCreated } : {}),
+                ...(extraFilters.memberCount ? { memberCount: extraFilters.memberCount } : {}),
+                ...(extraFilters.contentFocus ? { contentFocus: extraFilters.contentFocus } : {}),
+            })
+                .unwrap()
+                .then((data) => {
+                    const newRooms = data.rooms ?? [];
+                    setRooms(newRooms);
+                    const more = newRooms.length >= PAGE_SIZE;
+                    hasMoreRef.current = more;
+                    setHasMore(more);
+                })
+                .catch(() => { setRooms([]); hasMoreRef.current = false; setHasMore(false); })
+                .finally(() => setIsLoading(false));
+        },
+        [fetchRooms]
+    );
+
+    const loadMore = React.useCallback(() => {
+        if (loadingMoreRef.current || !hasMoreRef.current) return;
+        loadingMoreRef.current = true;
+        setIsLoadingMore(true);
+        const nextPage = pageRef.current + 1;
+        fetchRooms({
+            type: tabRef.current,
+            page: nextPage,
+            limit: PAGE_SIZE,
+            ...buildFilterParams(),
+        })
+            .unwrap()
+            .then((data) => {
+                const newRooms = data.rooms ?? [];
+                setRooms((prev) => {
+                    const existingIds = new Set(prev.map(getRoomId).map(String));
+                    return [...prev, ...newRooms.filter((r) => !existingIds.has(String(getRoomId(r))))];
+                });
+                pageRef.current = nextPage;
+                setPage(nextPage);
+                const more = newRooms.length >= PAGE_SIZE;
+                hasMoreRef.current = more;
+                setHasMore(more);
+            })
+            .catch(() => { hasMoreRef.current = false; setHasMore(false); })
+            .finally(() => {
+                setIsLoadingMore(false);
+                loadingMoreRef.current = false;
+            });
+    }, [fetchRooms, buildFilterParams]);
+
     // Initial load
     useEffect(() => {
         load('all');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Observe sentinel to trigger loadMore (handles both scroll and no-scroll cases)
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el || !hasMore || isLoadingMore) return;
+        const observer = new IntersectionObserver(
+            (entries) => { if (entries[0].isIntersecting) loadMore(); },
+            { rootMargin: '120px' }
+        );
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, loadMore]);
 
     // Re-fetch when filters change; debounce the search field
     useEffect(() => {
@@ -115,6 +179,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
 
     const handleTabChange = (value) => {
         setTab(value);
+        tabRef.current = value;
         load(value, buildFilterParams());
     };
 
@@ -328,95 +393,108 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                                 }}
                             />
                         ) : (
-                            <Stack spacing={0.3} sx={{ mb: 2 }}>
-                                {rooms.map((room) => {
-                                    const roomId = getRoomId(room);
-                                    const isActive = activeRoomId === roomId;
-                                    const isFollowing = room.isFollowing;
-                                    const isPending = room.isPending;
-                                    const isLoadingFollow = loadingIds.has(roomId);
+                            <>
+                                <Stack spacing={0.3} sx={{ mb: 2 }}>
+                                    {rooms.map((room) => {
+                                        const roomId = getRoomId(room);
+                                        const isActive = activeRoomId === roomId;
+                                        const isFollowing = room.isFollowing;
+                                        const isPending = room.isPending;
+                                        const isLoadingFollow = loadingIds.has(roomId);
 
-                                    let btnLabel = t('explore_drawer.btn_follow');
-                                    let btnBg = '#4C4EFF';
-                                    let btnBorder = '#4C4EFF';
-                                    let btnVariant = 'contained';
-                                    if (isLoadingFollow) {
-                                        btnLabel = null;
-                                    } else if (isPending) {
-                                        btnLabel = t('explore_drawer.btn_request_sent');
-                                        btnBg = 'transparent';
-                                        btnBorder = 'rgba(255,193,7,0.6)';
-                                        btnVariant = 'outlined';
-                                    } else if (isFollowing) {
-                                        btnLabel = t('explore_drawer.btn_following');
-                                        btnBg = 'transparent';
-                                        btnBorder = 'rgba(255,255,255,0.25)';
-                                        btnVariant = 'outlined';
-                                    }
+                                        let btnLabel = t('explore_drawer.btn_follow');
+                                        let btnBg = '#4C4EFF';
+                                        let btnBorder = '#4C4EFF';
+                                        let btnVariant = 'contained';
+                                        if (isLoadingFollow) {
+                                            btnLabel = null;
+                                        } else if (isPending) {
+                                            btnLabel = t('explore_drawer.btn_request_sent');
+                                            btnBg = 'transparent';
+                                            btnBorder = 'rgba(255,193,7,0.6)';
+                                            btnVariant = 'outlined';
+                                        } else if (isFollowing) {
+                                            btnLabel = t('explore_drawer.btn_following');
+                                            btnBg = 'transparent';
+                                            btnBorder = 'rgba(255,255,255,0.25)';
+                                            btnVariant = 'outlined';
+                                        }
 
-                                    return (
-                                        <Stack
-                                            key={roomId}
-                                            direction="row"
-                                            alignItems="center"
-                                            spacing={1.5}
-                                            sx={{
-                                                p: 1.2,
-                                                cursor: 'pointer',
-                                                borderRadius: 2,
-                                                bgcolor: isActive ? 'rgba(255,255,255,0.10)' : 'transparent',
-                                                border: isActive ? '2px solid #4C4EFF' : '2px solid transparent',
-                                                transition: 'all 0.18s',
-                                                '&:hover': { bgcolor: isActive ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.08)' },
-                                            }}
-                                            onClick={() => handleRoomClick(room)}
-                                        >
-                                            <RoomAvatar image={room.image} name={room.name} size={36} />
-
-                                            <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                <Typography fontWeight={600} fontSize={14} noWrap>
-                                                    {room.name}
-                                                </Typography>
-                                            </Box>
-
-                                            <Button
-                                                size="small"
-                                                variant={btnVariant}
-                                                disabled={isLoadingFollow}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (isPending) handleCancelRequest(room);
-                                                    else handleFollowToggle(room);
-                                                }}
+                                        return (
+                                            <Stack
+                                                key={roomId}
+                                                direction="row"
+                                                alignItems="center"
+                                                spacing={1.5}
                                                 sx={{
-                                                    height: 30,
-                                                    minWidth: 100,
-                                                    px: 1.5,
+                                                    p: 1.2,
+                                                    cursor: 'pointer',
                                                     borderRadius: 2,
-                                                    fontWeight: 700,
-                                                    fontSize: isPending ? 11 : 13,
-                                                    textTransform: 'none',
-                                                    bgcolor: btnBg,
-                                                    color: isPending ? '#FFC107' : '#fff',
-                                                    borderColor: btnBorder,
-                                                    '&:hover': {
-                                                        bgcolor: isPending
-                                                            ? 'rgba(255,193,7,0.08)'
-                                                            : isFollowing ? 'rgba(255,255,255,0.08)' : '#3b3bd6',
-                                                        borderColor: btnBorder,
-                                                    },
-                                                    '&.Mui-disabled': { opacity: 0.6 },
+                                                    bgcolor: isActive ? 'rgba(255,255,255,0.10)' : 'transparent',
+                                                    border: isActive ? '2px solid #4C4EFF' : '2px solid transparent',
+                                                    transition: 'all 0.18s',
+                                                    '&:hover': { bgcolor: isActive ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.08)' },
                                                 }}
+                                                onClick={() => handleRoomClick(room)}
                                             >
-                                                {isLoadingFollow
-                                                    ? <CircularProgress size={14} sx={{ color: isPending ? '#FFC107' : '#fff' }} />
-                                                    : btnLabel
-                                                }
-                                            </Button>
-                                        </Stack>
-                                    );
-                                })}
-                            </Stack>
+                                                <RoomAvatar image={room.image} name={room.name} size={36} />
+
+                                                <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                    <Typography fontWeight={600} fontSize={14} noWrap>
+                                                        {room.name}
+                                                    </Typography>
+                                                </Box>
+
+                                                <Button
+                                                    size="small"
+                                                    variant={btnVariant}
+                                                    disabled={isLoadingFollow}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isPending) handleCancelRequest(room);
+                                                        else handleFollowToggle(room);
+                                                    }}
+                                                    sx={{
+                                                        height: 30,
+                                                        minWidth: 100,
+                                                        px: 1.5,
+                                                        borderRadius: 2,
+                                                        fontWeight: 700,
+                                                        fontSize: isPending ? 11 : 13,
+                                                        textTransform: 'none',
+                                                        bgcolor: btnBg,
+                                                        color: isPending ? '#FFC107' : '#fff',
+                                                        borderColor: btnBorder,
+                                                        '&:hover': {
+                                                            bgcolor: isPending
+                                                                ? 'rgba(255,193,7,0.08)'
+                                                                : isFollowing ? 'rgba(255,255,255,0.08)' : '#3b3bd6',
+                                                            borderColor: btnBorder,
+                                                        },
+                                                        '&.Mui-disabled': { opacity: 0.6 },
+                                                    }}
+                                                >
+                                                    {isLoadingFollow
+                                                        ? <CircularProgress size={14} sx={{ color: isPending ? '#FFC107' : '#fff' }} />
+                                                        : btnLabel
+                                                    }
+                                                </Button>
+                                            </Stack>
+                                        );
+                                    })}
+                                </Stack>
+                                {isLoadingMore && (
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                        <CircularProgress size={20} sx={{ color: '#a5b4fc' }} />
+                                    </Box>
+                                )}
+                                {!isLoadingMore && !hasMore && rooms.length > 0 && (
+                                    <Typography sx={{ textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.3)', py: 1.5 }}>
+                                        {t('explore_drawer.end_of_list')}
+                                    </Typography>
+                                )}
+                                {hasMore && <div ref={sentinelRef} style={{ height: 1 }} />}
+                            </>
                         )}
                     </Box>
                 </Box>

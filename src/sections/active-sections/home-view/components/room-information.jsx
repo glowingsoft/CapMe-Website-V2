@@ -31,11 +31,17 @@ const VISIBILITY_CONFIG = {
 import RoomMediaPanel from './room-media-panel';
 import UnfollowModal from './unfollow-modal';
 import { DRAWER_EVENTS } from 'src/utils/drawer-events';
-import { useRemoveRoomMemberMutation, useDeleteRoomMutation, useGetRoomByIdQuery, useLazyGetRoomRequestsQuery } from 'src/store/Reducer/rooms-api';
+import { useRemoveRoomMemberMutation, useDeleteRoomMutation, useGetRoomByIdQuery, useLazyGetRoomMembersQuery, useSubmitRoomReportMutation } from 'src/store/Reducer/rooms-api';
 
 const cleanUrl = (s) => {
     if (!s || typeof s !== 'string') return '';
     return s.replace(/^https?:\/\/[^/]+(\/https?:\/\/.+)$/, (_, rest) => rest.slice(1)).trim();
+};
+
+const cleanAvatar = (url) => {
+    if (!url || typeof url !== 'string') return '';
+    if (url.includes('noImg')) return '';
+    return url;
 };
 
 const getMemberUserId = (member) => {
@@ -53,7 +59,7 @@ const getMemberProfile = (member) => {
     return {
         name: member?.name ?? user?.name ?? user?.email ?? member?.email ?? '',
         email: member?.email ?? user?.email ?? '',
-        avatar: member?.image ?? member?.avatar ?? user?.image ?? user?.avatar ?? '',
+        avatar: cleanAvatar(member?.image ?? member?.avatar ?? user?.image ?? user?.avatar ?? ''),
     };
 };
 
@@ -74,11 +80,13 @@ export default function RoomInformation({
     isLoading = false,
     isRoomAdmin = false,
     permissionOverrides = {},
+    refreshKey = 0,
     onEdit,
     onShare,
     onDownloadMedia,
     onDeleteRoom,
     onRemoveFollower,
+    onMembersLoaded,
 }) {
     const { t } = useTranslate('common');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -89,10 +97,13 @@ export default function RoomInformation({
     const [showMedia, setShowMedia] = useState(false);
     const [removedMemberIds, setRemovedMemberIds] = useState([]);
     const [apiMembers, setApiMembers] = useState([]);
+    const [membersPage, setMembersPage] = useState(1);
+    const [membersTotal, setMembersTotal] = useState(0);
     const [isLoadingMembers, setIsLoadingMembers] = useState(false);
     const [removeRoomMember, { isLoading: isRemovingMember }] = useRemoveRoomMemberMutation();
     const [deleteRoom, { isLoading: isDeletingRoom }] = useDeleteRoomMutation();
-    const [fetchRoomRequests] = useLazyGetRoomRequestsQuery();
+    const [fetchRoomMembers] = useLazyGetRoomMembersQuery();
+    const [submitRoomReport, { isLoading: isSubmittingReport }] = useSubmitRoomReportMutation();
     const currentUser = useSelector(selectUser);
     const currentUserId = String(currentUser?.basicInfo?._id ?? currentUser?._id ?? currentUser?.id ?? currentUser?.userId ?? currentUser?.user?._id ?? '');
 
@@ -110,12 +121,15 @@ export default function RoomInformation({
             setShowMedia(false);
             setRemovedMemberIds([]);
             setApiMembers([]);
+            setMembersPage(1);
+            setMembersTotal(0);
             setIsLoadingMembers(false);
         }
     }, [open]);
 
     useEffect(() => {
         setRemovedMemberIds([]);
+        setMembersPage(1);
     }, [roomId]);
 
     useEffect(() => {
@@ -127,11 +141,16 @@ export default function RoomInformation({
 
         let isActive = true;
         setIsLoadingMembers(true);
+        setMembersPage(1);
 
-        fetchRoomRequests({ roomId, type: 'members' })
+        fetchRoomMembers({ roomId, page: 1, limit: 10 })
             .unwrap()
-            .then((data) => {
-                if (isActive) setApiMembers(data ?? []);
+            .then(({ members, total }) => {
+                if (isActive) {
+                    setApiMembers(members);
+                    setMembersTotal(total);
+                    onMembersLoaded?.(members);
+                }
             })
             .catch(() => {
                 if (isActive) setApiMembers([]);
@@ -143,7 +162,31 @@ export default function RoomInformation({
         return () => {
             isActive = false;
         };
-    }, [open, roomId, isRoomAdmin, fetchRoomRequests]);
+    }, [open, roomId, refreshKey, isRoomAdmin, fetchRoomMembers]);
+
+    useEffect(() => {
+        if (!open || !roomId || membersPage === 1) return undefined;
+
+        let isActive = true;
+        setIsLoadingMembers(true);
+
+        fetchRoomMembers({ roomId, page: membersPage, limit: 10 })
+            .unwrap()
+            .then(({ members, total }) => {
+                if (isActive) {
+                    setApiMembers((prev) => [...prev, ...members]);
+                    setMembersTotal(total);
+                }
+            })
+            .catch(() => { })
+            .finally(() => {
+                if (isActive) setIsLoadingMembers(false);
+            });
+
+        return () => {
+            isActive = false;
+        };
+    }, [membersPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const closeDownloadedMedia = () => setShowMedia(false);
@@ -161,12 +204,16 @@ export default function RoomInformation({
     const visibility = freshRoom?.visibility ?? room?.visibility ?? 'Friends';
     const createdAt = fDate(freshRoom?.createdAt ?? room?.createdAt);
 
-    const rawMembers = isRoomAdmin ? apiMembers : (freshRoom?.members ?? room?.members ?? enrichedMembers ?? []);
+    const rawMembers = apiMembers.length > 0 ? apiMembers : (freshRoom?.members ?? room?.members ?? enrichedMembers ?? []);
     const members = (Array.isArray(rawMembers) ? rawMembers : [])
         .map((m) => {
             if (!m) return null;
-            const memberId = m.id ?? m.memberId ?? m.membershipId ?? m._id;
-            const userId = String(m.userId || getMemberUserId(m) || '');
+            // New API shape: { memberId, name, email, image, status, permission }
+            const isNewShape = !!m.memberId && !m._id && !m.user;
+            const userId = isNewShape
+                ? String(m.memberId)
+                : String(m.userId || getMemberUserId(m) || '');
+            const memberId = m.memberId ?? m.id ?? m.membershipId ?? m._id ?? userId;
             const id = userId || String(memberId ?? '');
             const profile = getMemberProfile(m);
             const permissionKey = userId || id;
@@ -177,6 +224,7 @@ export default function RoomInformation({
                 name: profile.name,
                 email: profile.email,
                 avatar: profile.avatar,
+                status: m.status ?? 'active',
                 permission: permissionOverrides[String(permissionKey)] ?? normalizePermission(m.permission ?? m.role),
             };
         })
@@ -242,11 +290,17 @@ export default function RoomInformation({
         }
     };
 
-    const handleConfirmReport = () => {
-        // TODO: call report API with reportFeedback
-        setReportOpen(false);
-        setReportFeedback('');
-        toast.success(t('room_info.toast_reported'));
+    const handleConfirmReport = async () => {
+        if (isSubmittingReport) return;
+        try {
+            await submitRoomReport({ roomId, message: reportFeedback }).unwrap();
+            toast.success(t('room_info.toast_reported'));
+        } catch (err) {
+            toast.error(err?.data?.message ?? 'Failed to submit report');
+        } finally {
+            setReportOpen(false);
+            setReportFeedback('');
+        }
     };
 
     return (
@@ -500,7 +554,6 @@ export default function RoomInformation({
                         {isRoomAdmin && <Box sx={{ px: 2, pb: 3 }}>
                             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
                                 <Typography fontWeight={700} fontSize={14}>{t('room_info.members')}</Typography>
-                                <Typography fontSize={12} color="text.secondary" fontWeight={600}>{members.length}</Typography>
                             </Stack>
 
                             {isLoadingMembers ? (
@@ -539,6 +592,7 @@ export default function RoomInformation({
                                         const isEdit = perm === 'edit' || perm.includes('edit');
                                         const permColor = isAdmin ? '#4C4EFF' : isEdit ? '#f59e0b' : '#29b6f6';
                                         const permBg = isAdmin ? 'rgba(76,78,255,0.1)' : isEdit ? 'rgba(245,158,11,0.1)' : 'rgba(41,182,246,0.1)';
+                                        const isBlocked = String(member.status ?? '').toLowerCase() === 'blocked';
                                         return (
                                             <Box
                                                 key={member.id}
@@ -550,7 +604,8 @@ export default function RoomInformation({
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'space-between',
-                                                    border: '1px solid #f0f0f0',
+                                                    border: isBlocked ? '1px solid rgba(185,0,0,0.18)' : '1px solid #f0f0f0',
+                                                    opacity: isBlocked ? 0.85 : 1,
                                                 }}
                                             >
                                                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
@@ -562,14 +617,19 @@ export default function RoomInformation({
                                                     </Avatar>
 
                                                     <Box sx={{ minWidth: 0 }}>
-                                                        <Stack direction="row" alignItems="center" spacing={0.75}>
+                                                        <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap">
                                                             <Typography fontSize={14} fontWeight={700} color="#111" noWrap>
                                                                 {member.name}
                                                             </Typography>
-                                                            {isRoomAdmin && (
-                                                                <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: permBg, flexShrink: 0 }}>
-                                                                    <Typography fontSize={10} fontWeight={700} sx={{ color: permColor, textTransform: 'capitalize', lineHeight: 1.2 }}>
-                                                                        {member.permission ?? 'view'}
+                                                            <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: permBg, flexShrink: 0 }}>
+                                                                <Typography fontSize={10} fontWeight={700} sx={{ color: permColor, textTransform: 'capitalize', lineHeight: 1.2 }}>
+                                                                    {member.permission ?? 'view'}
+                                                                </Typography>
+                                                            </Box>
+                                                            {isBlocked && (
+                                                                <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: 'rgba(185,0,0,0.08)', flexShrink: 0 }}>
+                                                                    <Typography fontSize={10} fontWeight={700} sx={{ color: '#B90000', lineHeight: 1.2 }}>
+                                                                        Blocked
                                                                     </Typography>
                                                                 </Box>
                                                             )}
@@ -601,6 +661,17 @@ export default function RoomInformation({
                                             </Box>
                                         );
                                     })}
+                                    {apiMembers.length < membersTotal && (
+                                        <Button
+                                            size="small"
+                                            variant="text"
+                                            disabled={isLoadingMembers}
+                                            onClick={() => setMembersPage((p) => p + 1)}
+                                            sx={{ alignSelf: 'center', mt: 0.5, fontSize: 13, fontWeight: 600 }}
+                                        >
+                                            {isLoadingMembers ? 'Loading…' : 'Load more'}
+                                        </Button>
+                                    )}
                                 </Stack>
                             )}
                         </Box>}

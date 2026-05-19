@@ -47,7 +47,7 @@
     "search_placeholder": "Search...",
     "only_you": "Only you",
     "follow": "Follow",
-    "request_sent": "Request Sent",
+    "request_sent": "Cancel Request",
     "menu_room_info": "Room Information",
     "menu_room_requests": "Room Requests",
     "menu_following": "Following",
@@ -105,7 +105,8 @@
     "no_rooms": "No rooms found",
     "toast_link_copied": "Link copied to clipboard",
     "toast_shared": "Shared successfully",
-    "toast_error": "Failed to share. Please try again."
+    "toast_error": "Failed to share. Please try again.",
+    "search_placeholder": "Search rooms..."
   },
   "chat_input": {
     "placeholder": "Type a message...",
@@ -209,11 +210,17 @@
     "btn_friends": "Friends",
     "btn_add_friend": "Add Friend",
     "btn_follow": "Follow",
-    "btn_request_sent": "Request Sent",
+    "btn_request_sent": "Cancel Request",
     "btn_following": "Following",
     "search_placeholder": "Search here..",
     "no_results": "No results found.",
-    "load_more": "Load More"
+    "load_more": "Load More",
+    "empty_created_title": "No Created Rooms",
+    "empty_created_desc": "This user hasn't created any rooms yet.",
+    "empty_following_rooms_title": "No Followed Rooms",
+    "empty_following_rooms_desc": "This user isn't following any rooms yet.",
+    "empty_search_title": "No Results",
+    "empty_search_desc": "No matches found for your search."
   },
   "home_view": {
     "garage_empty_title": "Your garage is empty",
@@ -222,6 +229,9 @@
     "no_messages_subtitle": "Be the first to say something in {{roomName}}!",
     "view_access_title": "View access only",
     "view_access_subtitle": "Admin has given you view access only. Contact the admin to get edit permission.",
+    "blocked_title": "You have been blocked by the admin",
+    "blocked_subtitle": "Follow the room owner to request access back to this room.",
+    "blocked_follow_owner": "Follow Room Owner",
     "pending_title": "Request sent — Waiting for admin approval",
     "pending_subtitle": "Your follow request is pending. You'll be able to join once approved.",
     "not_following_title": "Follow this room to join the conversation",
@@ -252,7 +262,13 @@
     "view_all_friends": "All Friends",
     "view_all_following": "All Following",
     "toast_updated": "Profile updated successfully",
-    "toast_update_error": "Failed to update profile"
+    "toast_update_error": "Failed to update profile",
+    "empty_friends_title": "No Friends Yet",
+    "empty_friends_desc": "When people follow you, they'll appear here.",
+    "empty_following_title": "Not Following Anyone",
+    "empty_following_desc": "People you follow will appear here.",
+    "empty_search_title": "No Results",
+    "empty_search_desc": "No matches found for your search."
   },
   "account_edit_modal": {
     "full_name_label": "Full Name",
@@ -421,7 +437,10 @@
     "pending_title": "Request sent — Waiting for admin approval",
     "pending_subtitle": "Your follow request is pending. You'll be able to join the conversation once approved.",
     "view_access_title": "View access only",
-    "view_access_subtitle": "Admin has given you view access only. Contact the admin for edit permission."
+    "view_access_subtitle": "Admin has given you view access only. Contact the admin for edit permission.",
+    "blocked_title": "You have been blocked by the admin",
+    "blocked_subtitle": "Follow the room owner to request access back to this room.",
+    "blocked_follow_owner": "Follow Room Owner"
   },
   "explore_filter": {
     "title": "Filter",
@@ -452,13 +471,14 @@
     "no_rooms": "No rooms found",
     "no_rooms_subtitle": "Try a different tab or adjust your filters.",
     "btn_follow": "Follow",
-    "btn_request_sent": "Request Sent",
+    "btn_request_sent": "Cancel Request",
     "btn_following": "Following",
     "toast_cancel_error": "Failed to cancel request. Please try again.",
     "toast_update_error": "Failed to update. Please try again.",
     "toast_followed": "Room followed successfully",
     "toast_unfollowed": "Room unfollowed successfully",
-    "open_filters": "Open filters"
+    "open_filters": "Open filters",
+    "end_of_list": "You've seen all rooms"
   },
   "select_file": {
     "attach_photo_video": "Attach photo / video",

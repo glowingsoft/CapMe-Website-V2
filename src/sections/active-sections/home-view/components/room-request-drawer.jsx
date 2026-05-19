@@ -342,7 +342,9 @@ export default function RoomRequestDrawer({
                                         }}
                                     >
                                         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.25 }}>
-                                            <Avatar src={request.avatar} sx={{ width: 44, height: 44 }} />
+                                            <Avatar src={request.avatar || undefined} sx={{ width: 44, height: 44 }}>
+                                                {request.name?.charAt(0)?.toUpperCase()}
+                                            </Avatar>
 
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography fontSize={15} fontWeight={700} noWrap>
@@ -475,7 +477,9 @@ export default function RoomRequestDrawer({
                                         }}
                                     >
                                         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.25 }}>
-                                            <Avatar src={member.avatar} sx={{ width: 44, height: 44 }} />
+                                            <Avatar src={member.avatar || undefined} sx={{ width: 44, height: 44 }}>
+                                                {member.name?.charAt(0)?.toUpperCase()}
+                                            </Avatar>
 
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography fontSize={15} fontWeight={700} noWrap>

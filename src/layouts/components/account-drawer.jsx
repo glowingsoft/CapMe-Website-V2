@@ -17,11 +17,13 @@ import Typography from '@mui/material/Typography';
 import { usePathname, useRouter } from 'src/routes/hooks';
 import { paths } from 'src/routes/paths';
 import { closeOverlayDrawers } from 'src/utils/drawer-events';
+import { stripDoubleS3Prefix } from 'src/utils/message-utils';
 
 import { _mock } from 'src/_mock';
 import { varAlpha } from 'src/theme/styles';
 
 import { AnimateAvatar } from 'src/components/animate';
+import { EmptyContent } from 'src/components/empty-content';
 import { Iconify } from 'src/components/iconify';
 import { Label } from 'src/components/label';
 import { Scrollbar } from 'src/components/scrollbar';
@@ -41,6 +43,7 @@ import {
   AccountConnectionListSkeleton,
   AccountProfileHeaderSkeleton,
   AccountStatsSkeleton,
+  AccountTabsSkeleton,
 } from './account-drawer-skeletons';
 import DrawerHeader from 'src/sections/active-sections/home-view/components/drawer-header';
 import ViewAllModal from './view-all';
@@ -101,8 +104,20 @@ export function AccountDrawer({ data = [], sx, ...other }) {
   );
 
   const isProfileDataLoading = isProfileLoading || isProfileFetching;
-  const isFriendsListLoading = isFollowersLoading || isFollowersFetching;
-  const isFollowingsListLoading = isFollowingsLoading || isFollowingsFetching;
+
+  // useState(true) prevents empty-state flash while RTK Query transitions from
+  // skipped → loading → resolved on drawer open.
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!open) {
+      setConnectionsLoading(true);
+      return;
+    }
+    if (!isFollowersLoading && !isFollowersFetching && !isFollowingsLoading && !isFollowingsFetching) {
+      setConnectionsLoading(false);
+    }
+  }, [open, isFollowersLoading, isFollowersFetching, isFollowingsLoading, isFollowingsFetching]);
 
   // Map API responses to drawer data shape
   // API returns body as array directly, not nested in .data
@@ -124,18 +139,21 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     icon: item.image || item.photoURL || undefined,
   }));
 
-  // Use API data or fall back to mock data
-  const friends = transformedFollowers.length > 0 ? transformedFollowers : mockFriends;
-  const following = transformedFollowings.length > 0 ? transformedFollowings : mockFollowing;
+  // ViewAllModal data — no mock fallback so empty state shows correctly
+  const friends = transformedFollowers;
+  const following = transformedFollowings;
 
   useEffect(() => {
     const profileBody = profileResponse?.body;
     if (!profileBody || !user?.token) return;
 
+    const storedImage = stripDoubleS3Prefix(profileBody?.image);
+    const effectiveProfileImage = storedImage?.includes('noImg') ? null : storedImage;
+
     const alreadySynced =
       user?._id === profileBody?._id &&
       user?.email === profileBody?.email &&
-      user?.photoURL === profileBody?.image &&
+      (!effectiveProfileImage || user?.photoURL === effectiveProfileImage) &&
       user?.mobile === profileBody?.mobile &&
       user?.updatedAt === profileBody?.updatedAt;
 
@@ -146,7 +164,8 @@ export function AccountDrawer({ data = [], sx, ...other }) {
       ...profileBody,
       id: profileBody?._id ?? user?.id,
       email: profileBody?.email ?? user?.email,
-      photoURL: profileBody?.image ?? user?.photoURL,
+
+      photoURL: effectiveProfileImage ?? user?.photoURL,
       basicInfo: {
         ...(user?.basicInfo ?? {}),
         name: profileBody?.name ?? user?.basicInfo?.name,
@@ -340,7 +359,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           title={t('account_drawer.title')}
           onBack={handleCloseDrawer}
           onEdit={handleEditOpen}
-          onChangePassword={() => setChangePasswordOpen(true)}
+          onChangePassword={user?.loginMethod === 'social' ? undefined : () => setChangePasswordOpen(true)}
           editIcon="fluent:edit-20-regular"
           showShare={false}
         />
@@ -470,57 +489,78 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           </Box>
 
           {/* Pill tabs */}
-
-
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, px: 2 }}>
-            <Button
-              size="small"
-              onClick={() => setTab(0)}
-              sx={{
-                borderRadius: 10,
-                fontWeight: tab === 0 ? 700 : 500,
-                fontSize: 13,
-                px: 2.5,
-                py: 0.8,
-                bgcolor: tab === 0 ? '#4C4EFF' : 'transparent',
-                color: tab === 0 ? '#fff' : 'text.secondary',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: tab === 0 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
-              }}
-            >
-              {t('account_drawer.tab_friends', { count: isProfileDataLoading ? '...' : profileStats.friends })}
-            </Button>
-            <Button
-              size="small"
-              onClick={() => setTab(1)}
-              sx={{
-                borderRadius: 10,
-                fontWeight: tab === 1 ? 700 : 500,
-                fontSize: 13,
-                px: 2.5,
-                py: 0.8,
-                bgcolor: tab === 1 ? '#4C4EFF' : 'transparent',
-                color: tab === 1 ? '#fff' : 'text.secondary',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: tab === 1 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
-              }}
-            >
-              {t('account_drawer.tab_following', { count: isProfileDataLoading ? '...' : profileStats.following })}
-            </Button>
-          </Stack>
+          {isProfileDataLoading ? (
+            <AccountTabsSkeleton />
+          ) : (
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, px: 2 }}>
+              <Button
+                size="small"
+                onClick={() => setTab(0)}
+                sx={{
+                  borderRadius: 10,
+                  fontWeight: tab === 0 ? 700 : 500,
+                  fontSize: 13,
+                  px: 2.5,
+                  py: 0.8,
+                  bgcolor: tab === 0 ? '#4C4EFF' : 'transparent',
+                  color: tab === 0 ? '#fff' : 'text.secondary',
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: tab === 0 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
+                }}
+              >
+                {search ? t('account_drawer.stat_friends') : t('account_drawer.tab_friends', { count: profileStats.friends })}
+              </Button>
+              <Button
+                size="small"
+                onClick={() => setTab(1)}
+                sx={{
+                  borderRadius: 10,
+                  fontWeight: tab === 1 ? 700 : 500,
+                  fontSize: 13,
+                  px: 2.5,
+                  py: 0.8,
+                  bgcolor: tab === 1 ? '#4C4EFF' : 'transparent',
+                  color: tab === 1 ? '#fff' : 'text.secondary',
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: tab === 1 ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
+                }}
+              >
+                {search ? t('account_drawer.stat_following') : t('account_drawer.tab_following', { count: profileStats.following })}
+              </Button>
+            </Stack>
+          )}
 
           {/* Tab content */}
           <Box sx={{ px: 2, pb: 2 }}>
             {tab === 0 && (
-              isFriendsListLoading ? (
+              connectionsLoading ? (
                 <AccountConnectionListSkeleton showButton />
-              ) : (
-                <>
-                  <Stack spacing={1}>
-                    {transformedFollowers
-                      .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
-                      .slice(0, 3)
-                      .map((f, i) => {
+              ) : (() => {
+                const filteredFriends = transformedFollowers.filter((f) =>
+                  f.name.toLowerCase().includes(search.toLowerCase())
+                );
+                if (transformedFollowers.length === 0) {
+                  return (
+                    <EmptyContent
+                      title={t('account_drawer.empty_friends_title')}
+                      description={t('account_drawer.empty_friends_desc')}
+                      sx={{ py: 6 }}
+                    />
+                  );
+                }
+                if (filteredFriends.length === 0) {
+                  return (
+                    <EmptyContent
+                      title={t('account_drawer.empty_search_title')}
+                      description={t('account_drawer.empty_search_desc')}
+                      sx={{ py: 6 }}
+                    />
+                  );
+                }
+                return (
+                  <>
+                    <Stack spacing={1}>
+                      {filteredFriends.slice(0, 3).map((f, i) => {
                         const key = `friend-${i}`;
                         const state = followedItems[key];
                         const label = state === 'active' ? t('account_drawer.btn_friends') : state === 'requested' ? t('account_drawer.btn_cancel_request') : t('account_drawer.btn_add');
@@ -569,39 +609,59 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                           </Stack>
                         );
                       })}
-                  </Stack>
-                  {transformedFollowers.length > 3 && (
-                    <Button
-                      fullWidth
-                      size="small"
-                      onClick={() => handleOpenViewAll('friends')}
-                      sx={{
-                        mt: 1.5,
-                        borderRadius: 2,
-                        border: '1px dashed rgba(76,78,255,0.4)',
-                        color: '#4C4EFF',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        textTransform: 'none',
-                        '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                      }}
-                    >
-                      {t('account_drawer.see_all_friends', { count: transformedFollowers.length })}
-                    </Button>
-                  )}
-                </>
-              )
+                    </Stack>
+                    {transformedFollowers.length > 3 && (
+                      <Button
+                        fullWidth
+                        size="small"
+                        onClick={() => handleOpenViewAll('friends')}
+                        sx={{
+                          mt: 1.5,
+                          borderRadius: 2,
+                          border: '1px dashed rgba(76,78,255,0.4)',
+                          color: '#4C4EFF',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+                        }}
+                      >
+                        {t('account_drawer.see_all_friends', { count: transformedFollowers.length })}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()
             )}
             {tab === 1 && (
-              isFollowingsListLoading ? (
+              connectionsLoading ? (
                 <AccountConnectionListSkeleton showButton={false} />
-              ) : (
-                <>
-                  <Stack spacing={1}>
-                    {transformedFollowings
-                      .filter((f) => f.name.toLowerCase().includes(search.toLowerCase()))
-                      .slice(0, 3)
-                      .map((f, i) => (
+              ) : (() => {
+                const filteredFollowings = transformedFollowings.filter((f) =>
+                  f.name.toLowerCase().includes(search.toLowerCase())
+                );
+                if (transformedFollowings.length === 0) {
+                  return (
+                    <EmptyContent
+                      title={t('account_drawer.empty_following_title')}
+                      description={t('account_drawer.empty_following_desc')}
+                      sx={{ py: 6 }}
+                    />
+                  );
+                }
+                if (filteredFollowings.length === 0) {
+                  return (
+                    <EmptyContent
+                      title={t('account_drawer.empty_search_title')}
+                      description={t('account_drawer.empty_search_desc')}
+                      sx={{ py: 6 }}
+                    />
+                  );
+                }
+                return (
+                  <>
+                    <Stack spacing={1}>
+                      {filteredFollowings.slice(0, 3).map((f, i) => (
                         <Stack
                           key={i}
                           direction="row"
@@ -626,28 +686,29 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                           </Stack>
                         </Stack>
                       ))}
-                  </Stack>
-                  {transformedFollowings.length > 3 && (
-                    <Button
-                      fullWidth
-                      size="small"
-                      onClick={() => handleOpenViewAll('following')}
-                      sx={{
-                        mt: 1.5,
-                        borderRadius: 2,
-                        border: '1px dashed rgba(76,78,255,0.4)',
-                        color: '#4C4EFF',
-                        fontWeight: 600,
-                        fontSize: 13,
-                        textTransform: 'none',
-                        '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
-                      }}
-                    >
-                      {t('account_drawer.see_all_following', { count: transformedFollowings.length })}
-                    </Button>
-                  )}
-                </>
-              )
+                    </Stack>
+                    {transformedFollowings.length > 3 && (
+                      <Button
+                        fullWidth
+                        size="small"
+                        onClick={() => handleOpenViewAll('following')}
+                        sx={{
+                          mt: 1.5,
+                          borderRadius: 2,
+                          border: '1px dashed rgba(76,78,255,0.4)',
+                          color: '#4C4EFF',
+                          fontWeight: 600,
+                          fontSize: 13,
+                          textTransform: 'none',
+                          '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+                        }}
+                      >
+                        {t('account_drawer.see_all_following', { count: transformedFollowings.length })}
+                      </Button>
+                    )}
+                  </>
+                );
+              })()
             )}
           </Box>
 

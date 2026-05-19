@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useDispatch } from 'react-redux';
 import { z as zod } from 'zod';
 
 import CircularProgress from '@mui/material/CircularProgress';
@@ -22,13 +23,16 @@ import { useRouter } from 'src/routes/hooks';
 import { RouterLink } from 'src/routes/components';
 
 import { useBoolean } from 'src/hooks/use-boolean';
+import { useGoogleLogin } from '@react-oauth/google';
 
 import { Iconify } from 'src/components/iconify';
 import { Form, Field } from 'src/components/hook-form';
 import { RHFUploadAvatar } from 'src/components/hook-form/rhf-upload';
 
 import { toast } from 'src/components/snackbar';
-import { signUp } from 'src/auth/context/jwt/action';
+import { signUp, signInWithGoogle } from 'src/auth/context/jwt/action';
+import { useAuthContext } from 'src/auth/hooks';
+import { setUser } from 'src/store/slices/userSlice';
 import { handleApiError } from 'src/store/handleApiError';
 import { useTranslate } from 'src/locales';
 
@@ -48,8 +52,35 @@ export const SignUpSchema = zod.object({
 export function JwtSignUpView() {
   const router = useRouter();
   const { t } = useTranslate('common');
+  const dispatch = useDispatch();
+  const { checkUserSession } = useAuthContext();
   const password = useBoolean();
   const [errorMsg, setErrorMsg] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    try {
+      setGoogleLoading(true);
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+      });
+      const googleUser = await res.json();
+      const user = await signInWithGoogle(googleUser);
+      dispatch(setUser(user));
+      await checkUserSession();
+      router.replace(paths.dashboard.root);
+      toast.success(t('auth.sign_in.toast_success'));
+    } catch (err) {
+      toast.error(err?.data?.message ?? 'Google sign-up failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => toast.error('Google sign-up failed'),
+  });
 
   const methods = useForm({
     resolver: zodResolver(SignUpSchema),
@@ -314,7 +345,9 @@ export function JwtSignUpView() {
         <Button
           fullWidth
           variant="outlined"
-          startIcon={<Iconify icon="logos:google-icon" width={18} />}
+          onClick={() => googleLogin()}
+          disabled={googleLoading}
+          startIcon={googleLoading ? <CircularProgress size={16} /> : <Iconify icon="logos:google-icon" width={18} />}
           sx={{
             borderRadius: 2,
             borderColor: '#e8e8e8',

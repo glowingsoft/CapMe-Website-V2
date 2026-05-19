@@ -148,8 +148,7 @@ export default function ExploreView() {
     }, [localPosts]);
 
     // Scroll to bottom: instant on room switch or initial load, smooth on new message.
-    // Mirrors home-view exactly â€” isInitialLoadRef is set by the populate effect (page 1)
-    // and consumed here; no other signals needed.
+
     useEffect(() => {
         if (!selectedRoom) return;
         if (isPrependingRef.current) {
@@ -177,7 +176,6 @@ export default function ExploreView() {
             return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); observer.disconnect(); clearTimeout(timer); };
         }
         scrollToBottom(postsContainerRef, postsEndRef, 'smooth');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedRoom, localPosts.length]);
 
     // When room changes â€” reset and start loading
@@ -431,6 +429,7 @@ export default function ExploreView() {
                                                 key={item.id}
                                                 post={item}
                                                 onCommentClick={() => openCommentDrawer(item)}
+                                                canInteract={canPost}
                                             />
                                         )
                                     )

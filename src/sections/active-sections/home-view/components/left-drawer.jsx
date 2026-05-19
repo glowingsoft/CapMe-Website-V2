@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
@@ -210,23 +211,28 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
   }, []);
 
   useEffect(() => {
-    const onLastMessageUpdate = (e) => {
-      const { roomId, message } = e.detail || {};
-      if (!roomId || !message) return;
-      const lastMessage = {
-        text_representation: message.content ?? '',
-        content: message.content ?? '',
-        attachments: message.attachments ?? [],
-      };
-      const descData = getLastMessageDesc(lastMessage);
-      const now = new Date().toISOString();
+    const onRoomListUpdate = (e) => {
+      const { roomId, unreadCount, incrementUnread, lastMessage } = e.detail || {};
+      console.log('[LeftDrawer] roomListUpdate received →', { roomId, unreadCount, incrementUnread, lastMessage });
+      if (!roomId) return;
+      const rawLastMessage = lastMessage
+        ? { text_representation: lastMessage.content ?? '', content: lastMessage.content ?? '', attachments: lastMessage.attachments ?? [] }
+        : null;
+      const descData = rawLastMessage ? getLastMessageDesc(rawLastMessage) : null;
+      const updatedAt = lastMessage?.createdAt ?? new Date().toISOString();
       const updateRooms = (list) => {
-        const updated = list.map((r) =>
-          String(r.id) === String(roomId)
-            ? { ...r, desc: descData.text, descIsFile: descData.isFile, descIcon: descData.icon ?? null, lastMessageAt: now }
-            : r
-        );
-        return sortByLastMessage(updated);
+        const mapped = list.map((r) => {
+          if (String(r.id) !== String(roomId)) return r;
+          const next = {
+            ...r,
+            ...(unreadCount != null ? { unread: unreadCount } : {}),
+            ...(incrementUnread ? { unread: (r.unread ?? 0) + incrementUnread } : {}),
+            ...(descData ? { desc: descData.text, descIsFile: descData.isFile, descIcon: descData.icon ?? null, lastMessageAt: updatedAt } : {}),
+          };
+          console.log('[LeftDrawer] Room updated →', { id: r.id, name: r.name, unread: next.unread, desc: next.desc });
+          return next;
+        });
+        return descData ? sortByLastMessage(mapped) : mapped;
       };
       setAccRooms((prev) => ({
         all: updateRooms(prev.all),
@@ -234,8 +240,8 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
         following: updateRooms(prev.following),
       }));
     };
-    window.addEventListener('roomLastMessageUpdate', onLastMessageUpdate);
-    return () => window.removeEventListener('roomLastMessageUpdate', onLastMessageUpdate);
+    window.addEventListener('roomListUpdate', onRoomListUpdate);
+    return () => window.removeEventListener('roomListUpdate', onRoomListUpdate);
   }, []);
 
   const handleTabChange = (newTab) => {
@@ -360,6 +366,28 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     myRooms: myRoomsQuery.isFetching,
     following: followingQuery.isFetching,
   };
+
+  const sentinelRef = useRef(null);
+  const hasMoreRef = useRef(hasMore);
+  const isFetchingRef = useRef(isFetching);
+  hasMoreRef.current = hasMore;
+  isFetchingRef.current = isFetching;
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (hasMoreRef.current[tab] && !isFetchingRef.current[tab]) {
+          setPages((prev) => ({ ...prev, [tab]: prev[tab] + 1 }));
+        }
+      },
+      { rootMargin: '120px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [tab]);
 
   const isInitialLoad = loadingTabs[tab];
 
@@ -522,15 +550,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                   <LeftDrawerSkeleton />
                 ) : (
                   <>
-                    {roomSections.map((section) => {
-                      const activeInSection = activeRoomId
-                        ? section.data.find((r) => r.id === activeRoomId)
-                        : null;
-                      const preview = activeInSection && !section.data.slice(0, DRAWER_PREVIEW).find((r) => r.id === activeRoomId)
-                        ? [activeInSection, ...section.data.filter((r) => r.id !== activeRoomId)].slice(0, DRAWER_PREVIEW)
-                        : section.data.slice(0, DRAWER_PREVIEW);
-
-                      return (
+                    {roomSections.map((section) => (
                       <React.Fragment key={section.label}>
                         <Stack
                           direction="row"
@@ -539,34 +559,15 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                           sx={{ mb: 1, mt: 2 }}
                         >
                           <Typography fontWeight={600} fontSize={15}>{section.label}</Typography>
-                          {section.data.length > DRAWER_PREVIEW && (
-                            <Button
-                              size="small"
-                              onClick={() => handleViewAll(section.label, section.sectionKey, section.tabKey ?? tab)}
-                              sx={{
-                                fontSize: 11,
-                                fontWeight: 600,
-                                color: '#a5b4fc',
-                                textTransform: 'none',
-                                px: 1,
-                                py: 0.3,
-                                minWidth: 0,
-                                borderRadius: 1.5,
-                                '&:hover': { bgcolor: 'rgba(165,180,252,0.12)' },
-                              }}
-                            >
-                              {t('left_drawer.see_all')}
-                            </Button>
-                          )}
                         </Stack>
 
                         <Stack spacing={0.3} sx={{ mb: 2 }}>
-                          {preview.length === 0 ? (
+                          {section.data.length === 0 ? (
                             <Box sx={{ textAlign: 'center', py: 3, color: '#bdbdbd', fontSize: 14 }}>
                               {t('left_drawer.no_rooms')}
                             </Box>
                           ) : (
-                            preview.map((room) => {
+                            section.data.map((room) => {
                               const roomId = room.id ?? room._id;
                               const isFavourite = section.isFav || room.favorite;
 
@@ -656,8 +657,14 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                           )}
                         </Stack>
                       </React.Fragment>
-                      );
-                    })}
+                    ))}
+
+                    {isFetching[tab] && pages[tab] > 1 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                        <CircularProgress size={20} sx={{ color: '#a5b4fc' }} />
+                      </Box>
+                    )}
+                    {hasMore[tab] && <div ref={sentinelRef} style={{ height: 1 }} />}
                   </>
                 )}
               </Box>

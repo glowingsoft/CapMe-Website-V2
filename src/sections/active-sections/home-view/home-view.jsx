@@ -26,12 +26,11 @@ import { toast } from 'src/components/snackbar';
 import { useTranslate } from 'src/locales';
 import ChatInputBar from './components/chat-input-bar';
 import MessageSkeleton from './components/message-skeleton';
+import UserProfileDrawer from './components/user-profile-drawer';
 
 const DRAWER_WIDTH = 420;
 const MESSAGES_LIMIT = 10;
 
-// Expand backend category strings ("image", "video", "audio", "file") to real MIME types
-// so FileMessage type checks (startsWith('image/') etc.) work correctly.
 const ATTACHMENT_TYPE_MAP = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/mpeg', voice: 'audio/mpeg', file: 'application/octet-stream' };
 const resolveAttachmentType = (raw) => {
   if (raw && raw.includes('/')) return raw;
@@ -62,6 +61,7 @@ export default function HomeView() {
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = React.useState(false);
+  const [blockedProfileOpen, setBlockedProfileOpen] = React.useState(false);
   const [targetMessageId, setTargetMessageId] = React.useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = React.useState(null);
   const postsContainerRef = React.useRef(null);
@@ -92,7 +92,6 @@ export default function HomeView() {
       type: 'message',
       user: {
         id: senderId,
-        name: msg.sendername ?? msg.sender?.name ?? 'Unknown',
         username: `@${msg.sender?.email?.split('@')[0] ?? msg.sendername?.split(' ')[0]?.toLowerCase() ?? 'user'}`,
         avatar,
       },
@@ -160,7 +159,8 @@ export default function HomeView() {
   React.useEffect(() => {
     if (!messagesQuery.isSuccess || messagesQuery.isFetching) return;
     const raw = messagesQuery.data?.body?.messages ?? [];
-    const roomVisibility = messagesQuery.data?.body?.room?.visibility?.toLowerCase() ?? activeRoom?.visibility ?? null;
+    const roomFromMessages = messagesQuery.data?.body?.room;
+    const roomVisibility = roomFromMessages?.visibility?.toLowerCase() ?? activeRoom?.visibility ?? null;
     roomVisibilityRef.current = roomVisibility;
 
     const normalized = [...raw].reverse().map((msg) => ({ ...normalizeMessage(msg), visibility: roomVisibility }));
@@ -170,6 +170,24 @@ export default function HomeView() {
       isInitialLoadRef.current = true;
       setIsLoadingMessages(false);
       setLocalPosts(normalized);
+
+      // Sync follow/request/permission status from the messages API response
+      if (roomFromMessages) {
+        setActiveRoom((prev) => {
+          if (!prev) return prev;
+          const isFollow = roomFromMessages.isFollow ?? roomFromMessages.is_following;
+          const isRequest = roomFromMessages.isRequest ?? roomFromMessages.is_requested;
+          const permission = roomFromMessages.permission ?? prev.permission;
+          return {
+            ...prev,
+            ...(isFollow !== undefined ? { is_following: isFollow } : {}),
+            ...(isRequest !== undefined ? { is_requested: isRequest } : {}),
+            ...(permission !== undefined ? { permission } : {}),
+            members: roomFromMessages.members ?? prev.members,
+          };
+        });
+      }
+
       if (pendingScrollMessageRef.current) {
         const msg = pendingScrollMessageRef.current;
         pendingScrollMessageRef.current = null;
@@ -206,15 +224,10 @@ export default function HomeView() {
     const onMessageReceive = ({ message }) => {
       if (!message) return;
       const msgRoomId = String(message.roomId ?? message.room_id ?? '');
-      console.log('[Socket] messageRecieve â†’', message._id, '| room:', msgRoomId, '| active:', activeRoom.id);
+      const isBackgroundRoom = msgRoomId && msgRoomId !== String(activeRoom.id);
+      console.log('[Socket] messageRecieve ->', message._id, '| room:', msgRoomId, '| active:', activeRoom.id, '| background:', isBackgroundRoom);
 
-      // Always update the sidebar last-message preview for the correct room
-      window.dispatchEvent(new CustomEvent('roomLastMessageUpdate', {
-        detail: { roomId: msgRoomId || activeRoom.id, message },
-      }));
-
-      // Discard messages that don't belong to the active room
-      if (msgRoomId && msgRoomId !== String(activeRoom.id)) return;
+      if (isBackgroundRoom) return;
 
       setLocalPosts((prev) => {
         if (prev.some((p) => String(p.id) === String(message._id))) return prev;
@@ -223,14 +236,14 @@ export default function HomeView() {
     };
 
     const onSocketMessageDeleted = ({ messageId }) => {
-      console.log('[Socket] messageDeleted â†’', messageId);
+      console.log('[Socket] messageDeleted ->', messageId);
       setLocalPosts((prev) => prev.filter((m) => getEntityId(m) !== String(messageId)));
       setPinnedMessages((prev) => prev.filter((m) => getEntityId(m) !== String(messageId)));
       setSelectedPost((prev) => (getEntityId(prev) === String(messageId) ? null : prev));
     };
 
     const onSocketMessageEdited = ({ messageId, content, senderId, meta, tags, is_edited }) => {
-      console.log('[Socket] messageEdited â†’', messageId);
+      console.log('[Socket] messageEdited ->', messageId);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId)
           ? {
@@ -249,7 +262,7 @@ export default function HomeView() {
     };
 
     const onSocketMessageLiked = ({ messageId, likesCount, action }) => {
-      console.log('[Socket] messageLiked â†’', messageId, '| count:', likesCount);
+      console.log('[Socket] messageLiked ->', messageId, '| count:', likesCount);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId)
           ? { ...p, stats: { ...p.stats, likes: likesCount }, likeAction: action }
@@ -260,7 +273,7 @@ export default function HomeView() {
     };
 
     const onSocketMessagePinned = ({ messageId, is_pin, pinnedMessages: serverPinned }) => {
-      console.log('[Socket] messagePinned â†’', messageId, '| is_pin:', is_pin);
+      console.log('[Socket] messagePinned ->', messageId, '| is_pin:', is_pin);
       const updateMessage = (p) =>
         getEntityId(p) === String(messageId) ? { ...p, is_pin, isPinned: is_pin } : p;
 
@@ -301,6 +314,39 @@ export default function HomeView() {
       socket.off('chatCleared', onChatCleared);
     };
   }, [activeRoom?.id, normalizeMessage]);
+
+  // Global socket listener — room list updates (unread count, last message, favourite)
+  // Depends on currentUserId so it runs after the layout has called connectSocket
+  React.useEffect(() => {
+    if (!currentUserId) return;
+    const socket = getSocket();
+    if (!socket) {
+      console.warn('[roomListUpdate] Socket not available yet - listener not attached');
+      return;
+    }
+    console.log('[roomListUpdate] Attaching socket listener for user:', currentUserId);
+    const onRoomListUpdate = ({ roomId, last_message, unreadCount, is_favorite }) => {
+      console.log('[Socket] roomListUpdate ->', { roomId, unreadCount, last_message, is_favorite });
+      if (!roomId) return;
+      const detail = {
+        roomId,
+        ...(unreadCount != null ? { unreadCount } : {}),
+        ...(last_message ? { lastMessage: last_message } : {}),
+      };
+      console.log('[roomListUpdate] Dispatching window event ->', detail);
+      window.dispatchEvent(new CustomEvent('roomListUpdate', { detail }));
+      if (is_favorite != null) {
+        window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', {
+          detail: { roomId, isFavourite: is_favorite },
+        }));
+      }
+    };
+    socket.on('roomListUpdate', onRoomListUpdate);
+    return () => {
+      console.log('[roomListUpdate] Detaching socket listener');
+      socket.off('roomListUpdate', onRoomListUpdate);
+    };
+  }, [currentUserId]);
 
   React.useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -384,7 +430,7 @@ export default function HomeView() {
     };
   }, []);
 
-  const anyRightDrawerOpen = drawerOpen || roomInfoOpen || accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
+  const anyRightDrawerOpen = drawerOpen || roomInfoOpen || accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen || blockedProfileOpen;
 
   // Sentinel ref â€” always sits below the last post
   const postsEndRef = React.useRef(null);
@@ -530,7 +576,9 @@ export default function HomeView() {
   React.useEffect(() => {
     if (!targetMessageId || !postsContainerRef.current) return;
 
-    const messageElement = postsContainerRef.current.querySelector(`[data-message-id="${targetMessageId}"]`);
+    const messageElement = postsContainerRef.current.querySelector(
+      `[data-message-id="${targetMessageId}"]`
+    );
 
     if (messageElement) {
       // Wait one frame so all pending renders are committed before measuring position
@@ -678,6 +726,12 @@ export default function HomeView() {
     if (isRoomNotFollowing || isRoomPending) return false; // not a member or pending approval
     const roomFromMessages = messagesQuery.data?.body?.room;
     const members = roomFromMessages?.members ?? activeRoom?.members ?? [];
+
+    // Use root-level permission field from messages API as the primary check
+    const rootPermission = String(roomFromMessages?.permission ?? activeRoom?.permission ?? '').toLowerCase();
+    if (rootPermission === 'edit' || rootPermission === 'admin') return true;
+    if (rootPermission === 'view') return false;
+
     if (!Array.isArray(members) || !currentUserId) return false;
     const me = members.find((m) => {
       const userObj = typeof m.user === 'object' && m.user !== null ? m.user : null;
@@ -688,7 +742,33 @@ export default function HomeView() {
     const status = (me.status ?? 'active').toLowerCase();
     const permission = (me.permission ?? me.role ?? 'view').toLowerCase();
     return status === 'active' && (permission === 'edit' || permission === 'admin');
-  }, [isRoomAdmin, isRoomNotFollowing, activeRoom, currentUserId, messagesQuery.data]);
+  }, [isRoomAdmin, isRoomNotFollowing, isRoomPending, activeRoom, currentUserId, messagesQuery.data]);
+
+  // Check if current user is blocked in this room
+  const isBlockedInRoom = React.useMemo(() => {
+    if (!currentUserId || isRoomAdmin) return false;
+    const roomFromMessages = messagesQuery.data?.body?.room;
+    const members = roomFromMessages?.members ?? activeRoom?.members ?? [];
+    if (!Array.isArray(members)) return false;
+    const me = members.find((m) => {
+      const userObj = typeof m.user === 'object' && m.user !== null ? m.user : null;
+      const mId = String(userObj?._id ?? userObj?.id ?? (typeof m.user === 'string' ? m.user : null) ?? m.userId ?? m.id ?? m._id ?? '');
+      return mId === currentUserId;
+    });
+    return me ? String(me.status ?? '').toLowerCase() === 'blocked' : false;
+  }, [currentUserId, isRoomAdmin, activeRoom, messagesQuery.data]);
+
+  // The admin/creator ID to open when the blocked user taps "Follow owner"
+  const blockedRoomAdminId = React.useMemo(() => {
+    if (!isBlockedInRoom) return null;
+    const roomFromMessages = messagesQuery.data?.body?.room;
+    return String(roomFromMessages?.createdby ?? activeRoom?.createdby ?? '');
+  }, [isBlockedInRoom, activeRoom, messagesQuery.data]);
+
+  // Close blocked profile drawer when room changes
+  React.useEffect(() => {
+    setBlockedProfileOpen(false);
+  }, [activeRoom?.id]);
 
   const leftDrawerWidth = showLeftDrawer && leftDrawerOpen ? DRAWER_WIDTH : 0;
 
@@ -779,165 +859,231 @@ export default function HomeView() {
                   />
                 </Box>
 
-                {/* Scrollable posts â€” only this scrolls */}
-                <Box
-                  ref={postsContainerRef}
-                  onScroll={() => {
-                    const el = postsContainerRef.current;
-                    if (!el) return;
-                    // Reset guard when user scrolls away from top
-                    if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
-                    // Near top â€” load older messages
-                    if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
-                    scrollGuardRef.current = true;
-                    prevScrollHeightRef.current = el.scrollHeight;
-                    setMessagesPage((p) => p + 1);
-                  }}
-                  sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    pr: 0.5,
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(0,0,0,0.15) transparent',
-                    '&::-webkit-scrollbar': { width: '4px' },
-                    '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
-                  }}
-                >
-                  {messagesQuery.isFetching && messagesPage > 1 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                      <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
-                    </Box>
-                  )}
-
-                  {isLoadingMessages && (
-                    <MessageSkeleton count={5} />
-                  )}
-
-                  {/* Empty state â€” only shown after load completes with genuinely no messages */}
-                  {!isLoadingMessages && !messagesQuery.isFetching && messagesQuery.isSuccess && localPosts.length === 0 && (
-                    activeRoom?.isGarage ? (
-                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 2 }}>
-                        <Box
-                          sx={{
-                            width: 80,
-                            height: 80,
-                            borderRadius: 4,
-                            bgcolor: 'rgba(76,78,255,0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <Iconify icon="solar:garage-bold" width={40} style={{ color: '#4C4EFF', opacity: 0.75 }} />
-                        </Box>
-                        <Box sx={{ textAlign: 'center' }}>
-                          <Typography sx={{ fontSize: 17, fontWeight: 700, color: '#111', mb: 0.5 }}>
-                            {t('home_view.garage_empty_title')}
-                          </Typography>
-                          <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 260, lineHeight: 1.6 }}>
-                            {t('home_view.garage_empty_subtitle')}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    ) : (
-                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 64,
-                            height: 64,
-                            borderRadius: '50%',
-                            bgcolor: 'rgba(76,78,255,0.08)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            mb: 0.5,
-                          }}
-                        >
-                          <Iconify icon="solar:chat-line-bold-duotone" width={32} style={{ color: '#4C4EFF' }} />
-                        </Box>
-                        <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
-                          {t('home_view.no_messages_title')}
-                        </Typography>
-                        <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', maxWidth: 260 }}>
-                          {t('home_view.no_messages_subtitle', { roomName: activeRoom?.name })}
-                        </Typography>
-                      </Box>
-                    )
-                  )}
-
-                  {postsWithDates.map((item) =>
-                    item.type === 'date' ? (
-                      <OldMessagesLabel key={item.id} label={item.label} />
-                    ) : (
-                      <Box
-                        key={`post-${item.id}`}
-                        data-message-id={String(item.id)}
-                        sx={{
-                          borderRadius: 4,
-                          transition: 'box-shadow 0.25s ease, background-color 0.25s ease',
-                          ...(highlightedMessageId === String(item.id) && {
-                            backgroundColor: 'rgba(76, 78, 255, 0.08)',
-                            boxShadow: '0 0 0 2px rgba(76, 78, 255, 0.35)',
-                          }),
-                        }}
-                      >
-                        <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch />
-                      </Box>
-                    )
-                  )}
-
-                  {/* Sentinel â€” scrollIntoView targets this to reach the bottom */}
-                  <div ref={postsEndRef} />
-                </Box>
-
-                {/* Message input â€” pinned at bottom, never scrolls */}
-                {canPost ? (
-                  <ChatInputBar activeRoom={activeRoom} />
-                ) : (() => {
-                  let icon = 'solar:lock-bold';
-                  let title = t('home_view.view_access_title');
-                  let subtitle = t('home_view.view_access_subtitle');
-                  if (isRoomPending) {
-                    icon = 'solar:clock-circle-bold';
-                    title = t('home_view.pending_title');
-                    subtitle = t('home_view.pending_subtitle');
-                  } else if (isRoomNotFollowing) {
-                    icon = 'solar:lock-bold';
-                    title = t('home_view.not_following_title');
-                    subtitle = null;
-                  }
-                  return (
+                {/* Blocked user overlay — hides all messages */}
+                {isBlockedInRoom ? (
+                  <Box
+                    sx={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      px: 3,
+                      py: 6,
+                      bgcolor: '#fff',
+                      borderRadius: 3,
+                      mt: 1,
+                    }}
+                  >
                     <Box
                       sx={{
-                        flexShrink: 0,
-                        mt: 1.5,
+                        width: 72,
+                        height: 72,
+                        borderRadius: '50%',
+                        bgcolor: 'rgba(185,0,0,0.08)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5,
-                        background: 'linear-gradient(90deg, rgba(76,78,255,0.08) 0%, rgba(76,78,255,0.03) 100%)',
-                        border: '1.5px solid rgba(76,78,255,0.18)',
-                        borderRadius: 3,
-                        px: 2,
-                        py: 1.25,
+                        justifyContent: 'center',
                       }}
                     >
-                      <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Iconify icon={icon} width={17} style={{ color: '#4C4EFF' }} />
-                      </Box>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography fontSize={13} fontWeight={700} color="#4C4EFF" lineHeight={1.3}>
-                          {title}
-                        </Typography>
-                        {subtitle && (
-                          <Typography fontSize={11.5} color="text.secondary" lineHeight={1.3} sx={{ mt: 0.25 }}>
-                            {subtitle}
-                          </Typography>
-                        )}
-                      </Box>
+                      <Iconify icon="solar:forbidden-circle-bold" width={36} style={{ color: '#B90000' }} />
                     </Box>
-                  );
-                })()}
+                    <Box sx={{ textAlign: 'center', maxWidth: 320 }}>
+                      <Typography fontSize={16} fontWeight={800} color="#111" mb={0.5}>
+                        {t('home_view.blocked_title')}
+                      </Typography>
+                      <Typography fontSize={13} color="text.secondary" lineHeight={1.6}>
+                        {t('home_view.blocked_subtitle')}
+                      </Typography>
+                    </Box>
+                    {blockedRoomAdminId && (
+                      <Box
+                        onClick={() => setBlockedProfileOpen(true)}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          px: 2.5,
+                          py: 1,
+                          borderRadius: 2,
+                          bgcolor: 'rgba(76,78,255,0.08)',
+                          border: '1.5px solid rgba(76,78,255,0.2)',
+                          color: '#4C4EFF',
+                          cursor: 'pointer',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          transition: 'all 0.15s',
+                          '&:hover': { bgcolor: 'rgba(76,78,255,0.14)' },
+                        }}
+                      >
+                        <Iconify icon="solar:user-plus-bold" width={18} />
+                        {t('home_view.blocked_follow_owner')}
+                      </Box>
+                    )}
+                  </Box>
+                ) : (<>
+
+                  {/* Scrollable posts â€” only this scrolls */}
+                  <Box
+                    ref={postsContainerRef}
+                    onScroll={() => {
+                      const el = postsContainerRef.current;
+                      if (!el) return;
+                      // Reset guard when user scrolls away from top
+                      if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
+                      // Near top â€” load older messages
+                      if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
+                      scrollGuardRef.current = true;
+                      prevScrollHeightRef.current = el.scrollHeight;
+                      setMessagesPage((p) => p + 1);
+                    }}
+                    sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      overflowY: 'auto',
+                      pr: 0.5,
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: 'rgba(0,0,0,0.15) transparent',
+                      '&::-webkit-scrollbar': { width: '4px' },
+                      '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
+                    }}
+                  >
+                    {messagesQuery.isFetching && messagesPage > 1 && (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                        <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
+                      </Box>
+                    )}
+
+                    {isLoadingMessages && (
+                      <MessageSkeleton count={5} />
+                    )}
+
+                    {/* Empty state â€” only shown after load completes with genuinely no messages */}
+                    {!isLoadingMessages && !messagesQuery.isFetching && messagesQuery.isSuccess && localPosts.length === 0 && (
+                      activeRoom?.isGarage ? (
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 2 }}>
+                          <Box
+                            sx={{
+                              width: 80,
+                              height: 80,
+                              borderRadius: 4,
+                              bgcolor: 'rgba(76,78,255,0.08)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <Iconify icon="solar:garage-bold" width={40} style={{ color: '#4C4EFF', opacity: 0.75 }} />
+                          </Box>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography sx={{ fontSize: 17, fontWeight: 700, color: '#111', mb: 0.5 }}>
+                              {t('home_view.garage_empty_title')}
+                            </Typography>
+                            <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 260, lineHeight: 1.6 }}>
+                              {t('home_view.garage_empty_subtitle')}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 1.5 }}>
+                          <Box
+                            sx={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: '50%',
+                              bgcolor: 'rgba(76,78,255,0.08)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              mb: 0.5,
+                            }}
+                          >
+                            <Iconify icon="solar:chat-line-bold-duotone" width={32} style={{ color: '#4C4EFF' }} />
+                          </Box>
+                          <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
+                            {t('home_view.no_messages_title')}
+                          </Typography>
+                          <Typography variant="body2" color="text.disabled" sx={{ textAlign: 'center', maxWidth: 260 }}>
+                            {t('home_view.no_messages_subtitle', { roomName: activeRoom?.name })}
+                          </Typography>
+                        </Box>
+                      )
+                    )}
+
+                    {postsWithDates.map((item) =>
+                      item.type === 'date' ? (
+                        <OldMessagesLabel key={item.id} label={item.label} />
+                      ) : (
+                        <Box
+                          key={`post-${item.id}`}
+                          data-message-id={String(item.id)}
+                          sx={{
+                            borderRadius: 4,
+                            transition: 'box-shadow 0.25s ease, background-color 0.25s ease',
+                            ...(highlightedMessageId === String(item.id) && {
+                              backgroundColor: 'rgba(76, 78, 255, 0.08)',
+                              boxShadow: '0 0 0 2px rgba(76, 78, 255, 0.35)',
+                            }),
+                          }}
+                        >
+                          <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch canInteract={canPost} />
+                        </Box>
+                      )
+                    )}
+
+                    {/* Sentinel â€” scrollIntoView targets this to reach the bottom */}
+                    <div ref={postsEndRef} />
+                  </Box>
+
+                  {/* Message input â€” pinned at bottom, never scrolls */}
+                  {canPost ? (
+                    <ChatInputBar activeRoom={activeRoom} />
+                  ) : (() => {
+                    let icon = 'solar:lock-bold';
+                    let title = t('home_view.view_access_title');
+                    let subtitle = t('home_view.view_access_subtitle');
+                    if (isRoomPending) {
+                      icon = 'solar:clock-circle-bold';
+                      title = t('home_view.pending_title');
+                      subtitle = t('home_view.pending_subtitle');
+                    } else if (isRoomNotFollowing) {
+                      icon = 'solar:lock-bold';
+                      title = t('home_view.not_following_title');
+                      subtitle = null;
+                    }
+                    return (
+                      <Box
+                        sx={{
+                          flexShrink: 0,
+                          mt: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5,
+                          background: 'linear-gradient(90deg, rgba(76,78,255,0.08) 0%, rgba(76,78,255,0.03) 100%)',
+                          border: '1.5px solid rgba(76,78,255,0.18)',
+                          borderRadius: 3,
+                          px: 2,
+                          py: 1.25,
+                        }}
+                      >
+                        <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Iconify icon={icon} width={17} style={{ color: '#4C4EFF' }} />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontSize={13} fontWeight={700} color="#4C4EFF" lineHeight={1.3}>
+                            {title}
+                          </Typography>
+                          {subtitle && (
+                            <Typography fontSize={11.5} color="text.secondary" lineHeight={1.3} sx={{ mt: 0.25 }}>
+                              {subtitle}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    );
+                  })()}
+                </>) /* end isBlockedInRoom ternary */}
               </>
             ) : (
               <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -1004,6 +1150,19 @@ export default function HomeView() {
               favorite: false,
               lastMessageAt: room.createdAt ?? new Date().toISOString(),
             });
+          }}
+        />
+
+        {/* Blocked user: follow the room owner to regain access */}
+        <UserProfileDrawer
+          open={blockedProfileOpen}
+          onClose={() => setBlockedProfileOpen(false)}
+          user={blockedRoomAdminId ? { _id: blockedRoomAdminId } : null}
+          onFollowChange={() => {
+            // Refetch messages so the blocked status is re-evaluated
+            setLocalPosts([]);
+            setMessagesPage(1);
+            messagesQuery.refetch();
           }}
         />
       </Box>

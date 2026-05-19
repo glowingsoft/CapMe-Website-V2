@@ -190,6 +190,8 @@ export default function ChatMeView() {
   const navigate = useNavigate();
   const searchParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tab = searchParams.get('tab') || 'prompts';
+  const incomingQuery = location.state?.query;
+  const createNewChat = location.state?.createNewChat;
   const [message, setMessage] = React.useState('');
   const [messages, setMessages] = React.useState([]);
   const [isTyping, setIsTyping] = React.useState(false);
@@ -211,6 +213,7 @@ export default function ChatMeView() {
   const olderScrollHeightRef = React.useRef(0);
   const skipAutoScrollRef = React.useRef(false);
   const pendingBottomScrollRef = React.useRef(false);
+  const autoSentRef = React.useRef(false);
 
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
@@ -449,6 +452,26 @@ export default function ChatMeView() {
   const handleSend = React.useCallback(() => {
     sendMessage(message);
   }, [message, sendMessage]);
+
+  React.useEffect(() => {
+    if (!incomingQuery || autoSentRef.current) return;
+    autoSentRef.current = true;
+
+    const sendIncomingPostQuery = async () => {
+      try {
+        if (createNewChat) {
+          handleNewChat();
+          await new Promise((r) => setTimeout(r, 80));
+        }
+        sendMessage(incomingQuery);
+      } catch (e) {
+        console.error('Failed to send post query to ChatMe:', e);
+      }
+    };
+
+    sendIncomingPostQuery();
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [incomingQuery, createNewChat]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePickHashtag = React.useCallback((tag) => {
     const value = message || '';

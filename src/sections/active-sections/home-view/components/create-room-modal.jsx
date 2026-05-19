@@ -528,6 +528,7 @@ export default function CreateRoomModal({ open, onClose, onCreate, editMode = fa
                         fontWeight: 600,
                         fontSize: 12,
                         height: 28,
+                        '& .MuiChip-avatar': { color: '#fff' },
                         '& .MuiChip-deleteIcon': { color: '#4C4EFF', fontSize: 14, '&:hover': { color: '#fff' } },
                         '&:hover': { bgcolor: '#4C4EFF', color: '#fff' },
                         '&:hover .MuiChip-avatar': { bgcolor: 'rgba(255,255,255,0.25)' },

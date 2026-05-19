@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { useSelector } from 'react-redux';
+import { EmptyContent } from 'src/components/empty-content';
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
 import { Scrollbar } from 'src/components/scrollbar';
@@ -30,12 +31,13 @@ import {
 
 const getRealAvatar = (url) => (url && !url.includes('noImg') ? url : undefined);
 
-export default function UserProfileDrawer({ open, onClose, user }) {
+export default function UserProfileDrawer({ open, onClose, user, onFollowChange }) {
   const { t } = useTranslate('common');
   const currentUser = useSelector(selectUser);
   const currentUserId = String(currentUser?._id ?? currentUser?.id ?? currentUser?.basicInfo?._id ?? '');
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [createdPage, setCreatedPage] = useState(1);
   const [followingPage, setFollowingPage] = useState(1);
@@ -72,7 +74,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
     isLoading: isCreatedRoomsLoading,
     isFetching: isCreatedRoomsFetching,
   } = useOtherUserRoomsQuery(
-    { userId: profileUserId, type: 'created', pageno: createdPage },
+    { userId: profileUserId, type: 'created', pageno: createdPage, search: debouncedSearch },
     { skip: !open || !profileUserId, refetchOnMountOrArgChange: true }
   );
 
@@ -81,7 +83,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
     isLoading: isFollowingRoomsLoading,
     isFetching: isFollowingRoomsFetching,
   } = useOtherUserRoomsQuery(
-    { userId: profileUserId, type: 'following', pageno: followingPage },
+    { userId: profileUserId, type: 'following', pageno: followingPage, search: debouncedSearch },
     { skip: !open || !profileUserId, refetchOnMountOrArgChange: true }
   );
 
@@ -110,11 +112,24 @@ export default function UserProfileDrawer({ open, onClose, user }) {
     setFollowingPage(1);
     setCreatedRooms([]);
     setFollowingRooms([]);
+    setSearch('');
+    setDebouncedSearch('');
     setIsFollowerOverride(undefined);
     setFollowerCountOverride(undefined);
     setRoomFollowStates({});
     setRoomFollowLoadingIds(new Set());
   }, [open, profileUserId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setCreatedPage(1);
+      setFollowingPage(1);
+      setCreatedRooms([]);
+      setFollowingRooms([]);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!open || !Array.isArray(createdRoomsResponse?.body)) return;
@@ -134,19 +149,38 @@ export default function UserProfileDrawer({ open, onClose, user }) {
   const hasMoreFollowing = followingPage < followingTotalPages;
   const hasMoreForActiveTab = tab === 0 ? hasMoreCreated : hasMoreFollowing;
 
-  const isRoomsLoading =
-    !!profileUserId &&
-    (isCreatedRoomsLoading || isCreatedRoomsFetching || isFollowingRoomsLoading || isFollowingRoomsFetching);
+  const createdRoomsCount = createdRoomsResponse?.metadata?.created_rooms_count;
+  const followingRoomsCount =
+    followingRoomsResponse?.metadata?.following_rooms_count ??
+    createdRoomsResponse?.metadata?.following_rooms_count;
+
+  const [roomsReady, setRoomsReady] = useState(true);
+
+  useEffect(() => {
+    if (!open) {
+      setRoomsReady(false);
+      return;
+    }
+    if (
+      !isCreatedRoomsLoading && !isCreatedRoomsFetching &&
+      !isFollowingRoomsLoading && !isFollowingRoomsFetching
+    ) {
+      setRoomsReady(true);
+    }
+  }, [open, isCreatedRoomsLoading, isCreatedRoomsFetching, isFollowingRoomsLoading, isFollowingRoomsFetching]);
 
   const isFollower = typeof isFollowerOverride === 'boolean' ? isFollowerOverride : !!apiProfile?.isFollower;
   const followerCount = followerCountOverride ?? apiProfile?.followerCount ?? 0;
   const friendLabel = isFollower ? t('user_profile.btn_friends') : t('user_profile.btn_add_friend');
 
-  // Only two lists: Created rooms and followings
   const lists = [createdRooms, followingRooms];
-  const filtered = lists[tab].filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const activeList = lists[tab];
+
+  const tabCounts = [createdRoomsCount, followingRoomsCount];
+  const tabLabels = [
+    t('user_profile.tab_created_rooms'),
+    t('user_profile.tab_followings'),
+  ];
 
   const handleRoomClick = (room) => {
     window.dispatchEvent(new CustomEvent('openRoom', { detail: room }));
@@ -165,6 +199,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
 
     try {
       await followUnfollowUser({ userId: profileUserId }).unwrap();
+      onFollowChange?.();
     } catch {
       setIsFollowerOverride(isFollower);
       setFollowerCountOverride(apiProfile?.followerCount ?? 0);
@@ -212,8 +247,6 @@ export default function UserProfileDrawer({ open, onClose, user }) {
       setRoomFollowLoadingIds((prev) => { const s = new Set(prev); s.delete(roomId); return s; });
     }
   };
-
-  const tabLabels = [t('user_profile.tab_created_rooms'), t('user_profile.tab_followings')];
 
   if (!user) return null;
 
@@ -382,40 +415,51 @@ export default function UserProfileDrawer({ open, onClose, user }) {
 
           {/* Tabs */}
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, px: 2 }}>
-            {tabLabels.map((label, i) => (
-              <Button
-                key={label}
-                size="small"
-                onClick={() => { setTab(i); setSearch(''); }}
-                sx={{
-                  borderRadius: 10,
-                  fontWeight: tab === i ? 700 : 500,
-                  fontSize: 13,
-                  px: 2.5,
-                  py: 0.8,
-                  bgcolor: tab === i ? '#4C4EFF' : 'transparent',
-                  color: tab === i ? '#fff' : 'text.secondary',
-                  boxShadow: 'none',
-                  '&:hover': { bgcolor: tab === i ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
-                }}
-              >
-                {label}
-              </Button>
-            ))}
+            {tabLabels.map((label, i) => {
+              const count = tabCounts[i];
+              return (
+                <Button
+                  key={label}
+                  size="small"
+                  onClick={() => { setTab(i); setSearch(''); }}
+                  sx={{
+                    borderRadius: 10,
+                    fontWeight: tab === i ? 700 : 500,
+                    fontSize: 13,
+                    px: 2.5,
+                    py: 0.8,
+                    bgcolor: tab === i ? '#4C4EFF' : 'transparent',
+                    color: tab === i ? '#fff' : 'text.secondary',
+                    boxShadow: 'none',
+                    '&:hover': { bgcolor: tab === i ? '#3b3bd6' : 'rgba(0,0,0,0.04)' },
+                  }}
+                >
+                  {count != null ? `${label} (${count})` : label}
+                </Button>
+              );
+            })}
           </Stack>
 
           {/* List */}
           <Box sx={{ px: 2, pb: 3 }}>
-            {isProfileLoading || isRoomsLoading ? (
+            {isProfileLoading || !roomsReady ? (
               <UserProfileListSkeleton showAction={true} />
             ) : (
               <Stack spacing={1}>
-                {filtered.length === 0 ? (
-                  <Typography color="text.secondary" fontSize={14} sx={{ textAlign: 'center', py: 3 }}>
-                    {t('user_profile.no_results')}
-                  </Typography>
+                {activeList.length === 0 && debouncedSearch ? (
+                  <EmptyContent
+                    title={t('user_profile.empty_search_title')}
+                    description={t('user_profile.empty_search_desc')}
+                    sx={{ py: 6 }}
+                  />
+                ) : activeList.length === 0 ? (
+                  <EmptyContent
+                    title={tab === 0 ? t('user_profile.empty_created_title') : t('user_profile.empty_following_rooms_title')}
+                    description={tab === 0 ? t('user_profile.empty_created_desc') : t('user_profile.empty_following_rooms_desc')}
+                    sx={{ py: 6 }}
+                  />
                 ) : (
-                  filtered.map((item, i) => {
+                  activeList.map((item, i) => {
                     const followState = getFollowState(item);
                     const isOwnRoom = currentUserId && String(item.createdby) === currentUserId;
 
@@ -508,7 +552,7 @@ export default function UserProfileDrawer({ open, onClose, user }) {
                 )}
               </Stack>
             )}
-            {!isProfileLoading && !isRoomsLoading && lists[tab].length > 0 && (
+            {!isProfileLoading && roomsReady && activeList.length > 0 && (
               <>
                 {hasMoreForActiveTab && (
                   <Button

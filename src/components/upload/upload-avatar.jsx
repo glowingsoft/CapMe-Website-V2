@@ -75,7 +75,9 @@ export function UploadAvatar({ sx, error, value, disabled, helperText, ...other 
     >
       <Iconify icon="solar:camera-add-bold" width={32} />
 
-      <Typography variant="caption">{hasFile ? t('upload_avatar.update_photo') : t('upload_avatar.upload_photo')}</Typography>
+      <Typography variant="caption" sx={{ textAlign: 'center', px: 1, lineHeight: 1.3 }}>
+        {hasFile ? t('upload_avatar.update_photo') : t('upload_avatar.upload_photo')}
+      </Typography>
     </Box>
   );
 

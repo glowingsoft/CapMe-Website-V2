@@ -10,6 +10,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { paths } from 'src/routes/paths';
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
 import HashtagAction from 'src/components/hashtags/hashtag-action';
@@ -72,7 +75,8 @@ function PostCardSubheader({ time, visibility }) {
     );
 }
 
-export default function PostCard({ post, onCommentClick, onMenuAction }) {
+export default function PostCard({ post, onCommentClick, onMenuAction, canInteract }) {
+    const navigate = useNavigate();
     const [anchor, setAnchor] = useState(null);
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(post.stats?.likes ?? 0);
@@ -80,6 +84,12 @@ export default function PostCard({ post, onCommentClick, onMenuAction }) {
 
     const openProfile = () => {
         window.dispatchEvent(new CustomEvent('openUserProfile', { detail: post.user }));
+    };
+
+    const handleCapme = () => {
+        const query = `${post.content || ''} ${post.hashtags || ''}`.trim();
+        if (!query) return;
+        navigate(paths.dashboard.chatMe, { state: { query, createNewChat: true, source: 'post' } });
     };
 
     const handleLike = () => {
@@ -257,8 +267,7 @@ export default function PostCard({ post, onCommentClick, onMenuAction }) {
                 </CardContent>
             )}
 
-            {/* Stats row â€” below message */}
-            <Box sx={{ px: 2.5, pt: 0.5, pb: 1.5 }}>
+            {canInteract && <Box sx={{ px: 2.5, pt: 0.5, pb: 1.5 }}>
                 <Stack direction="row" spacing={3} alignItems="center">
                     <Stack
                         direction="row" spacing={0.7} alignItems="center"
@@ -297,15 +306,24 @@ export default function PostCard({ post, onCommentClick, onMenuAction }) {
 
                     <HashtagAction text={`${post.content || ''} ${post.hashtags || ''}`} />
 
-                    {/* Capme action â€” functional later */}
-                    <Stack direction="row" spacing={0.7} alignItems="center" sx={{ cursor: 'pointer' }}>
-                        <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
-                        <Typography variant="body2" fontWeight={600} color="text.secondary">
-                            {post.stats?.capme ?? 0}
-                        </Typography>
-                    </Stack>
+                    {(post.content || post.hashtags) && (
+                        <Stack
+                            direction="row"
+                            spacing={0.7}
+                            alignItems="center"
+                            sx={{ cursor: 'pointer' }}
+                            onClick={handleCapme}
+                        >
+                            <Box
+                                component="img"
+                                src="/logo/logo-single.svg"
+                                alt="Capme"
+                                sx={{ width: 18, height: 18, objectFit: 'contain' }}
+                            />
+                        </Stack>
+                    )}
                 </Stack>
-            </Box>
+            </Box>}
         </Card>
     );
 }

@@ -62,7 +62,7 @@ export function JwtSignInView() {
       dispatch(setUser(user));
       await checkUserSession();
       router.replace(paths.dashboard.root);
-      toast.success('Login successful!');
+      toast.success(t('auth.sign_in.toast_success'));
     } catch (err) {
       toast.error(err?.data?.message ?? 'Google login failed. Please try again.');
     } finally {
@@ -93,7 +93,7 @@ export function JwtSignInView() {
       await checkUserSession();
       router.replace(paths.dashboard.root);
       reset();
-      toast.success('Login successful!');
+      toast.success(t('auth.sign_in.toast_success'));
     } catch (error) {
       if (error?.status === 403) {
         const msg = error?.data?.message ?? error?.data?.error ?? 'Please verify your email before signing in.';

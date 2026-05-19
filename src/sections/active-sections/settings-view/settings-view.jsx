@@ -18,7 +18,7 @@ import { useTranslate } from 'src/locales';
 const getGeneralItems = (t, currentLangLabel) => [
   { label: t('settings.language_label'), icon: 'mingcute:translate-2-line', subtitle: currentLangLabel, path: paths.dashboard.settings.language },
   { label: t('settings.subscription_label'), icon: 'solar:crown-bold', subtitle: t('settings.subscription_subtitle'), path: paths.dashboard.settings.subscription },
-  { label: t('settings.knowledge_graph_label'), icon: 'solar:graph-bold', subtitle: t('settings.knowledge_graph_subtitle'), path: paths.dashboard.settings.knowledgeGraph },
+  { label: t('settings.knowledge_graph_label'), icon: 'ph:graph-fill', subtitle: t('settings.knowledge_graph_subtitle'), path: paths.dashboard.settings.knowledgeGraph },
 ];
 
 const getSupportItems = (t) => [

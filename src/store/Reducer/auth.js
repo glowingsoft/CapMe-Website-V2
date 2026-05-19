@@ -1,16 +1,12 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
+import { createApi } from '@reduxjs/toolkit/query/react';
 import { API_ROUTES } from '../apiRoutes';
-import { createCustomFetchBaseQuery } from "../baseQuery";
+import { createCustomFetchBaseQuery } from '../baseQuery';
 
 const ADMIN_ACCESS_TOKEN = import.meta.env.VITE_ADMIN_ACCESS_TOKEN;
 
 // Maps any MIME type to a fileType value the backend accepts.
 // Known MIME types are sent as-is; everything else falls back to a category string.
-const KNOWN_FILE_TYPES = new Set([
-  'image/png', 'image/jpg', 'image/jpeg',
-  'video/mp4', 'video/quicktime',
-  'audio/mp4',
-]);
+const KNOWN_FILE_TYPES = new Set(['image/png', 'image/jpg', 'image/jpeg', 'video/mp4', 'video/quicktime', 'audio/mp4']);
 
 export function normalizeFileType(mimeType = '') {
   if (KNOWN_FILE_TYPES.has(mimeType)) return mimeType;
@@ -21,15 +17,14 @@ export function normalizeFileType(mimeType = '') {
 }
 
 export const authApi = createApi({
-  reducerPath: "auth",
+  reducerPath: 'auth',
   baseQuery: createCustomFetchBaseQuery(),
   tagTypes: ['profile', 'legal'],
   endpoints: (builder) => ({
-
     login: builder.mutation({
       query: (login) => ({
         url: API_ROUTES.AUTH.LOGIN,
-        method: "POST",
+        method: 'POST',
         body: login,
       }),
     }),
@@ -100,7 +95,7 @@ export const authApi = createApi({
     adminLogin: builder.mutation({
       query: (login) => ({
         url: API_ROUTES.AUTH.LOGIN,
-        method: "POST",
+        method: 'POST',
         body: login,
         headers: {
           'x-admin-access-token': ADMIN_ACCESS_TOKEN,
@@ -165,12 +160,14 @@ export const authApi = createApi({
 
         // Primary shape from /file/upload: { fileUrl, fileName, originalName }
         if (body?.fileName) {
-          return [{
-            fileUrl: body.fileUrl ?? '',
-            fileName: body.fileName,
-            fileType: normalizeFileType(fileArray[0]?.type ?? ''),
-            originalFileName: body.originalName ?? body.originalFileName ?? body.fileName,
-          }];
+          return [
+            {
+              fileUrl: body.fileUrl ?? '',
+              fileName: body.fileName,
+              fileType: normalizeFileType(fileArray[0]?.type ?? ''),
+              originalFileName: body.originalName ?? body.originalFileName ?? body.fileName,
+            },
+          ];
         }
 
         // Array response: [{ key/fileName, mimetype/fileType, originalname/originalFileName, fileUrl? }]
@@ -185,15 +182,15 @@ export const authApi = createApi({
 
         // String or other URL-only response
         const rawUrl = typeof body === 'string' ? body : body?.url ?? body?.fileUrl ?? '';
-        const fileName = rawUrl.includes('/')
-          ? rawUrl.split('/').pop().split('?')[0]
-          : rawUrl;
-        return [{
-          fileUrl: rawUrl,
-          fileName,
-          fileType: normalizeFileType(fileArray[0]?.type ?? ''),
-          originalFileName: fileArray[0]?.name ?? fileName,
-        }];
+        const fileName = rawUrl.includes('/') ? rawUrl.split('/').pop().split('?')[0] : rawUrl;
+        return [
+          {
+            fileUrl: rawUrl,
+            fileName,
+            fileType: normalizeFileType(fileArray[0]?.type ?? ''),
+            originalFileName: fileArray[0]?.name ?? fileName,
+          },
+        ];
       },
     }),
 
@@ -210,10 +207,11 @@ export const authApi = createApi({
     }),
 
     otherUserRooms: builder.query({
-      query: ({ userId, type = 'created', pageno = 1 } = {}) => {
+      query: ({ userId, type = 'created', pageno = 1, search = '' } = {}) => {
         const params = new URLSearchParams();
         if (type) params.append('type', type);
         if (pageno) params.append('pageno', pageno);
+        if (search) params.append('search', search);
 
         return {
           url: `${API_ROUTES.AUTH.OTHER_USER_ROOMS}/${userId}?${params.toString()}`,
@@ -272,6 +270,21 @@ export const authApi = createApi({
       },
     }),
 
+    getAnnouncement: builder.query({
+      query: () => ({
+        url: `${API_ROUTES.AUTH.ANNOUNCEMENT}?type=annoucement`,
+        method: 'GET',
+      }),
+      providesTags: ['legal'],
+      transformResponse: (res) => {
+        const body = res?.body ?? res ?? {};
+        return {
+          title: body?.title ?? body?.name ?? '',
+          content: body?.annoucement ?? body?.announcement ?? body?.content ?? body?.description ?? body?.text ?? body?.html ?? body?.data ?? '',
+        };
+      },
+    }),
+
     contactSupport: builder.mutation({
       query: (body) => ({
         url: API_ROUTES.AUTH.CONTACT_SUPPORT,
@@ -295,7 +308,7 @@ export const authApi = createApi({
         }));
       },
     }),
-  })
+  }),
 });
 
 export const {
@@ -321,6 +334,7 @@ export const {
   useConnectionsQuery,
   useTermsAndConditionsQuery,
   usePrivacyPolicyQuery,
+  useGetAnnouncementQuery,
   useContactSupportMutation,
   useLazySearchUsersQuery,
 } = authApi;

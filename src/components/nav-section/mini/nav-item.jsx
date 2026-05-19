@@ -160,7 +160,7 @@ const StyledNavItem = styled(ButtonBase, {
         ...sharedStyles.noWrap,
         lineHeight: '16px',
         fontSize: theme.typography.pxToRem(10),
-        fontWeight: active ? theme.typography.fontWeightBold : theme.typography.fontWeightSemiBold,
+        fontWeight: theme.typography.fontWeightSemiBold,
       },
       [`& .${navSectionClasses.item.caption}`]: {
         ...baseStyles.caption,

@@ -2,6 +2,12 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { API_ROUTES } from '../apiRoutes';
 import { createCustomFetchBaseQuery } from '../baseQuery';
 
+const cleanAvatar = (url) => {
+  if (!url || typeof url !== 'string') return '';
+  if (url.includes('noImg')) return '';
+  return url;
+};
+
 function buildQueryString(params = {}) {
   const searchParams = new URLSearchParams();
 
@@ -45,9 +51,9 @@ export const roomsApi = createApi({
     getExploreRooms: builder.query({
       query: ({ search, tab, date, memberCount, contentType, page = 1, limit = 20 } = {}) => {
         const params = { page, limit };
-        if (search)      params.search      = search;
+        if (search) params.search = search;
         if (tab && tab !== 'all') params.tab = tab;
-        if (date)        params.date        = date;
+        if (date) params.date = date;
         if (memberCount) params.memberCount = memberCount;
         if (contentType) params.contentType = contentType;
         return { url: API_ROUTES.ROOMS, method: 'GET', params };
@@ -108,9 +114,7 @@ export const roomsApi = createApi({
             })),
             isPinned: true,
             createdAt: msg.createdAt ?? null,
-            time: msg.createdAt
-              ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : '',
+            time: msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
             stats: {
               likes: msg.likeCount ?? 0,
               comments: msg.commentCount ?? 0,
@@ -149,10 +153,20 @@ export const roomsApi = createApi({
           return url;
         };
         const EXT_MIME = {
-          jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-          webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-          mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-          mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          svg: 'image/svg+xml',
+          bmp: 'image/bmp',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+          mov: 'video/quicktime',
+          mp3: 'audio/mpeg',
+          wav: 'audio/wav',
+          ogg: 'audio/ogg',
+          m4a: 'audio/mp4',
           pdf: 'application/pdf',
         };
         const resolveType = (rawType, fileName) => {
@@ -222,9 +236,7 @@ export const roomsApi = createApi({
           replies: c.replyCount ?? 0,
           attachments: c.attachments ?? [],
           meta: c.meta ?? {},
-          time: c.createdAt
-            ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '',
+          time: c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         })),
         totalComments: res?.body?.totalComments ?? res?.body?.total ?? 0,
         totalPages: res?.body?.totalPages ?? 1,
@@ -249,6 +261,13 @@ export const roomsApi = createApi({
     }),
 
     // PUT /message/:messageId/share
+    getShareRoomList: builder.query({
+      query: ({ page = 1, limit = 10, search = '' } = {}) => ({
+        url: `${API_ROUTES.ROOM_SHARE_LIST}${buildQueryString({ page, limit, ...(search ? { search } : {}) })}`,
+        method: 'GET',
+      }),
+    }),
+
     shareMessage: builder.mutation({
       query: ({ messageId, roomId }) => ({
         url: API_ROUTES.MESSAGE_SHARE(messageId),
@@ -322,11 +341,7 @@ export const roomsApi = createApi({
         method: 'PUT',
         body: { roomId, userId, permission },
       }),
-      invalidatesTags: (_result, _error, { roomId }) => [
-        'room',
-        { type: 'room', id: roomId },
-        'roomRequests',
-      ],
+      invalidatesTags: (_result, _error, { roomId }) => ['room', { type: 'room', id: roomId }, 'roomRequests'],
     }),
 
     // DELETE /room/delete
@@ -379,9 +394,7 @@ export const roomsApi = createApi({
       }),
       transformResponse: (res) => {
         const body = res?.body ?? res;
-        const raw = Array.isArray(body?.activityFeeds) ? body.activityFeeds
-          : Array.isArray(body?.data) ? body.data
-          : Array.isArray(body) ? body : [];
+        const raw = Array.isArray(body?.activityFeeds) ? body.activityFeeds : Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : [];
 
         const S3_BASE = 'https://capmes3.s3.us-east-1.amazonaws.com/';
         const cleanUrl = (url) => {
@@ -395,10 +408,20 @@ export const roomsApi = createApi({
         };
 
         const EXT_MIME = {
-          jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
-          webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
-          mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-          mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          png: 'image/png',
+          gif: 'image/gif',
+          webp: 'image/webp',
+          svg: 'image/svg+xml',
+          bmp: 'image/bmp',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+          mov: 'video/quicktime',
+          mp3: 'audio/mpeg',
+          wav: 'audio/wav',
+          ogg: 'audio/ogg',
+          m4a: 'audio/mp4',
           pdf: 'application/pdf',
         };
         const resolveType = (rawType, fileName) => {
@@ -421,9 +444,7 @@ export const roomsApi = createApi({
             name: item.sendername ?? '',
             avatar: cleanUrl(item.senderImage),
           },
-          time: item.createdAt
-            ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '',
+          time: item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
           attachments: (item.attachments ?? []).map((a) => ({
             ...a,
             type: resolveType(a.fileType, a.fileName),
@@ -497,13 +518,8 @@ export const roomsApi = createApi({
         return raw.map((r) => {
           const user = typeof r.user === 'object' && r.user !== null ? r.user : null;
           const userIdValue = typeof r.userId === 'object' && r.userId !== null ? r.userId : null;
-          const userId = user?._id
-            ?? user?.id
-            ?? userIdValue?._id
-            ?? userIdValue?.id
-            ?? (typeof r.user === 'string' ? r.user : null)
-            ?? (typeof r.userId === 'string' ? r.userId : null)
-            ?? '';
+          const userId =
+            user?._id ?? user?.id ?? userIdValue?._id ?? userIdValue?.id ?? (typeof r.user === 'string' ? r.user : null) ?? (typeof r.userId === 'string' ? r.userId : null) ?? '';
           const dateField = r.addedDate ?? r.createdAt ?? r.requestedAt ?? '';
           let timeAgo = '';
           if (dateField) {
@@ -518,13 +534,67 @@ export const roomsApi = createApi({
             userId,
             name: user?.name ?? userIdValue?.name ?? r.name ?? 'Unknown',
             email: user?.email ?? userIdValue?.email ?? r.email ?? '',
-            avatar: user?.image ?? user?.avatar ?? userIdValue?.image ?? userIdValue?.avatar ?? r.avatar ?? r.image ?? '',
+            avatar: cleanAvatar(user?.image ?? user?.avatar ?? userIdValue?.image ?? userIdValue?.avatar ?? r.avatar ?? r.image ?? ''),
             ...(type === 'requests' ? { requestedAt: timeAgo } : {}),
             ...(type === 'members' ? { role: r.permission ?? r.role ?? 'view', joinedAt: timeAgo } : {}),
           };
         });
       },
       providesTags: ['roomRequests'],
+    }),
+
+    // GET /room/getmember/:roomId?page=1&limit=10
+    getRoomMembers: builder.query({
+      query: ({ roomId, page = 1, limit = 10 }) => ({
+        url: `${API_ROUTES.ROOM_GET_MEMBERS(roomId)}?page=${page}&limit=${limit}`,
+        method: 'GET',
+      }),
+      transformResponse: (res) => {
+        const raw = res?.body?.members ?? res?.body?.data ?? res?.members ?? res?.data ?? [];
+        const total = res?.body?.totalCount ?? res?.body?.total ?? res?.total ?? raw.length;
+        const members = raw.map((r) => {
+          const user = typeof r.user === 'object' && r.user !== null ? r.user : null;
+          const userIdValue = typeof r.userId === 'object' && r.userId !== null ? r.userId : null;
+          const userId =
+            user?._id ??
+            user?.id ??
+            userIdValue?._id ??
+            userIdValue?.id ??
+            (typeof r.user === 'string' ? r.user : null) ??
+            (typeof r.userId === 'string' ? r.userId : null) ??
+            r.memberId ??
+            '';
+          const dateField = r.addedDate ?? r.createdAt ?? r.joinedAt ?? '';
+          let timeAgo = '';
+          if (dateField) {
+            const diff = Math.floor((Date.now() - new Date(dateField)) / 1000);
+            if (diff < 60) timeAgo = 'Just now';
+            else if (diff < 3600) timeAgo = `${Math.floor(diff / 60)}m ago`;
+            else if (diff < 86400) timeAgo = `${Math.floor(diff / 3600)}h ago`;
+            else timeAgo = `${Math.floor(diff / 86400)}d ago`;
+          }
+          return {
+            id: r._id ?? r.id ?? r.memberId ?? userId,
+            userId,
+            name: user?.name ?? userIdValue?.name ?? r.name ?? 'Unknown',
+            email: user?.email ?? userIdValue?.email ?? r.email ?? '',
+            avatar: cleanAvatar(user?.image ?? user?.avatar ?? userIdValue?.image ?? userIdValue?.avatar ?? r.avatar ?? r.image ?? ''),
+            role: r.permission ?? r.role ?? 'view',
+            joinedAt: timeAgo,
+          };
+        });
+        return { members, total };
+      },
+      providesTags: ['roomMembers'],
+    }),
+
+    // POST /room/submitreport
+    submitRoomReport: builder.mutation({
+      query: ({ roomId, message }) => ({
+        url: API_ROUTES.ROOM_SUBMIT_REPORT,
+        method: 'POST',
+        body: { roomId, message },
+      }),
     }),
 
     // PUT /room/request/cancel/:roomId
@@ -630,8 +700,12 @@ export const {
   useUnfollowRoomMutation,
   useToggleRoomFollowMutation,
   useCancelRoomRequestMutation,
+  useSubmitRoomReportMutation,
   useLazyGetRoomRequestsQuery,
+  useGetRoomMembersQuery,
+  useLazyGetRoomMembersQuery,
   useGetUrlMetaMutation,
   useLazySearchOverlayQuery,
   useLazyGetNotificationsQuery,
+  useLazyGetShareRoomListQuery,
 } = roomsApi;

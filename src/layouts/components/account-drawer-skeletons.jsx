@@ -40,6 +40,15 @@ export function AccountStatsSkeleton() {
     );
 }
 
+export function AccountTabsSkeleton() {
+    return (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, px: 2 }}>
+            <Skeleton variant="rounded" width={110} height={34} sx={{ borderRadius: 10 }} />
+            <Skeleton variant="rounded" width={120} height={34} sx={{ borderRadius: 10 }} />
+        </Stack>
+    );
+}
+
 export function AccountConnectionListSkeleton({ showButton = true }) {
     return (
         <Stack spacing={1}>

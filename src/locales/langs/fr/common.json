@@ -47,7 +47,7 @@
     "search_placeholder": "Rechercher...",
     "only_you": "Seulement vous",
     "follow": "Suivre",
-    "request_sent": "Demande envoyée",
+    "request_sent": "Annuler la demande",
     "menu_room_info": "Informations sur la salle",
     "menu_room_requests": "Demandes de salle",
     "menu_following": "Abonnements",
@@ -105,7 +105,8 @@
     "no_rooms": "Aucune salle trouvée",
     "toast_link_copied": "Lien copié dans le presse-papiers",
     "toast_shared": "Partagé avec succès",
-    "toast_error": "Échec du partage. Veuillez réessayer."
+    "toast_error": "Échec du partage. Veuillez réessayer.",
+    "search_placeholder": "Rechercher des salles..."
   },
   "chat_input": {
     "placeholder": "Tapez un message...",
@@ -209,11 +210,17 @@
     "btn_friends": "Amis",
     "btn_add_friend": "Ajouter un ami",
     "btn_follow": "Suivre",
-    "btn_request_sent": "Demande envoyée",
+    "btn_request_sent": "Annuler la demande",
     "btn_following": "Abonné",
     "search_placeholder": "Rechercher ici..",
     "no_results": "Aucun résultat trouvé.",
-    "load_more": "Charger plus"
+    "load_more": "Charger plus",
+    "empty_created_title": "Aucune salle créée",
+    "empty_created_desc": "Cet utilisateur n'a encore créé aucune salle.",
+    "empty_following_rooms_title": "Aucune salle suivie",
+    "empty_following_rooms_desc": "Cet utilisateur ne suit encore aucune salle.",
+    "empty_search_title": "Aucun résultat",
+    "empty_search_desc": "Aucune correspondance trouvée pour votre recherche."
   },
   "home_view": {
     "garage_empty_title": "Votre garage est vide",
@@ -222,6 +229,9 @@
     "no_messages_subtitle": "Soyez le premier à dire quelque chose dans {{roomName}} !",
     "view_access_title": "Accès en lecture seule",
     "view_access_subtitle": "L'administrateur vous a donné un accès en lecture seule. Contactez l'administrateur pour obtenir la permission de modification.",
+    "blocked_title": "Vous avez été bloqué par l'administrateur",
+    "blocked_subtitle": "Suivez le propriétaire de la salle pour demander à récupérer l'accès.",
+    "blocked_follow_owner": "Suivre le propriétaire",
     "pending_title": "Demande envoyée — En attente d'approbation",
     "pending_subtitle": "Votre demande d'abonnement est en attente. Vous pourrez rejoindre une fois approuvé.",
     "not_following_title": "Suivez cette salle pour rejoindre la conversation",
@@ -232,8 +242,8 @@
     "toast_not_connected": "Non connecté. Veuillez réessayer."
   },
   "upload_avatar": {
-    "upload_photo": "Télécharger une photo",
-    "update_photo": "Mettre à jour la photo"
+    "upload_photo": "Ajouter photo",
+    "update_photo": "Modifier photo"
   },
   "account_drawer": {
     "title": "Profil",
@@ -252,7 +262,13 @@
     "view_all_friends": "Tous les amis",
     "view_all_following": "Tous les abonnements",
     "toast_updated": "Profil mis à jour avec succès",
-    "toast_update_error": "Échec de la mise à jour du profil"
+    "toast_update_error": "Échec de la mise à jour du profil",
+    "empty_friends_title": "Aucun ami pour l'instant",
+    "empty_friends_desc": "Quand des personnes vous suivent, elles apparaîtront ici.",
+    "empty_following_title": "Vous ne suivez personne",
+    "empty_following_desc": "Les personnes que vous suivez apparaîtront ici.",
+    "empty_search_title": "Aucun résultat",
+    "empty_search_desc": "Aucune correspondance trouvée pour votre recherche."
   },
   "account_edit_modal": {
     "full_name_label": "Nom complet",
@@ -421,7 +437,10 @@
     "pending_title": "Demande envoyée — En attente de l'approbation de l'administrateur",
     "pending_subtitle": "Votre demande de suivi est en attente. Vous pourrez rejoindre la conversation une fois approuvée.",
     "view_access_title": "Accès en lecture seule",
-    "view_access_subtitle": "L'administrateur vous a accordé un accès en lecture seule. Contactez l'administrateur pour obtenir des droits de modification."
+    "view_access_subtitle": "L'administrateur vous a accordé un accès en lecture seule. Contactez l'administrateur pour obtenir des droits de modification.",
+    "blocked_title": "Vous avez été bloqué par l'administrateur",
+    "blocked_subtitle": "Suivez le propriétaire de la salle pour demander à récupérer l'accès.",
+    "blocked_follow_owner": "Suivre le propriétaire"
   },
   "explore_filter": {
     "title": "Filtrer",
@@ -452,13 +471,14 @@
     "no_rooms": "Aucune salle trouvée",
     "no_rooms_subtitle": "Essayez un autre onglet ou ajustez vos filtres.",
     "btn_follow": "Suivre",
-    "btn_request_sent": "Demande envoyée",
+    "btn_request_sent": "Annuler la demande",
     "btn_following": "Abonné",
     "toast_cancel_error": "Échec de l'annulation. Veuillez réessayer.",
     "toast_update_error": "Échec de la mise à jour. Veuillez réessayer.",
     "toast_followed": "Salle suivie avec succès",
     "toast_unfollowed": "Salle désabonnée avec succès",
-    "open_filters": "Ouvrir les filtres"
+    "open_filters": "Ouvrir les filtres",
+    "end_of_list": "Vous avez tout vu"
   },
   "select_file": {
     "attach_photo_video": "Joindre une photo / vidéo",

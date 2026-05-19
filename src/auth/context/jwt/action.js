@@ -1,5 +1,6 @@
 import { setSession } from './utils';
 import { STORAGE_KEY, STORAGE_USER_KEY } from './constant';
+import { stripDoubleS3Prefix } from 'src/utils/message-utils';
 
 const DEVICE_ID_STORAGE_KEY = 'capme_device_id';
 
@@ -64,7 +65,7 @@ function normalizeLoginResponse(response, fallbackEmail, fallbackUserType) {
   const apiUser = findUserObject(payload);
   const userType = apiUser?.user_type ?? fallbackUserType ?? 2;
   const displayName = apiUser?.name ?? fallbackEmail?.split('@')?.[0] ?? 'User';
-  const photoURL = apiUser?.image ?? apiUser?.photoURL ?? null;
+  const photoURL = stripDoubleS3Prefix(apiUser?.image ?? apiUser?.photoURL ?? null);
 
   return {
     accessToken,
@@ -177,7 +178,6 @@ export const signInWithGoogle = async (googleUser) => {
       social_type: 'google',
       email: googleUser.email,
       name: googleUser.name,
-      image: googleUser.picture,
       device_id: deviceId,
       device_type: 'web',
       timezone,
@@ -187,6 +187,21 @@ export const signInWithGoogle = async (googleUser) => {
     const { store } = await import('src/store/store');
     const response = await store.dispatch(authApi.endpoints.socialLogin.initiate(body)).unwrap();
     const normalized = normalizeLoginResponse(response, googleUser.email, 2);
+
+    // If the backend has no stored image yet (new account), display Google picture locally.
+    // We do not push it to the backend so subsequent logins never overwrite a custom DP.
+    const hasStoredImage =
+      normalized.userData.photoURL &&
+      !normalized.userData.photoURL.includes('noImg');
+
+    if (!hasStoredImage && googleUser.picture) {
+      normalized.userData.photoURL = googleUser.picture;
+      if (normalized.userData.basicInfo) {
+        normalized.userData.basicInfo.image = googleUser.picture;
+      }
+    }
+
+    normalized.userData.loginMethod = 'social';
 
     await setSession(normalized.accessToken);
     sessionStorage.setItem(STORAGE_USER_KEY, JSON.stringify(normalized.userData));

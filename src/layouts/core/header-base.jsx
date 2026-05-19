@@ -327,6 +327,7 @@ export function HeaderBase({
                     </IconButton>
                     <IconButton
                       size="small"
+                      onClick={() => navigate(paths.dashboard.settings.knowledgeGraph)}
                       sx={{
                         width: 34,
                         height: 34,
@@ -335,9 +336,9 @@ export function HeaderBase({
                         color: '#fff',
                         '&:hover': { bgcolor: 'rgba(255,255,255,0.10)' },
                       }}
-                      aria-label={t('header.share')}
+                      aria-label={t('nav.graph')}
                     >
-                      <Icon icon="solar:share-bold" width={20} />
+                      <Icon icon="ph:graph-fill" width={20} />
                     </IconButton>
                     <IconButton
                       size="small"

@@ -23,7 +23,7 @@ import RoomInformation from './room-information';
 import RoomRequestDrawer from './room-request-drawer';
 import HashtagModal from './hashtag-modal';
 import CreateRoomModal from './create-room-modal';
-import { useCancelRoomRequestMutation, useGetRoomByIdQuery, useLazyGetRoomByIdQuery, useToggleFavouriteRoomMutation, useToggleRoomFollowMutation } from 'src/store/Reducer/rooms-api';
+import { useCancelRoomRequestMutation, useGetRoomByIdQuery, useLazyGetRoomByIdQuery, useToggleFavouriteRoomMutation, useToggleRoomFollowMutation, useSubmitRoomReportMutation } from 'src/store/Reducer/rooms-api';
 const RoomHashtagList = React.lazy(() => import('./room-hashtag-list'));
 
 const getId = (value) => {
@@ -45,6 +45,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
   const [showHashtagModal, setShowHashtagModal] = useState(false);
   const [selectedHashtag, setSelectedHashtag] = useState(null);
   const [editRoomOpen, setEditRoomOpen] = useState(false);
+  const [roomInfoRefreshKey, setRoomInfoRefreshKey] = useState(0);
   const [showSearch, setShowSearch] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [memberPermissionOverrides, setMemberPermissionOverrides] = useState({});
@@ -58,7 +59,9 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
   const [toggleFavourite] = useToggleFavouriteRoomMutation();
   const [toggleRoomFollow] = useToggleRoomFollowMutation();
   const [cancelRoomRequest] = useCancelRoomRequestMutation();
+  const [submitRoomReport, { isLoading: isSubmittingReport }] = useSubmitRoomReportMutation();
   const [followLoading, setFollowLoading] = useState(false);
+  const [roomApiMembers, setRoomApiMembers] = useState(null);
 
   const handleFollowClick = async () => {
     const roomId = actualRoomId;
@@ -322,7 +325,15 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
 
         {/* Right: actions */}
         <Stack direction="row" spacing={0.5} alignItems="center">
-          {!isGarage && (
+          {isLoading ? (
+            <>
+              <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
+              <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
+              <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
+              <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
+            </>
+          ) : null}
+          {!isLoading && !isGarage && (
             <>
               <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
                 <Iconify icon="mdi:tag" width={20} />
@@ -341,14 +352,14 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
             </>
           )}
 
-          {isGarage && (
+          {!isLoading && isGarage && (
             <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5, textTransform: 'capitalize' }}>
               {room?.visibility ?? t('search.visibility_personal')} · {t('room_channel_header.only_you')}
             </Typography>
           )}
 
           {/* Search */}
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          {!isLoading && <Stack direction="row" spacing={0.5} alignItems="center">
             {showSearch ? (
               <Box
                 sx={{
@@ -392,10 +403,10 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
                 <Iconify icon="eva:search-fill" width={19} />
               </IconButton>
             )}
-          </Stack>
+          </Stack>}
 
           {/* Follow / Request Sent button — only when user is not yet a member */}
-          {(isFollowing === false || isPending) && (
+          {!isLoading && (isFollowing === false || isPending) && (
             <Button
               size="small"
               onClick={handleFollowClick}
@@ -417,7 +428,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
             </Button>
           )}
 
-          {!isGarage && (
+          {!isLoading && !isGarage && (
             <IconButton
               size="small"
               onClick={handleOpenMenu}
@@ -516,8 +527,10 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
         isLoading={isRoomDetailFetching}
         isRoomAdmin={isRoomAdmin}
         permissionOverrides={memberPermissionOverrides}
+        refreshKey={roomInfoRefreshKey}
         onEdit={() => setEditRoomOpen(true)}
         onDeleteRoom={onDeleteRoom}
+        onMembersLoaded={setRoomApiMembers}
       />
 
       <RoomRequestDrawer
@@ -535,10 +548,11 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
         open={editRoomOpen}
         onClose={() => setEditRoomOpen(false)}
         editMode
-        initialValues={roomForDrawers}
+        initialValues={roomApiMembers ? { ...roomForDrawers, members: roomApiMembers } : roomForDrawers}
         onCreate={() => {
           setEditRoomOpen(false);
           if (roomId) fetchRoomById(roomId, true);
+          setRoomInfoRefreshKey((k) => k + 1);
           setRoomInfoOpenNotify(true);
         }}
       />
@@ -546,16 +560,23 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
       <UnfollowModal
         open={reportOpen}
         onClose={() => { setReportOpen(false); setReportFeedback(''); }}
-        onConfirm={() => {
-          setReportOpen(false);
-          setReportFeedback('');
-          toast.success(t('room_channel_header.toast_reported'));
+        onConfirm={async () => {
+          if (isSubmittingReport) return;
+          try {
+            await submitRoomReport({ roomId: actualRoomId, message: reportFeedback }).unwrap();
+            toast.success(t('room_channel_header.toast_reported'));
+          } catch (err) {
+            toast.error(err?.data?.message ?? 'Failed to submit report');
+          } finally {
+            setReportOpen(false);
+            setReportFeedback('');
+          }
         }}
         roomName={room?.name || 'this room'}
         title={t('room_channel_header.report_title')}
         icon="material-symbols:report-rounded"
         iconBgColor="#4C4EFF"
-        confirmLabel={t('room_channel_header.report_confirm')}
+        confirmLabel={isSubmittingReport ? 'Submitting…' : t('room_channel_header.report_confirm')}
         confirmColor="#4C4EFF"
         feedback={reportFeedback}
         onFeedbackChange={setReportFeedback}
