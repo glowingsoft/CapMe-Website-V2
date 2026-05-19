@@ -1071,7 +1071,7 @@ export default function HomeView() {
                             }),
                           }}
                         >
-                          <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch canInteract={canPost} />
+                          <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch canInteract={canPost} menuActions={isRoomNotFollowing ? ['copy'] : null} />
                         </Box>
                       )
                     )}

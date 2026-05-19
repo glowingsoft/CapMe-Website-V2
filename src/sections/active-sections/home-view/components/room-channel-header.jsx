@@ -335,9 +335,11 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           ) : null}
           {!isLoading && !isGarage && (
             <>
-              <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
-                <Iconify icon="mdi:tag" width={20} />
-              </IconButton>
+              {isFollowing !== false && (
+                <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
+                  <Iconify icon="mdi:tag" width={20} />
+                </IconButton>
+              )}
 
               <IconButton
                 size="small"
@@ -428,7 +430,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
             </Button>
           )}
 
-          {!isLoading && !isGarage && (
+          {!isLoading && !isGarage && isFollowing !== false && (
             <IconButton
               size="small"
               onClick={handleOpenMenu}

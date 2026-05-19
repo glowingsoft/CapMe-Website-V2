@@ -95,10 +95,18 @@ const MessageItem = React.memo(({ msg, topics, onNodeClick }) => {
               bgcolor: importanceColor(imp).bg,
               color: importanceColor(imp).color,
               fontWeight: 700,
-              // no hover darkening
               '&:hover': { bgcolor: importanceColor(imp).bg },
             }}
           />
+        )}
+
+        {topics.length > 0 && !open && (
+          <Stack direction="row" alignItems="center" spacing={0.3} sx={{ flexShrink: 0, bgcolor: 'rgba(76,78,255,0.07)', borderRadius: 1, px: 0.75, py: 0.3 }}>
+            <Iconify icon="solar:tag-bold" width={11} sx={{ color: '#4C4EFF' }} />
+            <Typography sx={{ fontSize: '0.62rem', fontWeight: 700, color: '#4C4EFF', lineHeight: 1 }}>
+              {topics.length}
+            </Typography>
+          </Stack>
         )}
 
         {hasExtras && (

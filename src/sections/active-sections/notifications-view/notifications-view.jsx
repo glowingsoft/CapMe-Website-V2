@@ -1,6 +1,5 @@
 import React from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
@@ -84,7 +83,7 @@ export default function NotificationsView() {
     (targetPage) => {
       if (targetPage < 1 || targetPage > totalPages) return;
       setIsLoading(true);
-      fetchNotifications({ page: targetPage, limit: PAGE_SIZE })
+      fetchNotifications({ page: targetPage, limit: PAGE_SIZE }, false)
         .unwrap()
         .then((data) => {
           setItems(data.notifications ?? []);
@@ -109,15 +108,6 @@ export default function NotificationsView() {
   }, []);
 
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
-  const unreadCount = items.filter((n) => n.read === false).length;
-
-  const markAllRead = React.useCallback(() => {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
-
-  const markRead = React.useCallback((id) => {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
 
   const pageNumbers = getPageNumbers(page, totalPages);
 
@@ -138,34 +128,15 @@ export default function NotificationsView() {
         }}
       >
         <Box sx={{ width: '100%', maxWidth: 1120, mx: 'auto' }}>
-          <Stack direction="row" alignItems="flex-end" justifyContent="space-between" spacing={2} sx={{ mb: 2.5 }}>
-            <Box>
-              <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-                <Box component="span" sx={{ color: '#4C4EFF' }}>{t('notifications.title').split(' ')[0]}</Box>
-                {` ${t('notifications.title').split(' ').slice(1).join(' ')}`}
-              </Typography>
-              <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
-                {t('notifications.subtitle')}
-              </Typography>
-            </Box>
-
-            <Button
-              disabled={unreadCount === 0}
-              onClick={markAllRead}
-              sx={{
-                height: 36,
-                px: 2,
-                borderRadius: 2,
-                fontWeight: 800,
-                textTransform: 'none',
-                bgcolor: unreadCount === 0 ? 'rgba(0,0,0,0.06)' : '#4C4EFF',
-                color: unreadCount === 0 ? 'text.disabled' : '#fff',
-                '&:hover': { bgcolor: unreadCount === 0 ? 'rgba(0,0,0,0.06)' : '#3b3bd6' },
-              }}
-            >
-              {t('notifications.mark_all_read')}
-            </Button>
-          </Stack>
+          <Box sx={{ mb: 2.5 }}>
+            <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
+              <Box component="span" sx={{ color: '#4C4EFF' }}>{t('notifications.title').split(' ')[0]}</Box>
+              {` ${t('notifications.title').split(' ').slice(1).join(' ')}`}
+            </Typography>
+            <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
+              {t('notifications.subtitle')}
+            </Typography>
+          </Box>
 
           {isLoading ? (
             <Stack spacing={1.7} sx={{ width: '100%' }}>
@@ -182,7 +153,7 @@ export default function NotificationsView() {
           ) : (
             <Stack spacing={1.7} sx={{ width: '100%' }}>
               {items.map((n) => (
-                <NotificationCard key={n.id} notification={n} onClick={() => markRead(n.id)} />
+                <NotificationCard key={n._id} notification={n} />
               ))}
             </Stack>
           )}
