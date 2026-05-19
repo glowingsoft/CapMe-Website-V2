@@ -91,14 +91,17 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
   const [toggleFavouriteRoom] = useToggleFavouriteRoomMutation();
 
   // "all" always active; myRooms/following are lazy — only fire once the tab is first visited
-  const allQuery = useGetHomeRoomsQuery({ page: pages.all, limit: LIMIT, type: 'all' });
+  const allQuery = useGetHomeRoomsQuery(
+    { page: pages.all, limit: LIMIT, type: 'all' },
+    { refetchOnMountOrArgChange: true }
+  );
   const myRoomsQuery = useGetHomeRoomsQuery(
     { page: pages.myRooms, limit: LIMIT, type: 'myrooms' },
-    { skip: !visitedTabs.myRooms }
+    { skip: !visitedTabs.myRooms, refetchOnMountOrArgChange: true }
   );
   const followingQuery = useGetHomeRoomsQuery(
     { page: pages.following, limit: LIMIT, type: 'following' },
-    { skip: !visitedTabs.following }
+    { skip: !visitedTabs.following, refetchOnMountOrArgChange: true }
   );
 
   // Accumulate pages — replace on page 1, append on subsequent pages, always sort
@@ -389,7 +392,9 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     return () => observer.disconnect();
   }, [tab]);
 
-  const isInitialLoad = loadingTabs[tab];
+  const activeQuery = tab === 'all' ? allQuery : tab === 'myRooms' ? myRoomsQuery : followingQuery;
+  const activePage = tab === 'all' ? pages.all : tab === 'myRooms' ? pages.myRooms : pages.following;
+  const isInitialLoad = loadingTabs[tab] || (activeQuery.isFetching && activePage === 1);
 
   let roomSections = [];
   if (tab === 'all') {

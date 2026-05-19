@@ -92,6 +92,7 @@ export default function HomeView() {
       type: 'message',
       user: {
         id: senderId,
+        name: msg.sender?.name ?? msg.sendername ?? '',
         username: `@${msg.sender?.email?.split('@')[0] ?? msg.sendername?.split(' ')[0]?.toLowerCase() ?? 'user'}`,
         avatar,
       },
@@ -158,6 +159,8 @@ export default function HomeView() {
 
   React.useEffect(() => {
     if (!messagesQuery.isSuccess || messagesQuery.isFetching) return;
+    const args = messagesQuery.originalArgs ?? {};
+    if (String(args.page) !== String(messagesPage) || String(args.roomId) !== String(activeRoom?.id)) return;
     const raw = messagesQuery.data?.body?.messages ?? [];
     const roomFromMessages = messagesQuery.data?.body?.room;
     const roomVisibility = roomFromMessages?.visibility?.toLowerCase() ?? activeRoom?.visibility ?? null;
@@ -229,9 +232,16 @@ export default function HomeView() {
 
       if (isBackgroundRoom) return;
 
+      const msgSenderId = String(message.senderId ?? message.sender?._id ?? message.sender?.id ?? '');
+      const msgContent = message.content ?? message.text ?? '';
+
       setLocalPosts((prev) => {
-        if (prev.some((p) => String(p.id) === String(message._id))) return prev;
-        return [...prev, { ...normalizeMessage(message), visibility: roomVisibilityRef.current }];
+        if (prev.some((p) => !p.isOptimistic && String(p.id) === String(message._id))) return prev;
+        // Remove matching optimistic message from the current user
+        const withoutOptimistic = prev.filter(
+          (p) => !(p.isOptimistic && String(p.user?.id) === msgSenderId && p.content === msgContent)
+        );
+        return [...withoutOptimistic, { ...normalizeMessage(message), visibility: roomVisibilityRef.current }];
       });
     };
 
@@ -470,6 +480,40 @@ export default function HomeView() {
     suppressScrollToBottomRef.current = false;
     prevRoomRef.current = null;
   }, []);
+
+  const handleOptimisticMessage = React.useCallback(({ content, attachedFile, meta }) => {
+    const now = new Date();
+    const optimistic = {
+      id: `optimistic-${Date.now()}`,
+      isOptimistic: true,
+      type: 'message',
+      user: {
+        id: currentUserId,
+        name: currentUser?.name ?? currentUser?.username ?? currentUser?.displayName ?? currentUser?.basicInfo?.name ?? '',
+        username: `@${currentUser?.email?.split('@')[0] ?? currentUser?.username ?? 'you'}`,
+        avatar: currentUserImage,
+      },
+      content: content ?? '',
+      text: content ?? '',
+      hashtags: '',
+      likes: [],
+      stats: { likes: 0, comments: 0, shares: 0 },
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: now.toISOString(),
+      image: meta?.image ?? '',
+      meta: meta ?? {},
+      tags: [],
+      roomId: String(activeRoomRef.current?.id ?? ''),
+      visibility: roomVisibilityRef.current,
+      is_pin: false,
+      isPinned: false,
+      is_edited: false,
+      attachments: attachedFile
+        ? [{ url: attachedFile.url, type: attachedFile.type, name: attachedFile.name, size: attachedFile.size }]
+        : [],
+    };
+    setLocalPosts((prev) => [...prev, optimistic]);
+  }, [currentUserId, currentUser, currentUserImage]);
 
   const handleRoomSelect = (room) => {
     if (room?.id && room.id === activeRoom?.id) return;
@@ -949,17 +993,17 @@ export default function HomeView() {
                       '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '10px' },
                     }}
                   >
-                    {messagesQuery.isFetching && messagesPage > 1 && (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-                        <CircularProgress size={22} sx={{ color: '#4C4EFF' }} />
-                      </Box>
-                    )}
-
-                    {isLoadingMessages && (
+                    {/* Skeleton — shown while waiting for fresh data (page 1) */}
+                    {(isLoadingMessages || (messagesQuery.isFetching && messagesPage === 1)) && (
                       <MessageSkeleton count={5} />
                     )}
 
-                    {/* Empty state â€” only shown after load completes with genuinely no messages */}
+                    {/* Load-more indicator at top when fetching older pages */}
+                    {messagesQuery.isFetching && messagesPage > 1 && (
+                      <MessageSkeleton count={3} />
+                    )}
+
+                    {/* Empty state — only shown after load completes with genuinely no messages */}
                     {!isLoadingMessages && !messagesQuery.isFetching && messagesQuery.isSuccess && localPosts.length === 0 && (
                       activeRoom?.isGarage ? (
                         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 2 }}>
@@ -1011,7 +1055,7 @@ export default function HomeView() {
                       )
                     )}
 
-                    {postsWithDates.map((item) =>
+                    {!isLoadingMessages && !(messagesQuery.isFetching && messagesPage === 1) && postsWithDates.map((item) =>
                       item.type === 'date' ? (
                         <OldMessagesLabel key={item.id} label={item.label} />
                       ) : (
@@ -1038,7 +1082,7 @@ export default function HomeView() {
 
                   {/* Message input â€” pinned at bottom, never scrolls */}
                   {canPost ? (
-                    <ChatInputBar activeRoom={activeRoom} />
+                    <ChatInputBar activeRoom={activeRoom} onOptimisticMessage={handleOptimisticMessage} />
                   ) : (() => {
                     let icon = 'solar:lock-bold';
                     let title = t('home_view.view_access_title');

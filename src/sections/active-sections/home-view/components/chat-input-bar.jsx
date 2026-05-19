@@ -20,7 +20,7 @@ import LinkPreview from './link-preview';
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/;
 
-export default function ChatInputBar({ activeRoom }) {
+export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
   const { t } = useTranslate('common');
   const inputRef = React.useRef(null);
   const [message, setMessage] = React.useState('');
@@ -155,6 +155,13 @@ export default function ChatInputBar({ activeRoom }) {
         attachments,
         meta: linkMeta ?? {},
       });
+      onOptimisticMessage?.({ content: rawText, attachedFile, meta: linkMeta ?? {} });
+      window.dispatchEvent(new CustomEvent('roomListUpdate', {
+        detail: {
+          roomId: activeRoom.id,
+          lastMessage: { content: rawText, createdAt: new Date().toISOString(), attachments },
+        },
+      }));
 
       clearTimeout(linkDebounceRef.current);
       fetchGenerationRef.current += 1;

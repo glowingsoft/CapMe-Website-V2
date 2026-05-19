@@ -9,6 +9,7 @@ import { categoriesApi } from './Reducer/categories-api';
 import { roomsApi } from './Reducer/rooms-api';
 import { aiApi } from './Reducer/ai-api';
 import { exploreApi } from './Reducer/explore-api';
+import { usersApi } from './Reducer/users-api';
 
 const persistConfig = {
   key: 'root',
@@ -31,6 +32,7 @@ export const store = configureStore({
     [roomsApi.reducerPath]: roomsApi.reducer,
     [aiApi.reducerPath]: aiApi.reducer,
     [exploreApi.reducerPath]: exploreApi.reducer,
+    [usersApi.reducerPath]: usersApi.reducer,
     user: persistedUserReducer,
   },
   middleware: (getDefaultMiddleware) =>
@@ -44,7 +46,8 @@ export const store = configureStore({
       categoriesApi.middleware,
       roomsApi.middleware,
       aiApi.middleware,
-      exploreApi.middleware
+      exploreApi.middleware,
+      usersApi.middleware
     ),
 });
 
