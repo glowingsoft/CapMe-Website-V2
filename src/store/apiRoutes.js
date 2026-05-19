@@ -20,6 +20,7 @@ export const API_ROUTES = {
         TERMS_AND_CONDITIONS: '/auth/termsandcondition',
         PRIVACY_POLICY: '/auth/privacypolicy',
         CONTACT_SUPPORT: '/auth/contact-support',
+        ANNOUNCEMENT: '/admin/legal',
     },
 
     WALLETS: '/wallets',
@@ -50,8 +51,11 @@ export const API_ROUTES = {
     ROOM_FOLLOW_TOGGLE: '/room/followAndunfollow',
     ROOM_REQUEST_CANCEL: (roomId) => `/room/request/cancel/${roomId}`,
     ROOM_REQUESTS: (roomId) => `/room/requests/${roomId}`,
+    ROOM_GET_MEMBERS: (roomId) => `/room/getmember/${roomId}`,
+    ROOM_SUBMIT_REPORT: '/room/submitreport',
 
     ROOM_SEARCH_USER: '/room/searchuser',
+    ROOM_SHARE_LIST: '/room/share/list',
     ROOM_EXPLORE: '/room/explore',
     ROOM_EXPLORE_LIST: '/room/exploreroom',
     ROOM_ACTIVITY_FEEDS: '/room/activityfeeds',

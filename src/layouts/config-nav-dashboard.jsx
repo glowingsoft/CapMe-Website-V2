@@ -2,7 +2,6 @@ import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/config-global';
 
-import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
 import homeIconUrl from 'src/assets/icons/home_icon.svg?url';
@@ -64,7 +63,7 @@ export const getNavData = (t) => [
       { title: t('nav.explore'), path: paths.dashboard.explore, icon: ICONS.exploreCustom },
       { title: t('nav.activity_feed'), path: paths.dashboard.activityFeed, icon: ICONS.activityFeedCustom },
       { title: t('nav.chat_me'), path: paths.dashboard.chatMe, icon: ICONS.chatCustom },
-      { title: t('nav.graph'), path: paths.dashboard.settings.knowledgeGraph, icon: <Iconify icon="solar:graph-bold-duotone" /> },
+      { title: t('nav.graph'), path: paths.dashboard.settings.knowledgeGraph, icon: <Iconify icon="ph:graph-fill" /> },
       { title: t('nav.notifications'), path: paths.dashboard.notifications, icon: ICONS.notificationCustom },
       { title: t('nav.settings'), path: paths.dashboard.settings.root, icon: ICONS.settingCustom },
     ],

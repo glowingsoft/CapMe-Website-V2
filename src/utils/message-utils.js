@@ -1,3 +1,13 @@
+const S3_BASE = 'https://capmes3.s3.us-east-1.amazonaws.com/';
+
+export function stripDoubleS3Prefix(url) {
+  if (!url || typeof url !== 'string') return url ?? null;
+  if (url.startsWith(S3_BASE) && url.slice(S3_BASE.length).startsWith('http')) {
+    return url.slice(S3_BASE.length);
+  }
+  return url;
+}
+
 export const cleanUrl = (s) => {
     if (!s || typeof s !== 'string') return '';
     return s.replace(/^https?:\/\/[^/]+(\/https?:\/\/.+)$/, (_, rest) => rest.slice(1)).trim();
