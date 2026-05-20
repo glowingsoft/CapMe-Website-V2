@@ -352,13 +352,11 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
               <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
             </>
           ) : null}
-          {!isLoading && !isGarage && (isMdUp || !showSearch) && (
+          {!isLoading && !isGarage && isFollowing !== false && (isMdUp || !showSearch) && (
             <>
-              {isFollowing !== false && (
-                <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
-                  <Iconify icon="mdi:tag" width={20} />
-                </IconButton>
-              )}
+              <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
+                <Iconify icon="mdi:tag" width={20} />
+              </IconButton>
 
               <IconButton
                 size="small"
@@ -380,7 +378,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           )}
 
           {/* Search */}
-          {!isLoading && <Stack direction="row" spacing={0.5} alignItems="center" sx={showSearch && !isMdUp ? { flex: 1, minWidth: 0 } : {}}>
+          {!isLoading && isFollowing !== false && <Stack direction="row" spacing={0.5} alignItems="center" sx={showSearch && !isMdUp ? { flex: 1, minWidth: 0 } : {}}>
             {showSearch ? (
               <Box
                 sx={{

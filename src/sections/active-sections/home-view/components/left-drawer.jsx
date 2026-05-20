@@ -17,7 +17,7 @@ import LeftDrawerSkeleton from './left-drawer-skeleton';
 import RoomAvatar from 'src/components/room-avatar';
 
 
-const LIMIT = 10;
+const LIMIT = 20;
 const DRAWER_PREVIEW = 10;
 
 function getLastMessageDesc(lastMessage) {
@@ -274,13 +274,13 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
       await toggleFavouriteRoom(roomId).unwrap();
       window.dispatchEvent(new CustomEvent('roomFavouriteUpdate', { detail: { roomId, isFavourite: next } }));
       toast.success(next ? t('left_drawer.toast_added_fav') : t('left_drawer.toast_removed_fav'));
-    } catch {
+    } catch (err) {
       setAccRooms((prev) => ({
         all: setFav(isFav)(prev.all),
         myRooms: setFav(isFav)(prev.myRooms),
         following: setFav(isFav)(prev.following),
       }));
-      toast.error(t('left_drawer.toast_fav_error'));
+      toast.error(err?.data?.message ?? err?.message ?? t('left_drawer.toast_fav_error'));
     }
   };
 

@@ -652,7 +652,7 @@ export const roomsApi = createApi({
             title: n.message ?? '',
             message: '',
             timeAgo: formatTimeAgo(n.createdAt),
-            type: detectType(n.message),
+            type: n.type ?? detectType(n.message),
             read: n.isRead ?? n.read ?? false,
             objectId: n.objectId ?? '',
             user: n.sender

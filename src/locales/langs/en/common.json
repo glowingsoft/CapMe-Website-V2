@@ -57,7 +57,7 @@
                                 "report_confirm":  "Submit",
                                 "toast_added_fav":  "Added to favourites",
                                 "toast_removed_fav":  "Removed from favourites",
-                                "toast_fav_error":  "Failed to update favourite. Please try again.",
+                                "toast_fav_error":  "You are not a member of this room.",
                                 "toast_unfollowed":  "You have unfollowed the room",
                                 "toast_unfollow_error":  "Failed to unfollow. Please try again.",
                                 "toast_follow_error":  "Failed to update. Please try again.",
@@ -81,7 +81,7 @@
                         "no_messages":  "No messages yet",
                         "toast_added_fav":  "Added to favourites",
                         "toast_removed_fav":  "Removed from favourites",
-                        "toast_fav_error":  "Failed to update favourite. Please try again."
+                        "toast_fav_error":  "You are not a member of this room."
                     },
     "message_delete_modal":  {
                                  "title":  "Delete Message",

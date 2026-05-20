@@ -26,7 +26,7 @@ import MessageSkeleton from 'src/sections/active-sections/home-view/components/m
 import { useTranslate } from 'src/locales';
 
 const DRAWER_WIDTH = 420;
-const MESSAGES_LIMIT = 10;
+const MESSAGES_LIMIT = 20;
 const DEFAULT_FILTERS = { query: '', date: null, memberCount: null, contentType: null };
 const countActiveFilters = (f) => Object.values(f).filter(Boolean).length;
 

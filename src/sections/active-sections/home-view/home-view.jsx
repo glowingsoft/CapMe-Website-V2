@@ -31,7 +31,7 @@ import MessageSkeleton from './components/message-skeleton';
 import UserProfileDrawer from './components/user-profile-drawer';
 
 const DRAWER_WIDTH = 420;
-const MESSAGES_LIMIT = 10;
+const MESSAGES_LIMIT = 20;
 
 const ATTACHMENT_TYPE_MAP = { image: 'image/jpeg', video: 'video/mp4', audio: 'audio/mpeg', voice: 'audio/mpeg', file: 'application/octet-stream' };
 const resolveAttachmentType = (raw) => {

@@ -33,7 +33,7 @@ const TABS = [
 ];
 
 const CONTENT_MAX_WIDTH = 920;
-const LIMIT = 10;
+const LIMIT = 20;
 
 // ----------------------------------------------------------------------
 

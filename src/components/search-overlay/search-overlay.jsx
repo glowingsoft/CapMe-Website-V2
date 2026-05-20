@@ -398,7 +398,7 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
         page,
         limit: LIMIT,
       });
-    }, page === 1 ? 150 : 0);
+    }, page === 1 ? 400 : 0);
     return () => clearTimeout(debounceRef.current);
   }, [query, category, tab, page, open, triggerSearch]);
 

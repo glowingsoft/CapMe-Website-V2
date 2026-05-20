@@ -57,7 +57,7 @@
                                 "report_confirm":  "Senden",
                                 "toast_added_fav":  "Zu Favoriten hinzugefügt",
                                 "toast_removed_fav":  "Aus Favoriten entfernt",
-                                "toast_fav_error":  "Favorit konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
+                                "toast_fav_error":  "Sie sind kein Mitglied dieses Raums.",
                                 "toast_unfollowed":  "Sie folgen dem Raum nicht mehr",
                                 "toast_unfollow_error":  "Entfolgen fehlgeschlagen. Bitte versuchen Sie es erneut.",
                                 "toast_follow_error":  "Aktualisierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
@@ -81,7 +81,7 @@
                         "no_messages":  "Noch keine Nachrichten",
                         "toast_added_fav":  "Zu Favoriten hinzugefügt",
                         "toast_removed_fav":  "Aus Favoriten entfernt",
-                        "toast_fav_error":  "Favorit konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+                        "toast_fav_error":  "Sie sind kein Mitglied dieses Raums."
                     },
     "message_delete_modal":  {
                                  "title":  "Nachricht löschen",

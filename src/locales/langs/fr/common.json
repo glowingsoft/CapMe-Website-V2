@@ -57,7 +57,7 @@
                                 "report_confirm":  "Soumettre",
                                 "toast_added_fav":  "Ajouté aux favoris",
                                 "toast_removed_fav":  "Retiré des favoris",
-                                "toast_fav_error":  "Impossible de mettre à jour le favori. Veuillez réessayer.",
+                                "toast_fav_error":  "Vous n'êtes pas membre de cette salle.",
                                 "toast_unfollowed":  "Vous ne suivez plus la salle",
                                 "toast_unfollow_error":  "Échec du désabonnement. Veuillez réessayer.",
                                 "toast_follow_error":  "Échec de la mise à jour. Veuillez réessayer.",
@@ -81,7 +81,7 @@
                         "no_messages":  "Aucun message pour l\u0027instant",
                         "toast_added_fav":  "Ajouté aux favoris",
                         "toast_removed_fav":  "Retiré des favoris",
-                        "toast_fav_error":  "Impossible de mettre à jour le favori. Veuillez réessayer."
+                        "toast_fav_error":  "Vous n'êtes pas membre de cette salle."
                     },
     "message_delete_modal":  {
                                  "title":  "Supprimer le message",
