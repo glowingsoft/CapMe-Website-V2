@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Drawer from '@mui/material/Drawer';
+import ProfilePageShell from 'src/components/profile-page-shell';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -305,28 +305,7 @@ export default function RoomInformation({
 
     return (
         <>
-            <Drawer
-                open={open && !showMedia}
-                onClose={onClose}
-                anchor="right"
-                hideBackdrop
-                disableEnforceFocus
-                disableAutoFocus
-                disableScrollLock
-                ModalProps={{ sx: { pointerEvents: 'none' } }}
-                PaperProps={{
-                    sx: {
-                        width: 420,
-                        maxWidth: '100%',
-                        borderTopLeftRadius: 20,
-                        overflow: 'hidden',
-                        bgcolor: '#fff',
-                        mt: '105px',
-                        height: 'calc(100vh - 105px)',
-                        pointerEvents: 'auto',
-                    },
-                }}
-            >
+            <ProfilePageShell open={open && !showMedia} onClose={onClose}>
                 {/* Header */}
                 <DrawerHeader
                     title={roomName}
@@ -678,7 +657,7 @@ export default function RoomInformation({
 
                     </>}
                 </Scrollbar>
-            </Drawer>
+            </ProfilePageShell>
 
             <RoomMediaPanel
                 open={open && showMedia}

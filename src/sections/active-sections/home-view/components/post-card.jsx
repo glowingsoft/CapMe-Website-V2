@@ -328,6 +328,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                                 anchorEl={anchor}
                                 open={Boolean(anchor)}
                                 onClose={handleClose}
+                                disableScrollLock
                                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                                 slotProps={{
@@ -336,6 +337,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
                                         sx: {
                                             borderRadius: 3,
                                             minWidth: 170,
+                                            maxWidth: 'calc(100vw - 32px)',
                                             mt: 0.5,
                                             boxShadow: '0px 8px 24px rgba(0,0,0,0.12)',
                                             border: '1px solid #f0f0f0',

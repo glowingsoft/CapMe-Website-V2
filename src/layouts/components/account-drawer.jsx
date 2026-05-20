@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
+import ProfilePageShell from 'src/components/profile-page-shell';
 import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
@@ -354,7 +354,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     <>
       <AccountButton open={open} onClick={handleOpenDrawer} photoURL={user?.photoURL} displayName={user?.displayName} sx={sx} {...other} />
 
-      <Drawer open={open} onClose={handleCloseDrawer} anchor="right" hideBackdrop disableEnforceFocus disableAutoFocus disableScrollLock ModalProps={{ sx: { pointerEvents: 'none' } }} PaperProps={{ sx: { width: 420, borderTopLeftRadius: 20, mt: '105px', height: 'calc(100vh - 105px)', pointerEvents: 'auto' } }}>
+      <ProfilePageShell open={open} onClose={handleCloseDrawer}>
         <DrawerHeader
           title={t('account_drawer.title')}
           onBack={handleCloseDrawer}
@@ -716,7 +716,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
           <AccountEditModal open={editOpen} onClose={handleEditClose} user={user} onSave={handleEditSave} isLoading={isUploading || isUpdating} />
           <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
         </Scrollbar>
-      </Drawer>
+      </ProfilePageShell>
 
       <ViewAllModal
         open={viewAllOpen}

@@ -8,6 +8,8 @@ import Popover from '@mui/material/Popover';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { Iconify } from 'src/components/iconify';
 import RoomAvatar from 'src/components/room-avatar';
 import UnfollowModal from 'src/sections/active-sections/home-view/components/unfollow-modal';
@@ -23,7 +25,10 @@ export default function ExploreRoomHeader({
   onFilterOpen,
   filterActive = false,
   isLoading = false,
+  onBack = null,
 }) {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportFeedback, setReportFeedback] = useState('');
@@ -117,8 +122,17 @@ export default function ExploreRoomHeader({
           borderRadius: 2.5,
         }}
       >
-        {/* Left: avatar + name */}
+        {/* Left: back button (mobile) + avatar + name */}
         <Stack direction="row" spacing={1.5} alignItems="center">
+          {onBack && (
+            <IconButton
+              size="small"
+              onClick={onBack}
+              sx={{ color: '#fff', display: { xs: 'flex', md: 'none' }, mr: -0.5, flexShrink: 0 }}
+            >
+              <Iconify icon="mingcute:left-line" width={22} />
+            </IconButton>
+          )}
           {isLoading ? (
             <Skeleton variant="circular" width={32} height={32} sx={{ bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
           ) : (
@@ -129,7 +143,7 @@ export default function ExploreRoomHeader({
               <Skeleton variant="text" width={130} height={20} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
             ) : (
               <>
-                <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>{room?.name}</Typography>
+                <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2} sx={{ maxWidth: '15ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room?.name}</Typography>
                 {room?.hashtag && (
                   <Typography fontSize={11} color="rgba(255,255,255,0.5)">{room.hashtag}</Typography>
                 )}

@@ -14,6 +14,8 @@ import Popper from '@mui/material/Popper';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 
 import { Icon } from '@iconify/react';
 import { useLazySearchOverlayQuery, useGetRoomByIdQuery } from 'src/store/Reducer/rooms-api';
@@ -331,6 +333,8 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslate('common');
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
 
   const categoryLabels = {
     All: t('search.category_all'),
@@ -423,121 +427,145 @@ export default function SearchOverlay({ open, onClose, anchorEl, query }) {
     }
   }, [isFetching, hasMore]);
 
-  return (
-    <Popper
-      open={open}
-      anchorEl={anchorEl}
-      placement="bottom-start"
-      transition
-      modifiers={[
-        { name: 'offset', options: { offset: [0, 6] } },
-        { name: 'flip', enabled: false },
-      ]}
-      style={{ zIndex: 1300, width: anchorEl?.offsetWidth ?? 480 }}
+  const panelContent = (
+    <Paper
+      elevation={12}
+      onMouseDown={(e) => e.preventDefault()}
+      sx={{
+        borderRadius: isMdUp ? 2.5 : '0 0 16px 16px',
+        overflow: 'hidden',
+        bgcolor: '#2a2a2a',
+        border: '1px solid rgba(255,255,255,0.09)',
+        backdropFilter: 'blur(16px)',
+      }}
     >
-      {({ TransitionProps }) => (
-        <Fade {...TransitionProps} timeout={200}>
-          <Box>
-            <ClickAwayListener
-              onClickAway={(e) => {
-                if (anchorEl && anchorEl.contains(e.target)) return;
-                onClose();
-              }}
-            >
-              <Paper
-                elevation={12}
-                onMouseDown={(e) => e.preventDefault()}
-                sx={{
-                  borderRadius: 2.5, overflow: 'hidden',
-                  bgcolor: '#2a2a2a',
-                  border: '1px solid rgba(255,255,255,0.09)',
-                  backdropFilter: 'blur(16px)',
-                }}
-              >
-                {/* Category chips */}
-                <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.4, overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.07)', '&::-webkit-scrollbar': { display: 'none' } }}>
-                  {CATEGORIES.map((cat) => (
-                    <Chip
-                      key={cat} label={categoryLabels[cat]} size="small"
-                      onClick={() => setCategory(cat)}
-                      sx={{
-                        flexShrink: 0, fontWeight: 600, fontSize: 12, height: 28, borderRadius: 1.5,
-                        bgcolor: category === cat ? '#fff' : 'rgba(255,255,255,0.07)',
-                        color: category === cat ? '#111' : 'rgba(255,255,255,0.65)',
-                        border: category === cat ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                        '&:hover': { bgcolor: category === cat ? '#e8e8e8' : 'rgba(255,255,255,0.12)' },
-                      }}
-                    />
-                  ))}
-                </Box>
+      {/* Category chips */}
+      <Box sx={{ display: 'flex', gap: 1, px: 2.5, py: 1.4, overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.07)', '&::-webkit-scrollbar': { display: 'none' } }}>
+        {CATEGORIES.map((cat) => (
+          <Chip
+            key={cat} label={categoryLabels[cat]} size="small"
+            onClick={() => setCategory(cat)}
+            sx={{
+              flexShrink: 0, fontWeight: 600, fontSize: 12, height: 28, borderRadius: 1.5,
+              bgcolor: category === cat ? '#fff' : 'rgba(255,255,255,0.07)',
+              color: category === cat ? '#111' : 'rgba(255,255,255,0.65)',
+              border: category === cat ? 'none' : '1px solid rgba(255,255,255,0.1)',
+              '&:hover': { bgcolor: category === cat ? '#e8e8e8' : 'rgba(255,255,255,0.12)' },
+            }}
+          />
+        ))}
+      </Box>
 
-                {/* Tabs */}
-                <Tabs
-                  value={tab}
-                  onChange={(_, v) => setTab(v)}
-                  sx={{
-                    px: 1, minHeight: 38,
-                    borderBottom: '1px solid rgba(255,255,255,0.07)',
-                    bgcolor: 'rgba(255,255,255,0.02)',
-                    '& .MuiTab-root': { minHeight: 38, fontWeight: 600, fontSize: 13, textTransform: 'none', color: 'rgba(255,255,255,0.45)', px: 2, transition: 'color 0.2s' },
-                    '& .Mui-selected': { color: '#fff !important', fontWeight: 700 },
-                    '& .MuiTabs-indicator': { bgcolor: '#4C4EFF', height: 2.5, borderRadius: 1, transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)' },
-                  }}
-                >
-                  <Tab label={t('search.tab_home')} />
-                  <Tab label={t('search.tab_explore')} />
-                </Tabs>
+      {/* Tabs */}
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{
+          px: 1, minHeight: 38,
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          bgcolor: 'rgba(255,255,255,0.02)',
+          '& .MuiTab-root': { minHeight: 38, fontWeight: 600, fontSize: 13, textTransform: 'none', color: 'rgba(255,255,255,0.45)', px: 2, transition: 'color 0.2s' },
+          '& .Mui-selected': { color: '#fff !important', fontWeight: 700 },
+          '& .MuiTabs-indicator': { bgcolor: '#4C4EFF', height: 2.5, borderRadius: 1, transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)' },
+        }}
+      >
+        <Tab label={t('search.tab_home')} />
+        <Tab label={t('search.tab_explore')} />
+      </Tabs>
 
-                {/* Results */}
-                <Box
-                  ref={scrollRef}
-                  onScroll={handleScroll}
-                  sx={{
-                    minHeight: 200, maxHeight: '50vh', overflowY: 'auto',
-                    '&::-webkit-scrollbar': { width: 4 },
-                    '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2 },
-                  }}
-                >
-                  {isRefreshing ? (
-                    <ResultSkeleton />
-                  ) : allResults.length > 0 ? (
-                    <>
-                      {allResults.map((item, idx) => (
-                        <Box key={item?.attachment_id ?? item?._id ?? idx}>
-                          <ResultItem item={item} onClose={onClose} openRoom={openRoom} />
-                          {idx < allResults.length - 1 && (
-                            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2 }} />
-                          )}
-                        </Box>
-                      ))}
-                      {isFetching && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, py: 1.5 }}>
-                          <CircularProgress size={16} sx={{ color: '#4C4EFF' }} />
-                          <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)' }}>{t('search.loading_more')}</Typography>
-                        </Box>
-                      )}
-                      {!hasMore && (
-                        <Typography fontSize={11} align="center" sx={{ color: 'rgba(255,255,255,0.2)', py: 1.5 }}>
-                          {t('search.end_of_results')}
-                        </Typography>
-                      )}
-                    </>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 180, gap: 1 }}>
-                      <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Icon icon="eva:search-fill" width={22} color="rgba(255,255,255,0.25)" />
-                      </Box>
-                      <Typography fontSize={13} fontWeight={600} sx={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {query ? t('search.no_results') : t('search.start_typing')}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Paper>
-            </ClickAwayListener>
+      {/* Results */}
+      <Box
+        ref={scrollRef}
+        onScroll={handleScroll}
+        sx={{
+          minHeight: 200, maxHeight: '50vh', overflowY: 'auto',
+          '&::-webkit-scrollbar': { width: 4 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2 },
+        }}
+      >
+        {isRefreshing ? (
+          <ResultSkeleton />
+        ) : allResults.length > 0 ? (
+          <>
+            {allResults.map((item, idx) => (
+              <Box key={item?.attachment_id ?? item?._id ?? idx}>
+                <ResultItem item={item} onClose={onClose} openRoom={openRoom} />
+                {idx < allResults.length - 1 && (
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)', mx: 2 }} />
+                )}
+              </Box>
+            ))}
+            {isFetching && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, py: 1.5 }}>
+                <CircularProgress size={16} sx={{ color: '#4C4EFF' }} />
+                <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.3)' }}>{t('search.loading_more')}</Typography>
+              </Box>
+            )}
+            {!hasMore && (
+              <Typography fontSize={11} align="center" sx={{ color: 'rgba(255,255,255,0.2)', py: 1.5 }}>
+                {t('search.end_of_results')}
+              </Typography>
+            )}
+          </>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 180, gap: 1 }}>
+            <Box sx={{ width: 48, height: 48, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon icon="eva:search-fill" width={22} color="rgba(255,255,255,0.25)" />
+            </Box>
+            <Typography fontSize={13} fontWeight={600} sx={{ color: 'rgba(255,255,255,0.35)' }}>
+              {query ? t('search.no_results') : t('search.start_typing')}
+            </Typography>
           </Box>
-        </Fade>
-      )}
-    </Popper>
+        )}
+      </Box>
+    </Paper>
+  );
+
+  /* ── Desktop: Popper anchored to the search bar ── */
+  if (isMdUp) {
+    return (
+      <Popper
+        open={open}
+        anchorEl={anchorEl}
+        placement="bottom-start"
+        transition
+        modifiers={[
+          { name: 'offset', options: { offset: [0, 6] } },
+          { name: 'flip', enabled: false },
+        ]}
+        style={{ zIndex: 1300, width: anchorEl?.offsetWidth ?? 480 }}
+      >
+        {({ TransitionProps }) => (
+          <Fade {...TransitionProps} timeout={200}>
+            <Box>
+              <ClickAwayListener onClickAway={(e) => { if (anchorEl && anchorEl.contains(e.target)) return; onClose(); }}>
+                <Box>{panelContent}</Box>
+              </ClickAwayListener>
+            </Box>
+          </Fade>
+        )}
+      </Popper>
+    );
+  }
+
+  /* ── Mobile: full-width panel fixed below the header ── */
+  if (!open) return null;
+  return (
+    <Fade in={open} timeout={200}>
+      <Box
+        sx={{
+          position: 'fixed',
+          top: 64,
+          left: 0,
+          right: 0,
+          zIndex: 1300,
+          px: 1,
+        }}
+      >
+        <ClickAwayListener onClickAway={(e) => { if (anchorEl && anchorEl.contains(e.target)) return; onClose(); }}>
+          <Box>{panelContent}</Box>
+        </ClickAwayListener>
+      </Box>
+    </Fade>
   );
 }

@@ -76,7 +76,7 @@ const sortByLastMessage = (list) =>
     return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
   });
 
-export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect, onCreateRoom }) {
+export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect, onCreateRoom, mobileMode = false }) {
   const { t } = useTranslate('common');
   const currentUser = useSelector(selectUser);
   const currentUserId = String(currentUser?._id ?? currentUser?.id ?? currentUser?.basicInfo?._id ?? '');
@@ -447,7 +447,15 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
 
       {/* Drawer */}
       <Box
-        sx={{
+        sx={mobileMode ? {
+          width: '100%',
+          height: '100%',
+          bgcolor: '#18181B',
+          color: '#fff',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        } : {
           width: drawerWidth,
           minWidth: open ? 420 : 0,
           transition: 'width 0.3s cubic-bezier(.4,0,.2,1)',
@@ -465,7 +473,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
         }}
       >
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {open && (
+          {(open || mobileMode) && (
             <>
               {/* Fixed header */}
               <Box sx={{ p: 3, pt: 4, flexShrink: 0 }}>

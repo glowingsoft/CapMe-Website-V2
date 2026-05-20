@@ -10,7 +10,7 @@ import {
   ListItemIcon,
   IconButton,
   Dialog,
-  Drawer,
+  SwipeableDrawer,
 } from '@mui/material';
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
@@ -226,6 +226,7 @@ export default function StatsViewer({
   onNodeSelect,
   onCenterNode,
   pendingCenterRef,
+  container,
 }) {
   const contentProps = {
     statsViewType, mergedTopicsList, nodesByType, getConnectedNodes,
@@ -258,10 +259,14 @@ export default function StatsViewer({
   }
 
   return (
-    <Drawer
+    <SwipeableDrawer
       anchor="bottom"
       open={open}
       onClose={onClose}
+      onOpen={() => {}}
+      disableSwipeToOpen
+      swipeAreaWidth={30}
+      container={container}
       PaperProps={{
         sx: {
           bgcolor: '#fff',
@@ -273,7 +278,8 @@ export default function StatsViewer({
         },
       }}
     >
+      <Box sx={{ width: 40, height: 4, bgcolor: 'rgba(0,0,0,0.15)', borderRadius: 2, mx: 'auto', mt: 1.5, mb: 0.5, flexShrink: 0 }} />
       <StatsContent {...contentProps} />
-    </Drawer>
+    </SwipeableDrawer>
   );
 }

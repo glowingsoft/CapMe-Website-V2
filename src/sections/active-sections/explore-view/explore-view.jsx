@@ -4,6 +4,9 @@ import { cleanUrl, withDateSeparators } from 'src/utils/message-utils';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Drawer from '@mui/material/Drawer';
+import SwipeableDrawer from '@mui/material/SwipeableDrawer';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import Typography from '@mui/material/Typography';
 import { useSelector } from 'react-redux';
 import { Iconify } from 'src/components/iconify';
@@ -30,6 +33,8 @@ const countActiveFilters = (f) => Object.values(f).filter(Boolean).length;
 
 // â”€â”€ ExploreView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ExploreView() {
+    const theme = useTheme();
+    const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
     const currentUser = useSelector(selectUser);
     const currentUserId = String(currentUser?.id ?? currentUser?._id ?? currentUser?.basicInfo?._id ?? '');
     const currentUserImage = currentUser?.photoURL ?? currentUser?.image ?? currentUser?.basicInfo?.image ?? currentUser?.avatar ?? '';
@@ -343,6 +348,7 @@ export default function ExploreView() {
     return (
         <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
 
+            {/* Desktop fixed sidebar */}
             <ExploreLeftDrawer
                 activeRoomId={selectedRoom?._id ?? selectedRoom?.id}
                 onRoomSelect={handleRoomSelect}
@@ -351,7 +357,25 @@ export default function ExploreView() {
                 filters={filters}
             />
 
-            {/* â”€â”€ Main content â”€â”€ */}
+            {/* Mobile: rooms list fills the screen when no room is active */}
+            <Box sx={{
+                display: { xs: 'flex', md: 'none' },
+                flexGrow: 1,
+                flexDirection: 'column',
+                height: '100%',
+                overflow: 'hidden',
+            }}>
+                <ExploreLeftDrawer
+                    mobileMode
+                    activeRoomId={selectedRoom?._id ?? selectedRoom?.id}
+                    onRoomSelect={handleRoomSelect}
+                    onFilterOpen={openFilterDrawer}
+                    filterCount={filterCount}
+                    filters={filters}
+                />
+            </Box>
+
+            {/* Main content — desktop: normal flow; mobile: fixed overlay that slides in from right */}
             <Box
                 sx={{
                     flexGrow: 1,
@@ -363,9 +387,17 @@ export default function ExploreView() {
                     pt: { xs: 2, md: '17px' },
                     pr: { xs: 2, md: 4 },
                     boxSizing: 'border-box',
-                    transition: 'margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)',
+                    bgcolor: '#f4f5f9',
+                    transition: 'transform 0.28s cubic-bezier(.4,0,.2,1), margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)',
                     marginLeft: { md: `${leftDrawerWidth}px`, xs: 0 },
-                    position: 'relative',
+                    // Mobile: fixed full-screen overlay, slides in from right
+                    position: { xs: 'fixed', md: 'relative' },
+                    top: { xs: 105, md: 'auto' },
+                    right: { xs: 0, md: 'auto' },
+                    bottom: { xs: 0, md: 'auto' },
+                    left: { xs: 0, md: 'auto' },
+                    zIndex: { xs: 50, md: 'auto' },
+                    transform: { xs: selectedRoom ? 'translateX(0)' : 'translateX(100%)', md: 'none' },
                 }}
             >
                 {selectedRoom ? (
@@ -378,6 +410,7 @@ export default function ExploreView() {
                                 isPending={selectedRoom.isPending}
                                 onFollowToggle={handleFollowToggle}
                                 isLoading={isLoadingMessages}
+                                onBack={!isMdUp ? () => setSelectedRoom(null) : undefined}
                             />
 
                             {/* Messages */}
@@ -515,35 +548,64 @@ export default function ExploreView() {
                     locked={!canPost}
                 />
 
-                <Drawer
-                    anchor="right"
-                    open={filterDrawerOpen}
-                    onClose={closeFilterDrawer}
-                    hideBackdrop
-                    disableEnforceFocus
-                    disableAutoFocus
-                    disableScrollLock
-                    ModalProps={{ sx: { pointerEvents: 'none' } }}
-                    PaperProps={{
-                        sx: {
-                            width: 420,
-                            borderTopLeftRadius: 20,
-                            mt: '105px',
-                            height: 'calc(100vh - 105px)',
-                            bgcolor: '#fff',
-                            p: 0,
-                            pointerEvents: 'auto',
-                        },
-                    }}
-                >
-                    <DrawerHeader title={t('explore_filter.title')} onBack={closeFilterDrawer} showEdit={false} showShare={false} />
-                    <ExploreFilter
-                        filters={filters}
-                        onChange={handleFilterChange}
-                        onClearAll={handleClearAll}
-                        showHeader={false}
-                    />
-                </Drawer>
+                {isMdUp ? (
+                    <Drawer
+                        anchor="right"
+                        open={filterDrawerOpen}
+                        onClose={closeFilterDrawer}
+                        hideBackdrop
+                        disableEnforceFocus
+                        disableAutoFocus
+                        disableScrollLock
+                        ModalProps={{ sx: { pointerEvents: 'none' } }}
+                        PaperProps={{
+                            sx: {
+                                width: 420,
+                                borderTopLeftRadius: 20,
+                                mt: '105px',
+                                height: 'calc(100vh - 105px)',
+                                bgcolor: '#fff',
+                                p: 0,
+                                pointerEvents: 'auto',
+                            },
+                        }}
+                    >
+                        <DrawerHeader title={t('explore_filter.title')} onBack={closeFilterDrawer} showEdit={false} showShare={false} />
+                        <ExploreFilter
+                            filters={filters}
+                            onChange={handleFilterChange}
+                            onClearAll={handleClearAll}
+                            showHeader={false}
+                        />
+                    </Drawer>
+                ) : (
+                    <SwipeableDrawer
+                        anchor="bottom"
+                        open={filterDrawerOpen}
+                        onClose={closeFilterDrawer}
+                        onOpen={() => {}}
+                        disableSwipeToOpen
+                        swipeAreaWidth={30}
+                        PaperProps={{
+                            sx: {
+                                borderRadius: '20px 20px 0 0',
+                                height: '85vh',
+                                bgcolor: '#fff',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden',
+                            },
+                        }}
+                    >
+                        <Box sx={{ width: 40, height: 4, bgcolor: 'rgba(0,0,0,0.15)', borderRadius: 2, mx: 'auto', mt: 1.5, mb: 1.5, flexShrink: 0 }} />
+                        <ExploreFilter
+                            filters={filters}
+                            onChange={handleFilterChange}
+                            onClearAll={handleClearAll}
+                            showHeader={false}
+                        />
+                    </SwipeableDrawer>
+                )}
             </Box>
         </Box>
     );

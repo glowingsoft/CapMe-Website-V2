@@ -271,7 +271,7 @@ export default function ActivityFeedView() {
           >
             {/* Header */}
             <Box sx={{ maxWidth: CONTENT_MAX_WIDTH, width: '100%', mx: 'auto', mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', mb: 1.5, gap: { xs: 1.5, sm: 2 } }}>
                 <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, flexShrink: 0 }}>
                   <Box component="span" sx={{ color: '#4C4EFF' }}>{t('activity_feed.title').split(' ')[0]}</Box>
                   {` ${t('activity_feed.title').split(' ').slice(1).join(' ')}`}
@@ -289,7 +289,7 @@ export default function ActivityFeedView() {
                     border: '1.5px solid',
                     borderColor: searchInput ? '#4C4EFF' : 'rgba(0,0,0,0.12)',
                     borderRadius: 2,
-                    width: 260,
+                    width: { xs: '100%', sm: 260 },
                     flexShrink: 0,
                     transition: 'border-color 0.15s',
                   }}

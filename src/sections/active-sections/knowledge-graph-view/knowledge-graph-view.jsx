@@ -9,7 +9,7 @@ import {
   Stack,
   Divider,
   Tooltip,
-  Drawer,
+  SwipeableDrawer,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -867,12 +867,12 @@ function KnowledgeGraphView() {
             >
               {/* Legend bar */}
               <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                direction="row"
+                alignItems="center"
                 justifyContent="space-between"
                 sx={{ px: 2, py: 1, borderBottom: '1px solid rgba(0,0,0,0.07)', bgcolor: 'rgba(0,0,0,0.015)', flexShrink: 0 }}
               >
-                <Stack direction="row" spacing={1.75} alignItems="center" flexWrap="wrap" sx={{ gap: 0.75 }}>
+                <Stack direction="row" spacing={1.75} alignItems="center" flexWrap="wrap" sx={{ gap: 0.75, flex: 1, minWidth: 0 }}>
                   <Typography variant="caption" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: 0.6, fontSize: '0.65rem' }}>
                     {t('knowledge_graph.legend_label')}
                   </Typography>
@@ -909,8 +909,8 @@ function KnowledgeGraphView() {
                 sx={{
                   width: '100%',
                   flex: isFullscreen ? 1 : 'unset',
-                  height: isFullscreen ? undefined : { xs: '42vh', sm: '48vh', md: 'calc(100vh - 240px)' },
-                  minHeight: isFullscreen ? 0 : { xs: 300, sm: 400, md: 450 },
+                  height: isFullscreen ? undefined : { xs: 'calc(100vh - 290px)', sm: '48vh', md: 'calc(100vh - 240px)' },
+                  minHeight: isFullscreen ? 0 : { xs: 260, sm: 400, md: 450 },
                 }}
               >
                 {isLoading ? (
@@ -1282,10 +1282,14 @@ function KnowledgeGraphView() {
       </Box>
 
       {/* ── Node detail panel — mobile bottom drawer ── */}
-      <Drawer
+      <SwipeableDrawer
         anchor="bottom"
         open={!!selectedNode && !isMdUp}
         onClose={() => setSelectedNode(null)}
+        onOpen={() => {}}
+        disableSwipeToOpen
+        swipeAreaWidth={30}
+        container={isFullscreen ? fullscreenRef.current : undefined}
         PaperProps={{
           sx: {
             borderRadius: '20px 20px 0 0',
@@ -1309,7 +1313,7 @@ function KnowledgeGraphView() {
             onNodeSelect={setSelectedNode}
           />
         )}
-      </Drawer>
+      </SwipeableDrawer>
 
       <StatsViewer
         open={statsViewOpen}
@@ -1323,6 +1327,7 @@ function KnowledgeGraphView() {
         onNodeSelect={setSelectedNode}
         onCenterNode={centerOnNode}
         pendingCenterRef={pendingCenterRef}
+        container={isFullscreen ? fullscreenRef.current : undefined}
       />
     </Box>
   );

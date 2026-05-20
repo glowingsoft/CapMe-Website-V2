@@ -1,9 +1,9 @@
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
-import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
+import CommentDrawerShell from './comment-drawer-shell';
 import SelectFile from './select-file';
 import FileUploadProgress from './file-upload-progress';
 import AudioRecorder from './audio-recorder';
@@ -15,7 +15,6 @@ import { useSelector } from 'react-redux';
 import { selectUser } from 'src/store/slices/userSlice';
 import { Iconify } from 'src/components/iconify';
 import { toast } from 'src/components/snackbar';
-import DrawerHeader from './drawer-header';
 import ImagePreviewDialog from './image-preview-dialog';
 import AttachedFileChip from './attached-file-chip';
 import { useGetCommentsQuery, useLikeCommentMutation, useGetUrlMetaMutation } from 'src/store/Reducer/rooms-api';
@@ -427,30 +426,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
 
   return (
     <>
-      <Drawer
-        anchor="right"
-        open={open}
-        onClose={onClose}
-        hideBackdrop
-        disableEnforceFocus
-        disableAutoFocus
-        disableScrollLock
-        ModalProps={{ sx: { pointerEvents: 'none' } }}
-        PaperProps={{
-          sx: {
-            width: 420,
-            borderTopLeftRadius: 20,
-            mt: '105px',
-            height: 'calc(100vh - 105px)',
-            bgcolor: '#fff',
-            p: 0,
-            pointerEvents: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          },
-        }}
-      >
-      <DrawerHeader title={t('comment_drawer.title')} onBack={onClose} showEdit={false} showShare={false} />
+      <CommentDrawerShell open={open} onClose={onClose} title={t('comment_drawer.title')}>
 
       {selectedPost && (
         <>
@@ -756,7 +732,7 @@ export default function CommentDrawer({ open, onClose, selectedPost, commentsDat
           </Box>
         </>
       )}
-      </Drawer>
+      </CommentDrawerShell>
 
       <MessageDeleteModal
         open={!!deleteCommentId}

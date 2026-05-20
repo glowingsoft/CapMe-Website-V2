@@ -1,6 +1,8 @@
 ﻿import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { Iconify } from 'src/components/iconify';
 import { useLocation } from 'react-router-dom';
 import CommentDrawer from './components/comment-drawer';
@@ -42,6 +44,8 @@ const resolveAttachmentType = (raw) => {
 };
 const getEntityId = (item) => String(item?.id ?? item?._id ?? '');
 export default function HomeView() {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { t } = useTranslate('common');
   const location = useLocation();
   const currentUser = useSelector(selectUser);
@@ -72,6 +76,7 @@ export default function HomeView() {
   const [roomSearch, setRoomSearch] = React.useState('');
   const [hasMoreMessages, setHasMoreMessages] = React.useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
+  const [isRoomSwitchLoading, setIsRoomSwitchLoading] = React.useState(false);
 
   const handleRoomSelectRef = React.useRef(null);
   const activeRoomRef = React.useRef(null);
@@ -172,6 +177,7 @@ export default function HomeView() {
       isPrependingRef.current = false;
       isInitialLoadRef.current = true;
       setIsLoadingMessages(false);
+      setIsRoomSwitchLoading(false);
       setLocalPosts(normalized);
 
       // Sync follow/request/permission status from the messages API response
@@ -466,6 +472,7 @@ export default function HomeView() {
     setMessagesPage(1);
     setHasMoreMessages(false);
     setIsLoadingMessages(false);
+    setIsRoomSwitchLoading(false);
     setDrawerOpen(false);
     setRoomInfoOpen(false);
     setTargetMessageId(null);
@@ -525,6 +532,7 @@ export default function HomeView() {
     setMessagesPage(1);
     setHasMoreMessages(false);
     setIsLoadingMessages(true);
+    setIsRoomSwitchLoading(true);
     setRoomSearchRaw('');
     setRoomSearch('');
     prevScrollHeightRef.current = 0;
@@ -820,6 +828,7 @@ export default function HomeView() {
     // height: 105px is the dashboard header height (AppBar + offset)
     <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
 
+      {/* Desktop fixed sidebar */}
       {showLeftDrawer && (
         <LeftDrawer
           open={leftDrawerOpen}
@@ -830,6 +839,26 @@ export default function HomeView() {
         />
       )}
 
+      {/* Mobile: rooms list fills the screen when no room is active */}
+      {showLeftDrawer && (
+        <Box sx={{
+          display: { xs: 'flex', md: 'none' },
+          flexGrow: 1,
+          flexDirection: 'column',
+          height: '100%',
+          overflow: 'hidden',
+        }}>
+          <LeftDrawer
+            mobileMode
+            open={true}
+            activeRoomId={activeRoom?.id}
+            onRoomSelect={handleRoomSelect}
+            onCreateRoom={() => setCreateRoomOpen(true)}
+          />
+        </Box>
+      )}
+
+      {/* Main content — desktop: normal flow; mobile: fixed overlay that slides in from right */}
       <Box
         sx={{
           flexGrow: 1,
@@ -841,8 +870,17 @@ export default function HomeView() {
           pt: { xs: 2, md: '17px' },
           pr: { xs: 2, md: 4 },
           boxSizing: 'border-box',
-          transition: 'margin-left 0.3s cubic-bezier(.4,0,.2,1)',
+          bgcolor: '#f4f5f9',
+          transition: 'transform 0.28s cubic-bezier(.4,0,.2,1), margin-left 0.3s cubic-bezier(.4,0,.2,1)',
           marginLeft: { md: `${leftDrawerWidth}px`, xs: 0 },
+          // Mobile: fixed full-screen overlay, slides in from right
+          position: { xs: 'fixed', md: 'relative' },
+          top: { xs: 105, md: 'auto' },
+          right: { xs: 0, md: 'auto' },
+          bottom: { xs: 0, md: 'auto' },
+          left: { xs: 0, md: 'auto' },
+          zIndex: { xs: 50, md: 'auto' },
+          transform: { xs: activeRoom ? 'translateX(0)' : 'translateX(100%)', md: 'none' },
         }}
       >
         {/* Two-column row always rendered â€” sidebar stays at the same position in both states */}
@@ -869,7 +907,8 @@ export default function HomeView() {
                   messagesRoom={messagesQuery.data?.body?.room}
                   enrichedMembers={enrichedMembers}
                   isGarage={activeRoom?.isGarage}
-                  isLoading={isLoadingMessages}
+                  isLoading={isRoomSwitchLoading}
+                  onBack={!isMdUp ? clearActiveRoomState : undefined}
                   messages={localPosts}
                   onMessageSelect={handleMessageSelect}
                   isRoomAdmin={isRoomAdmin}

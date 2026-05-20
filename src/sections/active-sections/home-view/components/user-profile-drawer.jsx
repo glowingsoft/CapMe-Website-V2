@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Drawer from '@mui/material/Drawer';
+import ProfilePageShell from 'src/components/profile-page-shell';
 import InputBase from '@mui/material/InputBase';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
@@ -252,29 +252,7 @@ export default function UserProfileDrawer({ open, onClose, user, onFollowChange 
 
   return (
     <>
-      <Drawer
-        open={open}
-        onClose={onClose}
-        anchor="right"
-        hideBackdrop
-        disableEnforceFocus
-        disableAutoFocus
-        disableRestoreFocus
-        disableScrollLock
-        ModalProps={{ sx: { pointerEvents: 'none' } }}
-        PaperProps={{
-          sx: {
-            width: 420,
-            maxWidth: '100%',
-            borderTopLeftRadius: 20,
-            overflow: 'hidden',
-            bgcolor: '#fff',
-            mt: '105px',
-            height: 'calc(100vh - 105px)',
-            pointerEvents: 'auto',
-          },
-        }}
-      >
+      <ProfilePageShell open={open} onClose={onClose}>
         <DrawerHeader title={profileUser.name || 'Profile'} onBack={onClose} showEdit={false} showShare={false} />
 
         <Scrollbar>
@@ -579,7 +557,7 @@ export default function UserProfileDrawer({ open, onClose, user, onFollowChange 
             )}
           </Box>
         </Scrollbar>
-      </Drawer>
+      </ProfilePageShell>
     </>
   );
 }

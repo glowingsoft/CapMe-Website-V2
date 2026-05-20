@@ -37,7 +37,7 @@ function RoomRowSkeleton() {
     );
 }
 
-export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilterOpen, filterCount = 0, filters = {} }) {
+export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilterOpen, filterCount = 0, filters = {}, mobileMode = false }) {
     const [tab, setTab] = useState('all');
     const [rooms, setRooms] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -309,7 +309,15 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
 
             {/* Drawer */}
             <Box
-                sx={{
+                sx={mobileMode ? {
+                    width: '100%',
+                    height: '100%',
+                    bgcolor: '#18181B',
+                    color: '#fff',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                } : {
                     width: drawerWidth,
                     minWidth: 420,
                     bgcolor: '#18181B',
@@ -328,10 +336,40 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                 <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     {/* Fixed header */}
                     <Box sx={{ p: 3, pt: 4, flexShrink: 0 }}>
-                        <Typography sx={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2, mb: 0.5 }}>
-                            <Box component="span" sx={{ color: '#a5b4fc' }}>{t('explore_drawer.title')}</Box>
-                            {' Rooms'}
-                        </Typography>
+                        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                            <Typography sx={{ fontSize: 18, fontWeight: 800, lineHeight: 1.2 }}>
+                                <Box component="span" sx={{ color: '#a5b4fc' }}>{t('explore_drawer.title')}</Box>
+                                {' Rooms'}
+                            </Typography>
+                            {mobileMode && onFilterOpen && (
+                                <IconButton
+                                    onClick={onFilterOpen}
+                                    size="small"
+                                    aria-label={t('explore_drawer.open_filters')}
+                                    sx={{
+                                        bgcolor: filterCount > 0 ? '#4C4EFF' : 'rgba(255,255,255,0.08)',
+                                        color: '#fff',
+                                        borderRadius: 2,
+                                        position: 'relative',
+                                        '&:hover': { bgcolor: filterCount > 0 ? '#3739b7' : 'rgba(255,255,255,0.14)' },
+                                    }}
+                                >
+                                    <Iconify icon="solar:filter-bold" width={20} />
+                                    {filterCount > 0 && (
+                                        <Box sx={{
+                                            position: 'absolute', top: -5, right: -5,
+                                            minWidth: 17, height: 17, borderRadius: '50%',
+                                            bgcolor: '#FFD600', color: '#1a1a1a',
+                                            fontSize: 10, fontWeight: 800,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            px: 0.4, lineHeight: 1, border: '1.5px solid #4C4EFF',
+                                        }}>
+                                            {filterCount}
+                                        </Box>
+                                    )}
+                                </IconButton>
+                            )}
+                        </Stack>
                         <Typography variant="body2" color="#bdbdbd" sx={{ mb: 2 }}>
                             {t('explore_drawer.subtitle')}
                         </Typography>

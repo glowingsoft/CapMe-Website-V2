@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
-import Drawer from '@mui/material/Drawer';
+import ProfilePageShell from 'src/components/profile-page-shell';
 import IconButton from '@mui/material/IconButton';
 import Modal from '@mui/material/Modal';
 import Stack from '@mui/material/Stack';
@@ -329,30 +329,7 @@ export default function RoomMediaPanel({ open, onBack, roomId }) {
   ];
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onBack}
-      hideBackdrop
-      disableEnforceFocus
-      disableAutoFocus
-      disableScrollLock
-      ModalProps={{ sx: { pointerEvents: 'none' } }}
-      PaperProps={{
-        sx: {
-          width: 420,
-          maxWidth: '100%',
-          borderTopLeftRadius: 20,
-          overflow: 'hidden',
-          bgcolor: '#fff',
-          mt: '105px',
-          height: 'calc(100vh - 105px)',
-          pointerEvents: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-      }}
-    >
+    <ProfilePageShell open={open} onClose={onBack}>
       <DrawerHeader
         title="Downloaded Media"
         onBack={onBack}
@@ -406,6 +383,6 @@ export default function RoomMediaPanel({ open, onBack, roomId }) {
           </Scrollbar>
         )}
       </Box>
-    </Drawer>
+    </ProfilePageShell>
   );
 }

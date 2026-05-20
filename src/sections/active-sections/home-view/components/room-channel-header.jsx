@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import React from 'react';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
@@ -32,7 +34,9 @@ const getId = (value) => {
   return value;
 };
 
-function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, onRoomUnfollow, onDeleteRoom, onSearchChange, onFollowToggle, isFollowing, isPending, messages = [], onMessageSelect, isGarage = false, enrichedMembers = null, isRoomAdmin = false, isLoading = false }) {
+function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, onRoomUnfollow, onDeleteRoom, onSearchChange, onFollowToggle, isFollowing, isPending, messages = [], onMessageSelect, isGarage = false, enrichedMembers = null, isRoomAdmin = false, isLoading = false, onBack = null }) {
+  const theme = useTheme();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const { t } = useTranslate('common');
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [unfollowOpen, setUnfollowOpen] = useState(false);
@@ -302,8 +306,17 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           borderRadius: 2.5,
         }}
       >
-        {/* Left: avatar + room name */}
+        {/* Left: back button (mobile) + avatar + room name */}
         <Stack direction="row" spacing={1.5} alignItems="center">
+          {onBack && (
+            <IconButton
+              size="small"
+              onClick={onBack}
+              sx={{ color: '#fff', display: { xs: 'flex', md: 'none' }, mr: -0.5, flexShrink: 0 }}
+            >
+              <Iconify icon="mingcute:left-line" width={22} />
+            </IconButton>
+          )}
           {isLoading ? (
             <Skeleton variant="circular" width={32} height={32} sx={{ bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0 }} />
           ) : (
@@ -317,14 +330,20 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           {isLoading ? (
             <Skeleton variant="text" width={120} height={18} sx={{ bgcolor: 'rgba(255,255,255,0.12)' }} />
           ) : (
-            <Typography fontWeight={700} fontSize={15} color="#fff" lineHeight={1.2}>
+            <Typography
+              fontWeight={700}
+              fontSize={15}
+              color="#fff"
+              lineHeight={1.2}
+              sx={{ maxWidth: '15ch', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
               {room?.name}
             </Typography>
           )}
         </Stack>
 
         {/* Right: actions */}
-        <Stack direction="row" spacing={0.5} alignItems="center">
+        <Stack direction="row" spacing={0.5} alignItems="center" sx={showSearch && !isMdUp ? { flex: 1, minWidth: 0, ml: 1 } : {}}>
           {isLoading ? (
             <>
               <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
@@ -333,7 +352,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
               <Skeleton variant="rounded" width={28} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 1 }} />
             </>
           ) : null}
-          {!isLoading && !isGarage && (
+          {!isLoading && !isGarage && (isMdUp || !showSearch) && (
             <>
               {isFollowing !== false && (
                 <IconButton size="small" sx={{ color: '#4C4EFF', '&:hover': { color: '#fff' } }} onClick={() => setShowHashtagList(true)}>
@@ -361,7 +380,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
           )}
 
           {/* Search */}
-          {!isLoading && <Stack direction="row" spacing={0.5} alignItems="center">
+          {!isLoading && <Stack direction="row" spacing={0.5} alignItems="center" sx={showSearch && !isMdUp ? { flex: 1, minWidth: 0 } : {}}>
             {showSearch ? (
               <Box
                 sx={{
@@ -371,7 +390,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
                   borderRadius: 2,
                   px: 1.5,
                   py: 0.5,
-                  width: 220,
+                  width: isMdUp ? 220 : '100%',
                 }}
               >
                 <Iconify icon="eva:search-fill" width={18} style={{ color: '#9CA3AF' }} />

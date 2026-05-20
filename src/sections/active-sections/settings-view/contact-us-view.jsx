@@ -133,7 +133,7 @@ export default function ContactUsView() {
           </Box>
         </Stack>
 
-        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'flex-start' } }}>
 
           {/* Form card */}
           <Box sx={{ flex: 1, minWidth: 0, ...CARD_SX, overflow: 'hidden' }}>
@@ -208,7 +208,7 @@ export default function ContactUsView() {
 
             <Divider />
 
-            <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ px: 3, py: 2, display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column-reverse', sm: 'row' }, justifyContent: 'space-between', gap: { xs: 1.5, sm: 0 } }}>
               {status === 'success' && (
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Iconify icon="solar:check-circle-bold" width={20} sx={{ color: '#22c55e' }} />
@@ -239,7 +239,8 @@ export default function ContactUsView() {
                   textTransform: 'none',
                   bgcolor: '#4C4EFF',
                   color: '#fff',
-                  minWidth: 140,
+                  minWidth: { xs: 'unset', sm: 140 },
+                  width: { xs: '100%', sm: 'auto' },
                   '&:hover': { bgcolor: '#3739b7' },
                   '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.3)' },
                 }}
