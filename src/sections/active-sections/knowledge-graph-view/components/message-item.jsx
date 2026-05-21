@@ -59,30 +59,31 @@ const MessageItem = React.memo(({ msg, topics, onNodeClick }) => {
           <Iconify icon="solar:chat-round-dots-bold" width={14} sx={{ color: '#4C4EFF' }} />
         </Box>
 
-        <Tooltip
-          title={fullMessageContent}
-          arrow
-          placement="top"
-          enterDelay={300}
-          disableHoverListener={!fullMessageContent}
-          slotProps={{
-            tooltip: { sx: { maxWidth: 480, fontSize: '0.8rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' } },
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              cursor: 'help',
+        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+          <Tooltip
+            title={fullMessageContent}
+            arrow
+            placement="top"
+            enterDelay={300}
+            disableHoverListener={!fullMessageContent}
+            slotProps={{
+              tooltip: { sx: { maxWidth: 480, fontSize: '0.8rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' } },
             }}
           >
-            {msg.name}
-          </Typography>
-        </Tooltip>
+            <Typography
+              sx={{
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                cursor: 'help',
+              }}
+            >
+              {msg.name}
+            </Typography>
+          </Tooltip>
+        </Box>
 
         {imp && (
           <Chip

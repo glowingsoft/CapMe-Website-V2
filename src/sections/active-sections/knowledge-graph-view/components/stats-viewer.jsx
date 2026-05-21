@@ -120,7 +120,8 @@ function StatsContent({
                         </Box>
                       </ListItemIcon>
                       <ListItemText
-                        primary={<Typography sx={{ fontWeight: 700, fontSize: '0.875rem', mb: 0.4 }}>{item.displayName}</Typography>}
+                        sx={{ overflow: 'hidden', minWidth: 0 }}
+                        primary={<Typography sx={{ fontWeight: 700, fontSize: '0.875rem', mb: 0.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.displayName}</Typography>}
                         secondary={
                           <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.4 }}>
                             <Chip
@@ -181,7 +182,8 @@ function StatsContent({
                       </Box>
                     </ListItemIcon>
                     <ListItemText
-                      primary={<Typography sx={{ fontWeight: 700, fontSize: '0.875rem', mb: 0.4 }}>{node.name}</Typography>}
+                      sx={{ overflow: 'hidden', minWidth: 0 }}
+                      primary={<Typography sx={{ fontWeight: 700, fontSize: '0.875rem', mb: 0.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.name}</Typography>}
                       secondary={
                         <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.4 }}>
                           {node.data?.platform && (
