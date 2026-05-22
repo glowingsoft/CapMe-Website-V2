@@ -45,7 +45,7 @@ const resolveAttachmentType = (raw) => {
 const getEntityId = (item) => String(item?.id ?? item?._id ?? '');
 export default function HomeView() {
   const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const isMdUp = useMediaQuery(theme.breakpoints.up('xl'));
   const { t } = useTranslate('common');
   const location = useLocation();
   const currentUser = useSelector(selectUser);

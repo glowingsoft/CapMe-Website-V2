@@ -12,6 +12,10 @@ const userSlice = createSlice({
       state.user = user;
     },
 
+    setToken: (state, action) => {
+      state.device_id = action.payload;
+    },
+
     logout: (state) => {
       console.log('userSlice - Logging out');
       state.user = null;
@@ -20,12 +24,12 @@ const userSlice = createSlice({
 });
 
 // Exporting actions
-export const { setUser, logout } = userSlice.actions;
+export const { setUser, setToken, logout } = userSlice.actions;
 export const selectUser = (state) => state.user.user;
+export const selectToken = (state) => state.user.device_id;
 
 // Exporting the reducer
 export default userSlice.reducer;
-
 
 // // redux/userSlice.js
 // import { createSlice } from '@reduxjs/toolkit';
