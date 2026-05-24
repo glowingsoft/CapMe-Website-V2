@@ -56,6 +56,14 @@ export const StyledToaster = styled(Toaster)(({ theme }) => {
 
   return {
     width: 300,
+    '@media (max-width: 600px)': {
+      left: '50% !important',
+      right: 'auto !important',
+      top: '16px !important',
+      transform: 'translateX(-50%) !important',
+      width: 'calc(100vw - 32px) !important',
+      maxWidth: '360px !important',
+    },
     [`& .${toasterClasses.toast}`]: {
       gap: 12,
       width: '100%',

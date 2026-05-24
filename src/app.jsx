@@ -55,8 +55,6 @@ export default function App() {
         vapidKey: REACT_APP_VAPID_KEY,
       });
 
-      console.log("token", token);
-
       dispatch(setToken(token));
 
     } else if (permission === "denied") {

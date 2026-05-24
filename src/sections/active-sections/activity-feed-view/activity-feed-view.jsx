@@ -26,10 +26,10 @@ import { activityCommentsData } from './mock';
 // ----------------------------------------------------------------------
 
 const TABS = [
-  { value: 'all',       labelKey: 'activity_feed.tab_all' },
-  { value: 'myrooms',   labelKey: 'activity_feed.tab_my_rooms' },
+  { value: 'all', labelKey: 'activity_feed.tab_all' },
+  { value: 'myrooms', labelKey: 'activity_feed.tab_my_rooms' },
   { value: 'following', labelKey: 'activity_feed.tab_following' },
-  { value: 'me',        labelKey: 'activity_feed.tab_me' },
+  { value: 'me', labelKey: 'activity_feed.tab_me' },
 ];
 
 const CONTENT_MAX_WIDTH = 920;
@@ -85,6 +85,7 @@ export default function ActivityFeedView() {
   const [hasMore, setHasMore] = React.useState(false);
   const shouldReplaceRef = React.useRef(true);
   const scrollRef = React.useRef(null);
+  const isFetchingNextRef = React.useRef(false);
 
   const [commentDrawerOpen, setCommentDrawerOpen] = React.useState(false);
   const [selectedPost, setSelectedPost] = React.useState(null);
@@ -105,6 +106,7 @@ export default function ActivityFeedView() {
   // Reset on tab / search change
   React.useEffect(() => {
     shouldReplaceRef.current = true;
+    isFetchingNextRef.current = false;
     setAllPosts([]);
     setPage(1);
     setHasMore(false);
@@ -120,6 +122,7 @@ export default function ActivityFeedView() {
   // Accumulate results
   React.useEffect(() => {
     if (isFetching || !data) return;
+    isFetchingNextRef.current = false;
     const incoming = data.data ?? [];
     if (shouldReplaceRef.current) {
       setAllPosts(incoming);
@@ -137,8 +140,9 @@ export default function ActivityFeedView() {
   // Infinite scroll
   const handleScroll = React.useCallback(() => {
     const el = scrollRef.current;
-    if (!el || isFetching || !hasMore) return;
+    if (!el || isFetching || !hasMore || isFetchingNextRef.current) return;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 120) {
+      isFetchingNextRef.current = true;
       shouldReplaceRef.current = false;
       setPage((p) => p + 1);
     }

@@ -559,7 +559,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                   },
                 }}
               >
-                {isInitialLoad ? (
+                {/* {isInitialLoad ? (
                   <LeftDrawerSkeleton />
                 ) : (
                   <>
@@ -679,7 +679,123 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
                     )}
                     {hasMore[tab] && <div ref={sentinelRef} style={{ height: 1 }} />}
                   </>
+                )} */}
+
+                {roomSections.map((section) => (
+                  <React.Fragment key={section.label}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      sx={{ mb: 1, mt: 2 }}
+                    >
+                      <Typography fontWeight={600} fontSize={15}>{section.label}</Typography>
+                    </Stack>
+
+                    <Stack spacing={0.3} sx={{ mb: 2 }}>
+                      {section.data.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 3, color: '#bdbdbd', fontSize: 14 }}>
+                          {t('left_drawer.no_rooms')}
+                        </Box>
+                      ) : (
+                        section.data.map((room) => {
+                          const roomId = room.id ?? room._id;
+                          const isFavourite = section.isFav || room.favorite;
+
+                          return (
+                            <Stack
+                              key={roomId}
+                              direction="row"
+                              alignItems="center"
+                              spacing={1.5}
+                              sx={{
+                                p: 1.2,
+                                cursor: 'pointer',
+                                borderRadius: 3,
+                                bgcolor: activeRoomId === roomId ? 'rgba(255,255,255,0.06)' : 'transparent',
+                                border: activeRoomId === roomId ? '2px solid #4C4EFF' : '2px solid transparent',
+                                transition: 'all 0.18s',
+                                '&:hover': {
+                                  bgcolor: 'rgba(255,255,255,0.06)',
+                                },
+                              }}
+                              onClick={() => handleRoomClick(room)}
+                            >
+                              <RoomAvatar image={room.icon} name={room.name} size={38} />
+                              <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                <Typography
+                                  fontWeight={600}
+                                  fontSize={15}
+                                  color={activeRoomId === roomId ? '#fff' : 'inherit'}
+                                  noWrap
+                                >
+                                  {room.name}
+                                </Typography>
+                                {room.desc ? (
+                                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    {room.descIsFile && room.descIcon && (
+                                      <Iconify icon={room.descIcon} width={12} style={{ color: '#a5b4fc', flexShrink: 0 }} />
+                                    )}
+                                    <Typography
+                                      fontSize={12}
+                                      color={activeRoomId === roomId ? '#e0e0e0' : '#bdbdbd'}
+                                      noWrap
+                                    >
+                                      {room.desc}
+                                    </Typography>
+                                  </Stack>
+                                ) : (
+                                  <Typography fontSize={12} color="#616161" noWrap>{t('left_drawer.no_messages')}</Typography>
+                                )}
+                              </Box>
+                              {room.unread > 0 && activeRoomId !== roomId && (
+                                <Box
+                                  sx={{
+                                    minWidth: 20,
+                                    height: 20,
+                                    bgcolor: '#4C4EFF',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    px: 0.7,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  <Typography fontSize={10} fontWeight={700} color="#fff" lineHeight={1}>
+                                    {room.unread > 99 ? '99+' : room.unread}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {isFavourite ? (
+                                <IconButton
+                                  onClick={(e) => { e.stopPropagation(); handleToggleFavourite(room, true); }}
+                                  sx={{ p: 0.5 }}
+                                >
+                                  <Iconify icon="meteocons:star-fill" width={28} style={{ color: '#e53935' }} />
+                                </IconButton>
+                              ) : (
+                                <IconButton
+                                  onClick={(e) => { e.stopPropagation(); handleToggleFavourite(room, false); }}
+                                  sx={{ p: 0.5 }}
+                                >
+                                  <Iconify icon="meteocons:star" width={28} style={{ color: '#bdbdbd' }} />
+                                </IconButton>
+                              )}
+                            </Stack>
+                          );
+                        })
+                      )}
+                    </Stack>
+                  </React.Fragment>
+                ))}
+
+                {isFetching[tab] && pages[tab] > 1 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                    <CircularProgress size={20} sx={{ color: '#a5b4fc' }} />
+                  </Box>
                 )}
+                {hasMore[tab] && <div ref={sentinelRef} style={{ height: 1 }} />}
               </Box>
             </>
           )}

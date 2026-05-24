@@ -1253,5 +1253,3 @@ export default function HomeView() {
     </Box >
   );
 }
-
-
