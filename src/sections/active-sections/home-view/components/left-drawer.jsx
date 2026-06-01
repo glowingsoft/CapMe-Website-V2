@@ -438,7 +438,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
           borderRadius: '50%',
           transition: 'left 0.3s cubic-bezier(.4,0,.2,1)',
           '&:hover': { bgcolor: '#3739b7' },
-          display: { xs: 'none', md: 'flex' },
+          display: { xs: 'none', lg: 'flex' },
         }}
       >
 
@@ -469,7 +469,7 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
           boxShadow: open ? '2px 0 16px 0 rgba(0,0,0,0.10)' : 'none',
           borderTopRightRadius: 32,
           overflow: 'hidden',
-          display: { xs: 'none', md: 'block' },
+          display: { xs: 'none', lg: 'block' },
         }}
       >
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

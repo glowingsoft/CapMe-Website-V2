@@ -34,7 +34,7 @@ const countActiveFilters = (f) => Object.values(f).filter(Boolean).length;
 // â”€â”€ ExploreView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ExploreView() {
     const theme = useTheme();
-    const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+    const isMdUp = useMediaQuery(theme.breakpoints.up('xl'));
     const currentUser = useSelector(selectUser);
     const currentUserId = String(currentUser?.id ?? currentUser?._id ?? currentUser?.basicInfo?._id ?? '');
     const currentUserImage = currentUser?.photoURL ?? currentUser?.image ?? currentUser?.basicInfo?.image ?? currentUser?.avatar ?? '';
@@ -359,7 +359,7 @@ export default function ExploreView() {
 
             {/* Mobile: rooms list fills the screen when no room is active */}
             <Box sx={{
-                display: { xs: 'flex', md: 'none' },
+                display: { xs: 'flex', lg: 'none' },
                 flexGrow: 1,
                 flexDirection: 'column',
                 height: '100%',
@@ -382,26 +382,26 @@ export default function ExploreView() {
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden',
-                    pl: { xs: 2, md: 4 },
-                    pb: { xs: 2, md: 4 },
-                    pt: { xs: 2, md: '17px' },
-                    pr: { xs: 2, md: 4 },
+                    pl: { xs: 2, lg: 4 },
+                    pb: { xs: 2, lg: 4 },
+                    pt: { xs: 2, lg: '17px' },
+                    pr: { xs: 2, lg: 4 },
                     boxSizing: 'border-box',
                     bgcolor: '#f4f5f9',
                     transition: 'transform 0.28s cubic-bezier(.4,0,.2,1), margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)',
-                    marginLeft: { md: `${leftDrawerWidth}px`, xs: 0 },
+                    marginLeft: { lg: `${leftDrawerWidth}px`, xs: 0 },
                     // Mobile: fixed full-screen overlay, slides in from right
-                    position: { xs: 'fixed', md: 'relative' },
-                    top: { xs: 105, md: 'auto' },
-                    right: { xs: 0, md: 'auto' },
-                    bottom: { xs: 0, md: 'auto' },
-                    left: { xs: 0, md: 'auto' },
-                    zIndex: { xs: 50, md: 'auto' },
-                    transform: { xs: selectedRoom ? 'translateX(0)' : 'translateX(100%)', md: 'none' },
+                    position: { xs: 'fixed', lg: 'relative' },
+                    top: { xs: 105, lg: 'auto' },
+                    right: { xs: 0, lg: 'auto' },
+                    bottom: { xs: 0, lg: 'auto' },
+                    left: { xs: 0, lg: 'auto' },
+                    zIndex: { xs: 50, lg: 'auto' },
+                    transform: { xs: selectedRoom ? 'translateX(0)' : 'translateX(100%)', lg: 'none' },
                 }}
             >
                 {selectedRoom ? (
-                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxWidth: { md: 950 }, ml: { md: 5 }, mr: { md: contentRightOffset ? `${contentRightOffset}px` : 0 }, transition: 'margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
+                    <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxWidth: { lg: 950 }, ml: { lg: 5 }, mr: { lg: contentRightOffset ? `${contentRightOffset}px` : 0 }, transition: 'margin-left 0.3s cubic-bezier(.4,0,.2,1), margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
                         <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0, flex: 1 }}>
                             {/* Header */}
                             <ExploreRoomHeader
@@ -528,7 +528,7 @@ export default function ExploreView() {
                         })()}
                     </Box>
                 ) : (
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, mr: contentRightOffset ? { md: `${contentRightOffset}px` } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, mr: contentRightOffset ? { lg: `${contentRightOffset}px` } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
                         <NoDataIllustration sx={{ mb: 1 }} />
                         <Typography sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.2 }}>
                             <Box component="span" sx={{ color: '#4C4EFF' }}>Explore</Box>
