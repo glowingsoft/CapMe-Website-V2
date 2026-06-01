@@ -1,28 +1,5 @@
-// Scripts for firebase and firebase messaging
-// importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js');
-// importScripts('https://www.gstatic.com/firebasejs/8.10.0/firebase-messaging.js');
-
-importScripts('https://gstatic.com');
-importScripts('https://gstatic.com');
-
-// Initialize the Firebase app in the service worker
-// "Default" Firebase configuration (prevents errors)
-const defaultConfig = {
-  apiKey: true,
-  projectId: true,
-  messagingSenderId: true,
-  appId: true,
-};
-
-// const firebaseConfig = {
-//   apiKey: 'AIzaSyC2YbVXDesS4TtiaGMH_ZyiKJm1od0X354',
-//   authDomain: 'palato-a508d.firebaseapp.com',
-//   projectId: 'palato-a508d',
-//   storageBucket: 'palato-a508d.firebasestorage.app',
-//   messagingSenderId: '748562398718',
-//   appId: '1:748562398718:web:a2c111d4cb10b5f5d914af',
-//   measurementId: 'G-N1K5VKCMNC',
-// };
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBDLk3YCcKu30thVdai19TpEcpxFp5JDhU',
@@ -36,15 +13,14 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-// Retrieve firebase messaging
 const messaging = firebase.messaging();
-messaging.onBackgroundMessage((payload) => {
-  console.log('Bg Paylod', payload);
 
-  const notificationTitle = payload.notification.title;
+messaging.onBackgroundMessage((payload) => {
+  const notificationTitle = payload.notification?.title ?? 'Capme';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.image,
+    body: payload.notification?.body ?? '',
+    icon: payload.notification?.image ?? '/logo.png',
+    data: payload.data ?? {},
   };
   self.registration.showNotification(notificationTitle, notificationOptions);
 });

@@ -45,6 +45,7 @@ export const API_ROUTES = {
     ROOM_REMOVE_MEMBER: '/room/removemember',
     ROOM_DELETE: '/room/delete',
     ROOM_DOWNLOADED_FILES: '/room/retrivedownloadedfiles',
+    ROOM_DOWNLOADED_MEDIA: '/room/downloadedmedia',
     ROOMS_BY_ID: (id) => `/rooms/${id}`,
     ROOMS_FOLLOW: (id) => `/rooms/${id}/follow`,
     ROOMS_UNFOLLOW: (id) => `/rooms/${id}/follow`,

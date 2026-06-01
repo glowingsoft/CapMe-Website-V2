@@ -54,6 +54,7 @@ export default function App() {
       const token = await getToken(messaging, {
         vapidKey: REACT_APP_VAPID_KEY,
       });
+      console.log("token", token);
 
       dispatch(setToken(token));
 

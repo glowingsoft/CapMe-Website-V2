@@ -12,7 +12,8 @@ import Typography from '@mui/material/Typography';
 
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
-import { useGetRoomDownloadedFilesQuery } from 'src/store/Reducer/rooms-api';
+import { fDate } from 'src/utils/format-time';
+import { useGetRoomDownloadedMediaQuery } from 'src/store/Reducer/rooms-api';
 import DrawerHeader from './drawer-header';
 import { AudioPlayer } from './file-message';
 import ImagePreviewDialog from './image-preview-dialog';
@@ -31,18 +32,26 @@ const getFileTypeLabel = (name = '', type = '') => {
   return 'FILE';
 };
 
-const FILE_COLOR = {
-  'application/pdf': '#FF5252',
-  'application/docx': '#2196F3',
-  'application/xlsx': '#4CAF50',
-  'application/pptx': '#FF9800',
+const getFileStyle = (name = '', type = '') => {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (type === 'application/pdf' || ext === 'pdf')
+    return { icon: 'solar:file-text-bold', color: '#e53935' };
+  if (['doc', 'docx'].includes(ext))
+    return { icon: 'solar:file-text-bold', color: '#1565c0' };
+  if (['xls', 'xlsx', 'csv'].includes(ext))
+    return { icon: 'solar:file-bold', color: '#2e7d32' };
+  if (['ppt', 'pptx'].includes(ext))
+    return { icon: 'solar:file-bold', color: '#e65100' };
+  if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext))
+    return { icon: 'solar:archive-bold', color: '#f57c00' };
+  return { icon: 'solar:file-bold', color: '#9e9e9e' };
 };
 
 const TABS = [
-  { label: 'Images', icon: 'solar:gallery-bold' },
-  { label: 'Videos', icon: 'solar:videocamera-bold' },
-  { label: 'Audio', icon: 'solar:music-note-bold' },
-  { label: 'Files', icon: 'solar:folder-bold' },
+  { label: 'Images', icon: 'solar:gallery-bold', type: 'image' },
+  { label: 'Videos', icon: 'solar:videocamera-bold', type: 'video' },
+  { label: 'Audio', icon: 'solar:music-note-bold', type: 'audio' },
+  { label: 'Files', icon: 'solar:folder-bold', type: 'file' },
 ];
 
 // ── Lightbox / Video modal ───────────────────────────────────────────────────
@@ -110,11 +119,45 @@ function VideoModal({ video, onClose }) {
 }
 
 // ── Tab content ───────────────────────────────────────────────────────────────
+const EMPTY_STATE_CONFIG = {
+  images: { icon: 'solar:gallery-bold', label: 'No images yet' },
+  videos: { icon: 'solar:videocamera-bold', label: 'No videos yet' },
+  audio: { icon: 'solar:music-note-bold', label: 'No audio yet' },
+  files: { icon: 'solar:folder-bold', label: 'No files yet' },
+};
+
 function EmptyState({ label }) {
+  const config = EMPTY_STATE_CONFIG[label] ?? { icon: 'solar:inbox-bold', label: `No ${label} yet` };
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
-      <Iconify icon="solar:inbox-bold" width={48} sx={{ mb: 1.5, color: 'text.disabled' }} />
-      <Typography fontSize={14} color="text.secondary">No {label} yet</Typography>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 10,
+        gap: 1.5,
+      }}
+    >
+      <Box
+        sx={{
+          width: 72,
+          height: 72,
+          borderRadius: 3,
+          bgcolor: 'rgba(76,78,255,0.08)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Iconify icon={config.icon} width={36} sx={{ color: '#4C4EFF', opacity: 0.5 }} />
+      </Box>
+      <Typography fontSize={14} fontWeight={600} color="text.secondary">
+        {config.label}
+      </Typography>
+      <Typography fontSize={12} color="text.disabled">
+        Media shared in this room will appear here
+      </Typography>
     </Box>
   );
 }
@@ -164,12 +207,24 @@ function VideosGrid({ items }) {
                 position: 'relative',
                 aspectRatio: '16/9',
                 borderRadius: 2,
-                bgcolor: item.color,
+                bgcolor: '#111',
                 cursor: 'pointer',
                 overflow: 'hidden',
                 '&:hover .play-circle': { transform: 'scale(1.12)' },
               }}
             >
+              {item.url && (
+                <Box
+                  component="video"
+                  src={item.url}
+                  muted
+                  preload="metadata"
+                  playsInline
+                  onLoadedMetadata={(e) => { e.target.currentTime = 0.5; }}
+                  sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              )}
+
               <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Box
                   className="play-circle"
@@ -187,30 +242,13 @@ function VideosGrid({ items }) {
                   <Iconify icon="solar:play-bold" width={16} sx={{ color: '#4C4EFF', ml: '2px' }} />
                 </Box>
               </Box>
-
-              <Typography
-                fontSize={10}
-                fontWeight={700}
-                sx={{
-                  position: 'absolute',
-                  bottom: 6,
-                  right: 7,
-                  color: '#fff',
-                  bgcolor: 'rgba(0,0,0,0.55)',
-                  px: 0.7,
-                  borderRadius: 1,
-                  lineHeight: 1.7,
-                }}
-              >
-                {item.duration}
-              </Typography>
             </Box>
 
             <Typography fontSize={12} fontWeight={600} noWrap sx={{ mt: 0.5, px: 0.5, color: 'text.secondary' }}>
               {item.name}
             </Typography>
             <Typography fontSize={10} color="text.disabled" noWrap sx={{ px: 0.5 }}>
-              {[formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+              {[formatBytes(item.size), fDate(item.downloadedAt)].filter(Boolean).join(' · ')}
             </Typography>
           </Box>
         ))}
@@ -247,7 +285,7 @@ function AudioList({ items }) {
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography fontSize={13} fontWeight={600} noWrap>{item.name}</Typography>
               <Typography fontSize={11} color="text.secondary">
-                {[item.duration, formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+                {[item.duration, formatBytes(item.size), fDate(item.downloadedAt)].filter(Boolean).join(' · ')}
               </Typography>
             </Box>
           </Stack>
@@ -281,25 +319,30 @@ function FilesList({ items }) {
             '&:hover': { bgcolor: '#f5f6ff' },
           }}
         >
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              bgcolor: FILE_COLOR[item.type] || '#4C4EFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <Iconify icon="solar:file-bold" width={22} style={{ color: '#fff' }} />
-          </Box>
+          {(() => {
+            const { icon, color } = getFileStyle(item.name, item.type);
+            return (
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  bgcolor: color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Iconify icon={icon} width={22} style={{ color: '#fff' }} />
+              </Box>
+            );
+          })()}
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography fontSize={13} fontWeight={600} noWrap>{item.name}</Typography>
             <Typography fontSize={11} color="text.secondary">
-              {[getFileTypeLabel(item.name, item.type), formatBytes(item.size), item.downloadedAt].filter(Boolean).join(' · ')}
+              {[getFileTypeLabel(item.name, item.type), formatBytes(item.size), fDate(item.downloadedAt)].filter(Boolean).join(' · ')}
             </Typography>
           </Box>
 
@@ -316,17 +359,14 @@ function FilesList({ items }) {
 export default function RoomMediaPanel({ open, onBack, roomId }) {
   const [activeTab, setActiveTab] = useState(0);
 
-  const { data: files = [], isFetching } = useGetRoomDownloadedFilesQuery(roomId, {
-    skip: !roomId || !open,
-    refetchOnMountOrArgChange: true,
-  });
+  const activeType = TABS[activeTab].type;
 
-  const tabItems = [
-    files.filter((f) => f.type.startsWith('image/')),
-    files.filter((f) => f.type.startsWith('video/')),
-    files.filter((f) => f.type.startsWith('audio/')),
-    files.filter((f) => !f.type.startsWith('image/') && !f.type.startsWith('video/') && !f.type.startsWith('audio/')),
-  ];
+  const { data, isFetching } = useGetRoomDownloadedMediaQuery(
+    { roomId, type: activeType, page: 1, limit: 30 },
+    { skip: !roomId || !open, refetchOnMountOrArgChange: true }
+  );
+
+  const items = data?.items ?? [];
 
   return (
     <ProfilePageShell open={open} onClose={onBack}>
@@ -376,10 +416,10 @@ export default function RoomMediaPanel({ open, onBack, roomId }) {
           </Box>
         ) : (
           <Scrollbar sx={{ height: '100%' }}>
-            {activeTab === 0 && <ImagesGrid items={tabItems[0]} />}
-            {activeTab === 1 && <VideosGrid items={tabItems[1]} />}
-            {activeTab === 2 && <AudioList items={tabItems[2]} />}
-            {activeTab === 3 && <FilesList items={tabItems[3]} />}
+            {activeTab === 0 && <ImagesGrid items={items} />}
+            {activeTab === 1 && <VideosGrid items={items} />}
+            {activeTab === 2 && <AudioList items={items} />}
+            {activeTab === 3 && <FilesList items={items} />}
           </Scrollbar>
         )}
       </Box>

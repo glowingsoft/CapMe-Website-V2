@@ -364,7 +364,7 @@ export const roomsApi = createApi({
       invalidatesTags: ['room'],
     }),
 
-    // GET /room/retrivedownloadedfiles?roomId=:id
+    // GET /room/retrivedownloadedfiles?roomId=:id (legacy, kept for reference)
     getRoomDownloadedFiles: builder.query({
       query: (roomId) => ({
         url: API_ROUTES.ROOM_DOWNLOADED_FILES,
@@ -382,6 +382,31 @@ export const roomsApi = createApi({
           size: f.fileSize ?? f.size ?? 0,
           downloadedAt: f.createdAt ?? f.downloadedAt ?? '',
         }));
+      },
+    }),
+
+    // GET /room/downloadedmedia?roomId=:id&type=image|video|file&page=1&limit=10
+    getRoomDownloadedMedia: builder.query({
+      query: ({ roomId, type, page = 1, limit = 10 }) => ({
+        url: API_ROUTES.ROOM_DOWNLOADED_MEDIA,
+        method: 'GET',
+        params: { roomId, type, page, limit },
+      }),
+      transformResponse: (res) => {
+        const raw = res?.body?.media ?? res?.body?.files ?? res?.body?.data ?? res?.files ?? res?.data ?? [];
+        const files = Array.isArray(raw) ? raw : [];
+        return {
+          items: files.map((f) => ({
+            id: f._id ?? f.id,
+            url: f.fileUrl ?? f.url ?? '',
+            name: f.fileName ?? f.originalFileName ?? f.name ?? '',
+            type: f.fileType ?? f.type ?? '',
+            size: f.fileSize ?? f.size ?? 0,
+            downloadedAt: f.createdAt ?? f.downloadedAt ?? '',
+          })),
+          totalPages: res?.body?.totalPages ?? res?.totalPages ?? 1,
+          currentPage: res?.body?.currentPage ?? res?.currentPage ?? 1,
+        };
       },
     }),
 
@@ -685,6 +710,7 @@ export const {
   useDeleteRoomMutation,
   useRemoveRoomMemberMutation,
   useGetRoomDownloadedFilesQuery,
+  useGetRoomDownloadedMediaQuery,
   useGetRoomMessagesQuery,
   useGetRoomPinnedMessagesQuery,
   useGetRoomTagsQuery,
