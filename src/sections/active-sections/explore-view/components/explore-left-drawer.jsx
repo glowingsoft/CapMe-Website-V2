@@ -276,7 +276,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                     borderRadius: '50%',
                     transition: 'all 0.18s',
                     '&:hover': { bgcolor: '#3739b7' },
-                    display: { xs: 'none', md: 'flex' },
+                    display: { xs: 'none', lg: 'flex' },
                 }}
                 aria-label={t('explore_drawer.open_filters')}
             >
@@ -330,7 +330,7 @@ export default function ExploreLeftDrawer({ activeRoomId, onRoomSelect, onFilter
                     boxShadow: '2px 0 16px 0 rgba(0,0,0,0.10)',
                     borderTopRightRadius: 32,
                     overflow: 'hidden',
-                    display: { xs: 'none', md: 'block' },
+                    display: { xs: 'none', lg: 'block' },
                 }}
             >
                 <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
