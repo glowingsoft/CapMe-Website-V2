@@ -842,7 +842,7 @@ export default function HomeView() {
       {/* Mobile: rooms list fills the screen when no room is active */}
       {showLeftDrawer && (
         <Box sx={{
-          display: { xs: 'flex', md: 'none' },
+          display: { xs: 'flex', lg: 'none' },
           flexGrow: 1,
           flexDirection: 'column',
           height: '100%',
@@ -865,22 +865,22 @@ export default function HomeView() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          pl: { xs: 2, md: 4 },
-          pb: { xs: 2, md: 4 },
-          pt: { xs: 2, md: '17px' },
-          pr: { xs: 2, md: 4 },
+          pl: { xs: 2, lg: 4 },
+          pb: { xs: 2, lg: 4 },
+          pt: { xs: 2, lg: '17px' },
+          pr: { xs: 2, lg: 4 },
           boxSizing: 'border-box',
           bgcolor: '#f4f5f9',
           transition: 'transform 0.28s cubic-bezier(.4,0,.2,1), margin-left 0.3s cubic-bezier(.4,0,.2,1)',
-          marginLeft: { md: `${leftDrawerWidth}px`, xs: 0 },
+          marginLeft: { lg: `${leftDrawerWidth}px`, xs: 0 },
           // Mobile: fixed full-screen overlay, slides in from right
-          position: { xs: 'fixed', md: 'relative' },
-          top: { xs: 105, md: 'auto' },
-          right: { xs: 0, md: 'auto' },
-          bottom: { xs: 0, md: 'auto' },
-          left: { xs: 0, md: 'auto' },
-          zIndex: { xs: 50, md: 'auto' },
-          transform: { xs: activeRoom ? 'translateX(0)' : 'translateX(100%)', md: 'none' },
+          position: { xs: 'fixed', lg: 'relative' },
+          top: { xs: 105, lg: 'auto' },
+          right: { xs: 0, lg: 'auto' },
+          bottom: { xs: 0, lg: 'auto' },
+          left: { xs: 0, lg: 'auto' },
+          zIndex: { xs: 50, lg: 'auto' },
+          transform: { xs: activeRoom ? 'translateX(0)' : 'translateX(100%)', lg: 'none' },
         }}
       >
         {/* Two-column row always rendered â€” sidebar stays at the same position in both states */}
@@ -894,7 +894,7 @@ export default function HomeView() {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              mr: anyRightDrawerOpen ? { md: '90px' } : 0,
+              mr: anyRightDrawerOpen ? { lg: '90px' } : 0,
               transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)',
             }}
           >

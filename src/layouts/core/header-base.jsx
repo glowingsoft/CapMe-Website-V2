@@ -223,7 +223,7 @@ export function HeaderBase({
               {slots?.leftAreaStart}
 
               {/* -- Capme Box -- */}
-              <CapmeBox sx={{ display: { xs: 'none', md: 'flex' } }}>
+              <CapmeBox sx={{ display: { xs: 'none', lg: 'flex' } }}>
                 <Box sx={{ py: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '15rem' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                     <CapmeTitle>{t('app_name')}</CapmeTitle>
@@ -295,7 +295,7 @@ export function HeaderBase({
 
                 {/* -- Language popover -- */}
                 {localization && (
-                  <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                  <Box sx={{ display: { xs: 'none', lg: 'block' } }}>
                     <LanguagePopover data-slot="localization" data={data?.langs} />
                   </Box>
                 )}

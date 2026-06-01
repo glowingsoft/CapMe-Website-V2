@@ -128,7 +128,7 @@ export default function ExploreRoomHeader({
             <IconButton
               size="small"
               onClick={onBack}
-              sx={{ color: '#fff', display: { xs: 'flex', md: 'none' }, mr: -0.5, flexShrink: 0 }}
+              sx={{ color: '#fff', display: { xs: 'flex', lg: 'none' }, mr: -0.5, flexShrink: 0 }}
             >
               <Iconify icon="mingcute:left-line" width={22} />
             </IconButton>
