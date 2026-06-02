@@ -79,7 +79,7 @@ export function JwtForgetPasswordView() {
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2, gap: 1 }}>
           <Box
             component="img"
-            src="/logo/logo-single.svg"
+            src={`${import.meta.env.BASE_URL}logo/logo-single.svg`}
             alt="Capme"
             sx={{ width: 64, height: 64, objectFit: 'contain' }}
           />

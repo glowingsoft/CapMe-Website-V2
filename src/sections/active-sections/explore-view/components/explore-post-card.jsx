@@ -318,7 +318,7 @@ export default function PostCard({ post, onCommentClick, onMenuAction, canIntera
                         >
                             <Box
                                 component="img"
-                                src="/logo/logo-single.svg"
+                                src={`${import.meta.env.BASE_URL}logo/logo-single.svg`}
                                 alt="Capme"
                                 sx={{ width: 18, height: 18, objectFit: 'contain' }}
                             />

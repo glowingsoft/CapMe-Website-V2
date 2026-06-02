@@ -49,7 +49,7 @@ function TypingIndicator() {
           flexShrink: 0,
         }}
       >
-        <Box component="img" src="/logo/logo-single.svg" sx={{ width: 18, height: 18 }} />
+        <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} sx={{ width: 18, height: 18 }} />
       </Box>
       <Box
         sx={{
@@ -561,7 +561,7 @@ export default function ChatMeView() {
             {tab === 'prompts' && !hasMessages && (
               <>
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                  <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 70, height: 70 }} />
+                  <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} alt="Capme" sx={{ width: 70, height: 70 }} />
                 </Box>
 
                 <Stack spacing={2.5} sx={{ mb: 3 }}>
@@ -641,7 +641,7 @@ export default function ChatMeView() {
                                 mb: 0.5,
                               }}
                             >
-                              <Box component="img" src="/logo/logo-single.svg" sx={{ width: 18, height: 18 }} />
+                              <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} sx={{ width: 18, height: 18 }} />
                             </Box>
                           )}
 

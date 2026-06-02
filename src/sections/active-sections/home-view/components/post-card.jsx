@@ -494,7 +494,7 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
 
                         {(post.content || post.hashtags) && (
                             <Stack direction="row" spacing={0.7} alignItems="center" sx={{ cursor: 'pointer' }} onClick={handleCapme}>
-                                <Box component="img" src="/logo/logo-single.svg" alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
+                                <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} alt="Capme" sx={{ width: 18, height: 18, objectFit: 'contain' }} />
                             </Stack>
                         )}
                     </Stack>

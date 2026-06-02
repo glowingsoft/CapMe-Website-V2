@@ -27,7 +27,7 @@ export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false,
 
   /*
    * OR using local (public folder)
-   * const logo = ( <Box alt="logo" component="img" src={`${CONFIG.site.basePath}/logo/logo-single.svg`} width={width} height={height} /> );
+   * const logo = ( <Box alt="logo" component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} width={width} height={height} /> );
    */
 
   const signInPath = {
@@ -43,7 +43,7 @@ export const Logo = forwardRef(({ width = 100, height = 70, disableLink = false,
   // Allow explicit href prop to override
   if (href) computedHref = href;
 
-  const logo = <Box alt="logo" component="img" src={`${CONFIG.site.basePath}/logo/logo-single.svg`} width={width} height={height} />;
+  const logo = <Box alt="logo" component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} width={width} height={height} />;
 
   // const logo = (
   //   <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 512 512">

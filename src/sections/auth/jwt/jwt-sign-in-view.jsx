@@ -133,7 +133,7 @@ export function JwtSignInView() {
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
           <Box
             component="img"
-            src="/logo/logo-single.svg"
+            src={`${import.meta.env.BASE_URL}logo/logo-single.svg`}
             alt="Capme"
             sx={{ width: 64, height: 64, objectFit: 'contain' }}
           />

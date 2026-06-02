@@ -14,7 +14,7 @@ import { Main } from './main';
 function HeaderRailLogo() {
   return (
     <Box sx={{ width: 112, height: 74, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
-      <Box component="img" src="/logo/logo-single.svg" alt="Capme logo" sx={{ width: 52, height: 52 }} />
+      <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} alt="Capme logo" sx={{ width: 52, height: 52 }} />
     </Box>
   );
 }

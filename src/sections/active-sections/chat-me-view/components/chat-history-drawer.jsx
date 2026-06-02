@@ -150,7 +150,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
       <Box sx={{ display: 'flex', justifyContent: 'center', pt: 3, pb: 1.5, flexShrink: 0 }}>
         <Box
           component="img"
-          src="/logo/logo-single.svg"
+          src={`${import.meta.env.BASE_URL}logo/logo-single.svg`}
           alt="Capme"
           sx={{ width: 56, height: 56, objectFit: 'contain' }}
         />
