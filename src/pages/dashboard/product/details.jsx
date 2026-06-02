@@ -9,7 +9,7 @@ import { ProductDetailsView } from 'src/sections/product/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Product details | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Product details | ${CONFIG.site.name}` };
 
 export default function Page() {
   const { id = '' } = useParams();

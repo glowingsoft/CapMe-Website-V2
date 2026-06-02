@@ -5,7 +5,7 @@ import { HelpCenterView } from 'src/sections/active-sections/help-center/help-ce
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Help Center | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Help Center | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

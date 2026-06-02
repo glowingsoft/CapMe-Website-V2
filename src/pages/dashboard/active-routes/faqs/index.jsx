@@ -5,7 +5,7 @@ import { FaqsView } from 'src/sections/active-sections/faqs/faqs-view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Faqs | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Faqs | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

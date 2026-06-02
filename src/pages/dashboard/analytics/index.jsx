@@ -6,7 +6,7 @@ import ActivityFeedView from 'src/sections/active-sections/activity-feed-view/ac
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Activity Feed | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Activity Feed | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

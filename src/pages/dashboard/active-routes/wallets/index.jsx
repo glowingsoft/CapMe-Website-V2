@@ -7,7 +7,7 @@ import { CONFIG } from 'src/config-global';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Wallets | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Wallets | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

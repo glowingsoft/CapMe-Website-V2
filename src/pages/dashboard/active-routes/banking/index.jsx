@@ -6,7 +6,7 @@ import ChatMeView from 'src/sections/active-sections/chat-me-view/chat-me-view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Chat Me | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Chat Me | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

@@ -6,7 +6,7 @@ import { SupportListView } from 'src/sections/active-sections/support-view/suppo
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Support | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Support | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

@@ -6,7 +6,7 @@ import { UserCreateView } from 'src/sections/user/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Create a new user | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Create a new user | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

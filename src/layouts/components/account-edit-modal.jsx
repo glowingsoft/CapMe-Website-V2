@@ -99,6 +99,7 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                             width: 96,
                             height: 96,
                             bgcolor: '#4C4EFF',
+                            color: '#fff',
                             fontSize: 36,
                             fontWeight: 700,
                             position: 'relative',

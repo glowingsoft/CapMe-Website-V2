@@ -7,7 +7,7 @@ import { FaqsHero } from 'src/sections/faqs/faqs-hero';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Policy | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Policy | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

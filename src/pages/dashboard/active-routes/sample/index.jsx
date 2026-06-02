@@ -6,7 +6,7 @@ import NotificationsView from 'src/sections/active-sections/notifications-view/n
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Notifications | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Notifications | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

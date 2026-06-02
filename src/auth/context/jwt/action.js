@@ -144,19 +144,21 @@ export const signUp = async ({ name, email, password, phone, image = 'noImg.png'
     const { authApi } = await import('src/store/Reducer/auth');
     const { store } = await import('src/store/store');
 
-    const response = await store.dispatch(
-      authApi.endpoints.register.initiate({
-        name,
-        email,
-        password,
-        phone,
-        timezone,
-        image,
-        device_id: deviceId,
-        device_type: 'web',
-        user_type,
-      })
-    ).unwrap();
+    const response = await store
+      .dispatch(
+        authApi.endpoints.register.initiate({
+          name,
+          email,
+          password,
+          phone,
+          timezone,
+          image,
+          device_id: deviceId,
+          device_type: 'web',
+          user_type,
+        })
+      )
+      .unwrap();
 
     return response;
   } catch (error) {
@@ -178,6 +180,8 @@ export const signInWithGoogle = async (googleUser) => {
       social_type: 'google',
       email: googleUser.email,
       name: googleUser.name,
+
+      ...(googleUser.picture && { image: googleUser.picture }),
       device_id: deviceId,
       device_type: 'web',
       timezone,
@@ -188,11 +192,7 @@ export const signInWithGoogle = async (googleUser) => {
     const response = await store.dispatch(authApi.endpoints.socialLogin.initiate(body)).unwrap();
     const normalized = normalizeLoginResponse(response, googleUser.email, 2);
 
-    // If the backend has no stored image yet (new account), display Google picture locally.
-    // We do not push it to the backend so subsequent logins never overwrite a custom DP.
-    const hasStoredImage =
-      normalized.userData.photoURL &&
-      !normalized.userData.photoURL.includes('noImg');
+    const hasStoredImage = normalized.userData.photoURL && !normalized.userData.photoURL.includes('noImg');
 
     if (!hasStoredImage && googleUser.picture) {
       normalized.userData.photoURL = googleUser.picture;
@@ -221,7 +221,10 @@ export const signOut = async () => {
     // Hit the backend logout endpoint (fire-and-forget — don't block local cleanup on failure)
     const { authApi } = await import('src/store/Reducer/auth');
     const { store } = await import('src/store/store');
-    await store.dispatch(authApi.endpoints.logout.initiate()).unwrap().catch(() => {});
+    await store
+      .dispatch(authApi.endpoints.logout.initiate())
+      .unwrap()
+      .catch(() => {});
 
     await setSession(null);
     sessionStorage.removeItem(STORAGE_USER_KEY);

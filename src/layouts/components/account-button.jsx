@@ -45,7 +45,7 @@ export function AccountButton({ open, photoURL, displayName, sx, ...other }) {
       <NoSsr fallback={renderFallback}>
         <AnimateAvatar
           slotProps={{
-            avatar: { src: photoURL, alt: displayName, sx: { bgcolor: '#4C4EFF' } },
+            avatar: { src: photoURL, alt: displayName, sx: { bgcolor: '#4C4EFF', color: '#fff' } },
             overlay: {
               border: 1,
               spacing: 2,

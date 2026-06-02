@@ -6,7 +6,7 @@ import { OverviewBookingView } from 'src/sections/overview/booking/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Booking | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Booking | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

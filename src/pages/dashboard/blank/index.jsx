@@ -6,7 +6,7 @@ import SettingsView from 'src/sections/active-sections/settings-view/settings-vi
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Settings | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Settings | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

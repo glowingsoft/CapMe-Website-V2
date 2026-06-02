@@ -9,7 +9,7 @@ import { JobEditView } from 'src/sections/job/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Job edit | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Job edit | ${CONFIG.site.name}` };
 
 export default function Page() {
   const { id = '' } = useParams();

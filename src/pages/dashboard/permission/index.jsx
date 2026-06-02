@@ -6,7 +6,7 @@ import { PermissionDeniedView } from 'src/sections/permission/view';
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Permission | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Permission | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (

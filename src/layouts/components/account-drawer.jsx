@@ -148,7 +148,7 @@ export function AccountDrawer({ data = [], sx, ...other }) {
     if (!profileBody || !user?.token) return;
 
     const storedImage = stripDoubleS3Prefix(profileBody?.image);
-    const effectiveProfileImage = storedImage?.includes('noImg') ? null : storedImage;
+    const effectiveProfileImage = (!storedImage || storedImage.includes('noImg')) ? null : storedImage;
 
     const alreadySynced =
       user?._id === profileBody?._id &&
@@ -422,12 +422,14 @@ export function AccountDrawer({ data = [], sx, ...other }) {
                     {user?.basicInfo?.email || 'alexahales943@gmail.com'}
                   </Typography>
                 </Stack>
-                <Stack direction="row" spacing={0.8} alignItems="center">
-                  <Iconify icon="ic:round-phone" width={18} sx={{ color: 'text.primary' }} />
-                  <Typography variant="body2" color="text.secondary">
-                    {user?.mobile || 'null'}
-                  </Typography>
-                </Stack>
+                {user?.mobile && (
+                  <Stack direction="row" spacing={0.8} alignItems="center">
+                    <Iconify icon="ic:round-phone" width={18} sx={{ color: 'text.primary' }} />
+                    <Typography variant="body2" color="text.secondary">
+                      {user.mobile}
+                    </Typography>
+                  </Stack>
+                )}
               </Stack>
             )}
           </Stack>

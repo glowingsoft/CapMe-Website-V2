@@ -6,7 +6,7 @@ import { CategoryListView } from 'src/sections/active-sections/category-view/vie
 
 // ----------------------------------------------------------------------
 
-const metadata = { title: `Expense Category | Dashboard - ${CONFIG.site.name}` };
+const metadata = { title: `Expense Category | ${CONFIG.site.name}` };
 
 export default function Page() {
   return (
