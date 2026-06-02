@@ -4,12 +4,6 @@ import { CONFIG } from 'src/config-global';
 
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
-import homeIconUrl from 'src/assets/icons/home_icon.svg?url';
-import exploreIconUrl from 'src/assets/icons/explore.svg?url';
-import activityFeedIconUrl from 'src/assets/icons/activity_feed.svg?url';
-import chatIconUrl from 'src/assets/icons/chat.svg?url';
-import notificationIconUrl from 'src/assets/icons/notification.svg?url';
-import settingIconUrl from 'src/assets/icons/setting.svg?url';
 
 // ----------------------------------------------------------------------
 
@@ -20,12 +14,12 @@ const icon = (name) => <SvgColor src={`${CONFIG.site.basePath}/assets/icons/navb
 // );
 
 const ICONS = {
-  home: <SvgColor src={homeIconUrl} />,
-  exploreCustom: <SvgColor src={exploreIconUrl} />,
-  activityFeedCustom: <SvgColor src={activityFeedIconUrl} />,
-  chatCustom: <SvgColor src={chatIconUrl} />,
-  notificationCustom: <SvgColor src={notificationIconUrl} />,
-  settingCustom: <SvgColor src={settingIconUrl} />,
+  home: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/home_icon.svg`} />,
+  exploreCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/explore.svg`} />,
+  activityFeedCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/activity_feed.svg`} />,
+  chatCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/chat.svg`} />,
+  notificationCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/notification.svg`} />,
+  settingCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/setting.svg`} />,
   job: icon('ic-job'),
   blog: icon('ic-blog'),
   chat: icon('ic-chat'),
