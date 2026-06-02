@@ -36,11 +36,8 @@ jobs:
       - name: Install dependencies
         run: npm install --force
 
-      - name: Set React base for /website/ and build app
-        run: |
-          # For Vite React
-          echo "base=/website/" >> vite.config.js
-          CI=false npm run build
+      - name: Build React app
+        run: CI=false npm run build
 
       - name: Create PEM file from Secret
         run: |

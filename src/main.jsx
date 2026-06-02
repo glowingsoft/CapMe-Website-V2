@@ -20,9 +20,7 @@ root.render(
       <BrowserRouter basename={CONFIG.site.basePath}>
         <Suspense>
           <Provider store={store}>
-            <BrowserRouter basename="/website">
-              <App />
-            </BrowserRouter>
+            <App />
           </Provider>
         </Suspense>
       </BrowserRouter>
