@@ -20,12 +20,12 @@ const icon = (name) => <SvgColor src={`${CONFIG.site.basePath}/assets/icons/navb
 // );
 
 const ICONS = {
-  home: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/home_icon.svg`} />,
-  exploreCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/explore_icon.svg`} />,
-  activityFeedCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/activity_feed_icon.svg`} />,
-  chatCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/chat_icon.svg`} />,
-  notificationCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/notification_icon.svg`} />,
-  settingCustom: <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/setting_icon.svg`} />,
+  home: <SvgColor src={homeIconUrl} />,
+  exploreCustom: <SvgColor src={exploreIconUrl} />,
+  activityFeedCustom: <SvgColor src={activityFeedIconUrl} />,
+  chatCustom: <SvgColor src={chatIconUrl} />,
+  notificationCustom: <SvgColor src={notificationIconUrl} />,
+  settingCustom: <SvgColor src={settingIconUrl} />,
   job: icon('ic-job'),
   blog: icon('ic-blog'),
   chat: icon('ic-chat'),
