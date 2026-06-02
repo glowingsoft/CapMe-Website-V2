@@ -7,9 +7,9 @@ import { useTheme } from '@mui/material/styles';
 
 export default function ProfilePageShell({ open, onClose, children }) {
   const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
 
-  if (isMdUp) {
+  if (isLgUp) {
     return (
       <Drawer
         open={open}

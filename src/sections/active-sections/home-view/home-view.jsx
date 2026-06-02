@@ -825,8 +825,7 @@ export default function HomeView() {
   const leftDrawerWidth = showLeftDrawer && leftDrawerOpen ? DRAWER_WIDTH : 0;
 
   return (
-    // height: 105px is the dashboard header height (AppBar + offset)
-    <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
+    <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: { xs: 'calc(100vh - 74px)', lg: 'calc(100vh - 140px)' }, display: 'flex', overflow: 'hidden' }}>
 
       {/* Desktop fixed sidebar */}
       {showLeftDrawer && (
@@ -875,7 +874,7 @@ export default function HomeView() {
           marginLeft: { lg: `${leftDrawerWidth}px`, xs: 0 },
           // Mobile: fixed full-screen overlay, slides in from right
           position: { xs: 'fixed', lg: 'relative' },
-          top: { xs: 105, lg: 'auto' },
+          top: { xs: 74, lg: 'auto' },
           right: { xs: 0, lg: 'auto' },
           bottom: { xs: 0, lg: 'auto' },
           left: { xs: 0, lg: 'auto' },

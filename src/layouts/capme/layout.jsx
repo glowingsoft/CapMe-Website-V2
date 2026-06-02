@@ -219,14 +219,14 @@ function DefaultHeaderRight() {
 
 // ----------------------------------------------------------------------
 
-export function CapmeLayout({ children, sx, headerSlots = {}, layoutQuery = 'lg' }) {
+export function CapmeLayout({ children, sx, headerSlots = {} }) {
   return (
     <LayoutSection
       headerSection={
         <Box
           sx={{
             width: '100%',
-            height: 140,
+            height: { xs: 74, md: 140 },
             bgcolor: '#131313',
             display: 'flex',
             alignItems: 'center',

@@ -346,7 +346,7 @@ export default function ExploreView() {
         [selectedRoom, roomId]);
 
     return (
-        <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
+        <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: { xs: 'calc(100vh - 74px)', lg: 'calc(100vh - 140px)' }, display: 'flex', overflow: 'hidden' }}>
 
             {/* Desktop fixed sidebar */}
             <ExploreLeftDrawer
@@ -392,7 +392,7 @@ export default function ExploreView() {
                     marginLeft: { lg: `${leftDrawerWidth}px`, xs: 0 },
                     // Mobile: fixed full-screen overlay, slides in from right
                     position: { xs: 'fixed', lg: 'relative' },
-                    top: { xs: 105, lg: 'auto' },
+                    top: { xs: 74, lg: 'auto' },
                     right: { xs: 0, lg: 'auto' },
                     bottom: { xs: 0, lg: 'auto' },
                     left: { xs: 0, lg: 'auto' },
@@ -562,8 +562,8 @@ export default function ExploreView() {
                             sx: {
                                 width: 420,
                                 borderTopLeftRadius: 20,
-                                mt: '105px',
-                                height: 'calc(100vh - 105px)',
+                                mt: '74px',
+                                height: 'calc(100vh - 74px)',
                                 bgcolor: '#fff',
                                 p: 0,
                                 pointerEvents: 'auto',

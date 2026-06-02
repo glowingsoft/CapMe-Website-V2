@@ -352,10 +352,11 @@ export default function LeftDrawer({ open, onToggle, activeRoomId, onRoomSelect,
     setPages((prev) => ({ ...prev, [viewAll.tabKey]: prev[viewAll.tabKey] + 1 }));
   };
 
-  // Tab counts — prefer API total if available, fall back to accumulated length
-  const totalCount = allQuery.data?.body?.total ?? accRooms.all.length;
-  const myRoomsCount = myRoomsQuery.data?.body?.total ?? accRooms.myRooms.length;
-  const followingCount = followingQuery.data?.body?.total ?? accRooms.following.length;
+  // Tab counts — use API-provided counts, fall back to accumulated length
+  const bodyRef = allQuery.data?.body ?? myRoomsQuery.data?.body ?? followingQuery.data?.body;
+  const totalCount = bodyRef?.totalCount ?? accRooms.all.length;
+  const myRoomsCount = bodyRef?.myRoomsCount ?? accRooms.myRooms.length;
+  const followingCount = bodyRef?.myfollowingCount ?? accRooms.following.length;
 
   // If the last fetched page returned a full batch, there may be more
   const hasMore = {
