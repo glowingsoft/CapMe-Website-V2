@@ -50,7 +50,7 @@ jobs:
           TIMESTAMP=$(date +"%Y%m%d%H%M%S")
           ZIP_NAME="build-$TIMESTAMP.zip"
           echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
-          cd build && zip -r "../$ZIP_NAME" . && cd ..
+          cd dist && zip -r "../$ZIP_NAME" . && cd ..
 
       - name: Upload zipped build to EC2
         run: |
