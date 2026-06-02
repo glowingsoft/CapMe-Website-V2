@@ -1,0 +1,127 @@
+name: CI/CD for DEV Environment
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy-fe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "20"
+
+      - name: Define environment variables from REACT_ENV_FILE_DEV
+        run: |
+          rm -f .env
+          echo "${{ secrets.REACT_ENV_FILE_DEV }}" > .env
+
+      - name: Cache node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm install --force
+
+      - name: Set React base for /website/ and build app
+        run: |
+          # For Vite React
+          echo "base=/website/" >> vite.config.js
+          CI=false npm run build
+
+      - name: Create PEM file from Secret
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_KEY }}" > ~/.ssh/ec2_key.pem
+          chmod 600 ~/.ssh/ec2_key.pem
+
+      - name: Zip build with timestamp
+        run: |
+          TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+          ZIP_NAME="build-$TIMESTAMP.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+          cd build && zip -r "../$ZIP_NAME" . && cd ..
+
+      - name: Upload zipped build to EC2
+        run: |
+          scp -i ~/.ssh/ec2_key.pem -o StrictHostKeyChecking=no "$ZIP_NAME" \
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
+
+      - name: Deploy on EC2 (create dirs + permissions + deploy + rollback)
+        run: |
+          ssh -i ~/.ssh/ec2_key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -euo pipefail
+
+            ZIP_NAME=${{ env.ZIP_NAME }}
+            HTML_DIR="/var/www/html/website"
+            BACKUP_DIR="/var/www/html-backups"
+            TEMP_DIR="/tmp/html-dev-new"
+
+            echo "[INFO] Ensuring directories exist..."
+            sudo mkdir -p "$HTML_DIR"
+            sudo mkdir -p "$BACKUP_DIR"
+            sudo mkdir -p "$TEMP_DIR"
+
+            echo "[INFO] Setting permissions on directories..."
+            sudo chown -R $USER:$USER "$HTML_DIR"
+            sudo chown -R $USER:$USER "$BACKUP_DIR"
+            sudo chown -R $USER:$USER "$TEMP_DIR"
+
+            echo "[INFO] Checking unzip installation..."
+            if ! command -v unzip &>/dev/null; then
+              sudo apt-get update && sudo apt-get install -y unzip
+            fi
+
+            echo "[INFO] Unzipping new build to temp dir..."
+            sudo unzip -o "/tmp/$ZIP_NAME" -d "$TEMP_DIR"
+
+            TS=$(date +"%Y%m%d%H%M%S")
+
+            # Backup current live build
+            if [ -d "$HTML_DIR" ]; then
+              echo "[INFO] Backing up current build..."
+              sudo mv "$HTML_DIR" "$BACKUP_DIR/html-dev-$TS"
+            fi
+
+            # Move new build live, rollback on failure
+            echo "[INFO] Moving new build to live directory..."
+            if sudo mv "$TEMP_DIR" "$HTML_DIR"; then
+              echo "[SUCCESS] Deployed new build."
+            else
+              echo "[ERROR] Failed to move new build."
+              echo "[ROLLBACK] Reverting to last backup..."
+              LATEST_BACKUP=$(ls -td $BACKUP_DIR/html-dev-* 2>/dev/null | head -n 1)
+              if [ -n "$LATEST_BACKUP" ]; then
+                sudo mv "$LATEST_BACKUP" "$HTML_DIR"
+                echo "[ROLLBACK] Successfully restored backup."
+              else
+                echo "[FATAL] No backup found for rollback."
+              fi
+              exit 1
+            fi
+
+            # Set ownership to www-data for Nginx
+            sudo chown -R www-data:www-data "$HTML_DIR"
+            sudo chmod -R 755 "$HTML_DIR"
+
+            # Clean old backups (keep latest 3)
+            cd "$BACKUP_DIR"
+            ls -1tr html-dev-* | head -n -3 | xargs -d '\n' -r sudo rm -rf
+          EOF
+
+      - name: Clean up local ZIP file
+        run: |
+          [ -f "$ZIP_NAME" ] && rm "$ZIP_NAME"
