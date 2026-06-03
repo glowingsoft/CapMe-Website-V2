@@ -307,7 +307,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
         }}
       >
         {/* Left: back button (mobile) + avatar + room name */}
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={showSearch && !isMdUp ? { flexShrink: 1, minWidth: 0, overflow: 'hidden' } : { flexShrink: 0 }}>
           {onBack && (
             <IconButton
               size="small"
@@ -371,7 +371,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
             </>
           )}
 
-          {!isLoading && isGarage && (
+          {!isLoading && isGarage && (isMdUp || !showSearch) && (
             <Typography fontSize={12} color="#6B7280" sx={{ mr: 0.5, textTransform: 'capitalize' }}>
               {room?.visibility ?? t('search.visibility_personal')} · {t('room_channel_header.only_you')}
             </Typography>
@@ -447,7 +447,7 @@ function RoomChannelHeader({ room, messagesRoom = null, onRoomInfoOpenChange, on
             </Button>
           )}
 
-          {!isLoading && !isGarage && isFollowing !== false && (
+          {!isLoading && !isGarage && isFollowing !== false && (isMdUp || !showSearch) && (
             <IconButton
               size="small"
               onClick={handleOpenMenu}

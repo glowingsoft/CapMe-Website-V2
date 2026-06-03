@@ -59,6 +59,7 @@ export const API_ROUTES = {
     ROOM_SHARE_LIST: '/room/share/list',
     ROOM_EXPLORE: '/room/explore',
     ROOM_EXPLORE_LIST: '/room/exploreroom',
+    ROOM_SUGGESTED: '/room/suggestedrooms',
     ROOM_ACTIVITY_FEEDS: '/room/activityfeeds',
     ROOM_NOTIFICATIONS: '/room/notifications',
     ROOM_MESSAGES: (roomId) => `/message/rooms/${roomId}/messages`,

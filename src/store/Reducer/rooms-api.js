@@ -47,6 +47,26 @@ export const roomsApi = createApi({
   tagTypes: ['room', 'pinnedMessages', 'comments', 'roomRequests'],
 
   endpoints: (builder) => ({
+    // GET /room/suggestedrooms
+    getSuggestedRooms: builder.query({
+      query: () => ({ url: API_ROUTES.ROOM_SUGGESTED, method: 'GET' }),
+      providesTags: ['room'],
+      transformResponse: (res) => {
+        const raw = res?.body?.suggestedRooms ?? res?.suggestedRooms ?? res?.body?.data ?? [];
+        return (Array.isArray(raw) ? raw : []).map((r) => ({
+          id: r._id ?? r.id,
+          name: r.name ?? '',
+          description: r.description ?? r.desc ?? '',
+          image: r.image && !r.image.toLowerCase().includes('noimg') ? r.image : '',
+          visibility: r.visibility ?? 'public',
+          requests: Array.isArray(r.requests) ? r.requests : [],
+          is_following: r.is_following ?? r.isFollow ?? false,
+          is_requested: r.is_requested ?? r.isRequest ?? false,
+          createdAt: r.createdAt ?? '',
+        }));
+      },
+    }),
+
     // GET /rooms  — explore list with filters
     getExploreRooms: builder.query({
       query: ({ search, tab, date, memberCount, contentType, page = 1, limit = 20 } = {}) => {
@@ -697,6 +717,7 @@ export const roomsApi = createApi({
 });
 
 export const {
+  useGetSuggestedRoomsQuery,
   useGetActivityFeedsQuery,
   useLazyGetActivityFeedsQuery,
   useGetExploreRoomsQuery,

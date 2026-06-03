@@ -12,12 +12,11 @@ import PostCard from './components/post-card';
 import RoomChannelHeader from './components/room-channel-header';
 import SuggestedRooms from './components/suggested-rooms';
 import NoDataIllustration from '../../../assets/illustrations/no-data-illustration';
-import { commentsData, suggestedRooms } from './mock';
+import { commentsData } from './mock';
 import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
 import { scrollToBottom } from 'src/utils/scroll-to-bottom';
 import { cleanUrl, withDateSeparators } from 'src/utils/message-utils';
 import PinnedMessagesDisplay from './components/pinned-messages-display';
-import CircularProgress from '@mui/material/CircularProgress';
 import OldMessagesLabel from 'src/sections/chat/old-messages-label';
 import { useSelector } from 'react-redux';
 import { selectUser } from 'src/store/slices/userSlice';
@@ -1201,10 +1200,8 @@ export default function HomeView() {
               </Box>
             )}
           </Box>
-
-          {/* Sidebar â€” drawer overlaps this freely; center column above adjusts via mr */}
-          <Box sx={{ flex: '0 0 300px', display: { xs: 'none', lg: 'block' } }}>
-            <SuggestedRooms rooms={suggestedRooms} />
+          <Box sx={{ flex: '0 0 320px', minWidth: 0, width: 320, overflow: 'hidden', display: { xs: 'none', lg: 'block' } }}>
+            <SuggestedRooms />
           </Box>
 
         </Box>

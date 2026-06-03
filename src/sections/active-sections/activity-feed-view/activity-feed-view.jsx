@@ -20,7 +20,6 @@ import { closeOverlayDrawers, DRAWER_EVENTS } from 'src/utils/drawer-events';
 import { useLazyGetActivityFeedsQuery } from 'src/store/Reducer/rooms-api';
 import { getSocket } from 'src/socket/socket';
 
-import { suggestedRooms } from 'src/sections/active-sections/home-view/mock';
 import { activityCommentsData } from './mock';
 
 // ----------------------------------------------------------------------
@@ -390,8 +389,8 @@ export default function ActivityFeedView() {
             </Box>
           </Box>
 
-          <Box sx={{ flex: '0 0 300px', display: { xs: 'none', lg: 'block' } }}>
-            <SuggestedRooms rooms={suggestedRooms} />
+          <Box sx={{ flex: '0 0 320px', minWidth: 0, width: 320, overflow: 'hidden', display: { xs: 'none', lg: 'block' } }}>
+            <SuggestedRooms />
           </Box>
         </Box>
 
