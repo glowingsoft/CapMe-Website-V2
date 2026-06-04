@@ -31,7 +31,7 @@ import {
   useTable,
 } from 'src/components/table';
 
-import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/wallets-api';
+import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/payment-api';
 import { applySorting } from 'src/utils/table-utils';
 import { UserTableToolbar } from '../category-table-toolbar';
 import { UserTableFiltersResult } from '../category-table-filters-result';

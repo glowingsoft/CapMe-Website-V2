@@ -23,7 +23,7 @@ import {
   TablePaginationCustom,
 } from 'src/components/table';
 
-import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/wallets-api';
+import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/payment-api';
 import { applySorting } from 'src/utils/table-utils';
 
 // Import flexible table system

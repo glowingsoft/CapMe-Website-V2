@@ -22,7 +22,7 @@ import {
   useTable
 } from 'src/components/table';
 
-import { useGetWalletsQuery } from 'src/store/Reducer/wallets-api';
+import { useGetWalletsQuery } from 'src/store/Reducer/payment-api';
 import { DevicesTableFiltersResult } from '../sample-table-filters-result';
 import { DevicesTableRow } from '../sample-table-row';
 import { DevicesTableToolbar } from '../sample-table-toolbar';

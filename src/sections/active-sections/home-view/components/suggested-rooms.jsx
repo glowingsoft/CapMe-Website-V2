@@ -29,7 +29,7 @@ export default function SuggestedRooms() {
   const currentUserId = String(currentUser?._id ?? currentUser?.id ?? currentUser?.basicInfo?._id ?? '');
 
   const { data: allRooms = [], isLoading } = useGetSuggestedRoomsQuery();
-  const rooms = allRooms.slice(0, 8);
+  const rooms = allRooms.slice(0, 6);
   const [toggleFollow] = useToggleRoomFollowMutation();
   const [cancelRequest] = useCancelRoomRequestMutation();
   const [unfollowRoom] = useUnfollowRoomMutation();
@@ -148,92 +148,92 @@ export default function SuggestedRooms() {
       <List disablePadding>
         {isLoading
           ? Array.from({ length: 8 }).map((_, i) => (
-              <ListItem key={i} sx={{ borderRadius: 2, mb: 1.3, pl: 1, pr: 1.5, bgcolor: 'rgba(76,78,255,0.04)', border: '1px solid rgba(76,78,255,0.08)' }}>
-                <ListItemAvatar>
-                  <Skeleton variant="circular" width={36} height={36} />
+            <ListItem key={i} sx={{ borderRadius: 2, mb: 1.3, pl: 1, pr: 1.5, bgcolor: 'rgba(76,78,255,0.04)', border: '1px solid rgba(76,78,255,0.08)' }}>
+              <ListItemAvatar>
+                <Skeleton variant="circular" width={36} height={36} />
+              </ListItemAvatar>
+              <ListItemText
+                primary={<Skeleton variant="text" width={100} height={18} />}
+                secondary={<Skeleton variant="text" width={140} height={14} />}
+              />
+              <Skeleton variant="rounded" width={90} height={30} sx={{ borderRadius: 2, flexShrink: 0, ml: 1 }} />
+            </ListItem>
+          ))
+          : rooms.map((room) => {
+            const state = followState[room.id];
+            const isActive = state === 'active';
+            const isRequested = state === 'requested';
+            const isBusy = !!loadingIds[room.id];
+            const label = isActive ? 'Following' : isRequested ? 'Requested' : 'Follow';
+            return (
+              <ListItem
+                key={room.id}
+                sx={{
+                  borderRadius: 2,
+                  mb: 1.3,
+                  pl: 1,
+                  pr: 1.5,
+                  bgcolor: 'rgba(76,78,255,0.04)',
+                  border: '1px solid rgba(76,78,255,0.08)',
+                  cursor: 'default',
+                  transition: 'background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+                  '&:hover': {
+                    bgcolor: 'rgba(76,78,255,0.10)',
+                    borderColor: 'rgba(76,78,255,0.28)',
+                    boxShadow: '0 2px 10px rgba(76,78,255,0.12)',
+                  },
+                }}
+              >
+                <ListItemAvatar
+                  onClick={() => handleOpen(room)}
+                  sx={{ cursor: 'pointer' }}
+                >
+                  <Avatar
+                    src={room.image || undefined}
+                    sx={{ width: 36, height: 36, bgcolor: '#4C4EFF', color: '#fff', fontWeight: 700, fontSize: 15 }}
+                  >
+                    {room.name?.charAt(0).toUpperCase()}
+                  </Avatar>
                 </ListItemAvatar>
                 <ListItemText
-                  primary={<Skeleton variant="text" width={100} height={18} />}
-                  secondary={<Skeleton variant="text" width={140} height={14} />}
+                  onClick={() => handleOpen(room)}
+                  sx={{ cursor: 'pointer' }}
+                  primary={
+                    <Typography fontWeight={600} fontSize={14} noWrap>
+                      {room.name}
+                    </Typography>
+                  }
+                  secondary={room.description}
+                  secondaryTypographyProps={{ fontSize: 12, color: 'text.secondary', noWrap: true }}
                 />
-                <Skeleton variant="rounded" width={90} height={30} sx={{ borderRadius: 2, flexShrink: 0, ml: 1 }} />
-              </ListItem>
-            ))
-          : rooms.map((room) => {
-              const state = followState[room.id];
-              const isActive = state === 'active';
-              const isRequested = state === 'requested';
-              const isBusy = !!loadingIds[room.id];
-              const label = isActive ? 'Following' : isRequested ? 'Requested' : 'Follow';
-              return (
-                <ListItem
-                  key={room.id}
+                <Button
+                  size="small"
+                  variant={state ? 'outlined' : 'contained'}
+                  disabled={isBusy}
+                  onClick={() => handleFollow(room)}
                   sx={{
+                    ml: 1,
+                    minWidth: 90,
+                    height: 30,
                     borderRadius: 2,
-                    mb: 1.3,
-                    pl: 1,
-                    pr: 1.5,
-                    bgcolor: 'rgba(76,78,255,0.04)',
-                    border: '1px solid rgba(76,78,255,0.08)',
-                    cursor: 'default',
-                    transition: 'background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
-                    '&:hover': {
-                      bgcolor: 'rgba(76,78,255,0.10)',
-                      borderColor: 'rgba(76,78,255,0.28)',
-                      boxShadow: '0 2px 10px rgba(76,78,255,0.12)',
-                    },
+                    fontSize: 12,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    flexShrink: 0,
+                    boxShadow: 'none',
+                    ...(isActive
+                      ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
+                      : isRequested
+                        ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
+                        : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
+                    '&.Mui-disabled': { opacity: 0.6 },
                   }}
                 >
-                  <ListItemAvatar
-                    onClick={() => handleOpen(room)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <Avatar
-                      src={room.image || undefined}
-                      sx={{ width: 36, height: 36, bgcolor: '#4C4EFF', color: '#fff', fontWeight: 700, fontSize: 15 }}
-                    >
-                      {room.name?.charAt(0).toUpperCase()}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    onClick={() => handleOpen(room)}
-                    sx={{ cursor: 'pointer' }}
-                    primary={
-                      <Typography fontWeight={600} fontSize={14} noWrap>
-                        {room.name}
-                      </Typography>
-                    }
-                    secondary={room.description}
-                    secondaryTypographyProps={{ fontSize: 12, color: 'text.secondary', noWrap: true }}
-                  />
-                  <Button
-                    size="small"
-                    variant={state ? 'outlined' : 'contained'}
-                    disabled={isBusy}
-                    onClick={() => handleFollow(room)}
-                    sx={{
-                      ml: 1,
-                      minWidth: 90,
-                      height: 30,
-                      borderRadius: 2,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      textTransform: 'none',
-                      flexShrink: 0,
-                      boxShadow: 'none',
-                      ...(isActive
-                        ? { borderColor: '#4C4EFF', color: '#4C4EFF', '&:hover': { bgcolor: 'rgba(76,78,255,0.06)' } }
-                        : isRequested
-                          ? { bgcolor: 'transparent', color: '#1a1a1a', border: '1px solid #ccc', '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: '#999' } }
-                          : { bgcolor: '#4C4EFF', color: '#fff', border: '1px solid #4C4EFF', '&:hover': { bgcolor: '#3739b7' } }),
-                      '&.Mui-disabled': { opacity: 0.6 },
-                    }}
-                  >
-                    {isBusy ? <CircularProgress size={12} color="inherit" /> : label}
-                  </Button>
-                </ListItem>
-              );
-            })}
+                  {isBusy ? <CircularProgress size={12} color="inherit" /> : label}
+                </Button>
+              </ListItem>
+            );
+          })}
       </List>
 
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>

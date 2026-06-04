@@ -23,6 +23,8 @@ export const API_ROUTES = {
         ANNOUNCEMENT: '/admin/legal',
     },
 
+    CREATE_PAYMENT: '/payment/create-payment',
+
     WALLETS: '/wallets',
     WALLETS_BY_ID: (id) => `/wallets/${id}`,
 

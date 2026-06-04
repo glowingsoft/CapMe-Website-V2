@@ -1,74 +1,177 @@
+import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
+
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import DialogContent from '@mui/material/DialogContent';
 import Divider from '@mui/material/Divider';
-import IconButton from '@mui/material/IconButton';
-import InputBase from '@mui/material/InputBase';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import IconButton from '@mui/material/IconButton';
+import DialogContent from '@mui/material/DialogContent';
+import CircularProgress from '@mui/material/CircularProgress';
+
 import { Iconify } from 'src/components/iconify';
 import { selectUser } from 'src/store/slices/userSlice';
+import { useCreatePaymentMutation } from 'src/store/Reducer/payment-api';
+import { useElements, useStripe, CardElement } from '@stripe/react-stripe-js';
+import { toast } from 'src/components/snackbar';
 
-const PACKAGES = [
+const TOKEN_PACKAGES = [
   { id: 'pkg20', tokens: 20, price: 2.0 },
   { id: 'pkg40', tokens: 40, price: 4.0 },
   { id: 'pkg60', tokens: 60, price: 6.0 },
 ];
 
-function Field({ label, sx, children }) {
+const SUBSCRIPTION_PLANS = [
+  {
+    id: 'monthly',
+    name: 'Premium Monthly',
+    description:
+      'Go Premium Monthly—unlock unlimited features, and priority benefits designed to enhance your social experience.',
+    price: 8.99,
+    period: 'Month',
+    token: 'Unlimited',
+    billedNote: '$107.88 billed annually',
+  },
+  {
+    id: 'yearly',
+    name: 'Premium Yearly',
+    description:
+      'Go Premium Yearly—unlock unlimited features, priority benefits and save $7.89',
+    price: 99.99,
+    period: 'Year',
+    token: 'Unlimited',
+    billedNote: null,
+  },
+];
+
+function Field({ label, value }) {
   return (
-    <Box sx={sx}>
-      <Typography fontSize={13} fontWeight={700} sx={{ mb: 0.75, color: '#111' }}>
+    <Box sx={{ mb: 2 }}>
+      <Typography
+        fontSize={13}
+        fontWeight={700}
+        sx={{ mb: 0.75, color: '#111' }}
+      >
         {label}
       </Typography>
-      {children}
+
+      <Box
+        sx={{
+          bgcolor: '#f4f5f9',
+          border: '1px solid #e5e7eb',
+          borderRadius: 2,
+          px: 2,
+          py: 1.5,
+        }}
+      >
+        <Typography fontSize={14}>{value || '-'}</Typography>
+      </Box>
     </Box>
   );
 }
 
-function StyledInput({ startAdornment, disabled, ...props }) {
-  return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        bgcolor: disabled ? '#f0f0f0' : '#f4f5f9',
-        border: '1.5px solid #f0f0f0',
-        borderRadius: 2,
-        px: 1.5,
-        py: 1.25,
-        ...(!disabled && { '&:focus-within': { borderColor: '#4C4EFF' } }),
-        transition: 'border-color 0.15s',
-      }}
-    >
-      {startAdornment && (
-        <Box sx={{ color: '#bdbdbd', flexShrink: 0, display: 'flex' }}>{startAdornment}</Box>
-      )}
-      <InputBase
-        disabled={disabled}
-        fullWidth
-        sx={{ fontSize: 14, '& input': { p: 0, color: disabled ? '#888' : 'inherit' } }}
-        {...props}
-      />
-      {disabled && (
-        <Iconify icon="solar:lock-bold" width={14} style={{ color: '#bdbdbd', flexShrink: 0 }} />
-      )}
-    </Box>
-  );
-}
-
-export default function PurchaseTokensModal({ open, onClose }) {
+export default function PurchaseTokensModal({ open, onClose, mode = 'tokens', selectedPlan }) {
   const [selectedPkg, setSelectedPkg] = useState('pkg60');
+
+  useEffect(() => {
+    setSelectedPkg(mode === 'tokens' ? 'pkg60' : 'monthly');
+  }, [mode]);
+
   const user = useSelector(selectUser);
 
-  const name = user?.basicInfo?.name ?? user?.displayName ?? '';
-  const email = user?.email ?? user?.basicInfo?.email ?? '';
+  const [createPayment, { isLoading }] = useCreatePaymentMutation();
 
-  const pkg = PACKAGES.find((p) => p.id === selectedPkg);
+  const name =
+    user?.basicInfo?.name ||
+    user?.displayName ||
+    '';
+
+  const email =
+    user?.email ||
+    user?.basicInfo?.email ||
+    '';
+
+  const plans =
+    mode === 'tokens'
+      ? TOKEN_PACKAGES
+      : SUBSCRIPTION_PLANS;
+
+  const pkg =
+    mode === 'tokens'
+      ? plans.find((item) => item.id === selectedPkg)
+      : SUBSCRIPTION_PLANS.find(
+        (item) => item.id === selectedPlan
+      );
+
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const handlePayment = async () => {
+    if (!stripe || !elements) {
+      console.log('Stripe not loaded');
+      return;
+    }
+
+    const cardElement = elements.getElement(CardElement);
+
+    if (!cardElement) {
+      alert('Card details are required');
+      return;
+    }
+
+    try {
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: {
+          name,
+          email,
+        },
+      });
+
+      if (error) {
+        console.error(error);
+        alert(error.message);
+        return;
+      }
+
+      console.log('NEW PAYMENT METHOD:', paymentMethod.id);
+
+      const payload =
+        mode === 'tokens'
+          ? {
+            amount: pkg.price,
+            currency: 'usd',
+            payment_method_id: paymentMethod.id,
+            tokens: pkg.tokens,
+          }
+          : {
+            amount: pkg.price,
+            currency: 'usd',
+            payment_method_id: paymentMethod.id,
+            plan: pkg.id,
+          };
+
+      console.log('PAYLOAD:', payload);
+
+      const response = await createPayment(payload).unwrap();
+
+      console.log('API RESPONSE:', response);
+
+      toast.success('Payment completed successfully');
+
+      onClose?.();
+    } catch (err) {
+      console.error('PAYMENT ERROR:', err);
+      alert(
+        err?.data?.message ||
+        err?.message ||
+        'Payment failed'
+      );
+    }
+  };
 
   return (
     <Dialog
@@ -79,175 +182,216 @@ export default function PurchaseTokensModal({ open, onClose }) {
       PaperProps={{
         sx: {
           borderRadius: 4,
-          boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
           overflow: 'hidden',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
         },
       }}
     >
       <DialogContent sx={{ p: 0 }}>
-
-        {/* Header */}
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #4C4EFF 0%, #7B5EA7 100%)',
             px: 3,
             py: 2.5,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            background:
+              'linear-gradient(135deg, #4C4EFF 0%, #7B5EA7 100%)',
           }}
         >
           <Box>
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Iconify icon="solar:card-bold" width={24} style={{ color: '#fff' }} />
-              <Typography sx={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Iconify
+                icon="solar:card-bold"
+                width={24}
+                style={{ color: '#fff' }}
+              />
+
+              <Typography
+                sx={{
+                  color: '#fff',
+                  fontWeight: 800,
+                  fontSize: 20,
+                }}
+              >
                 Payment
               </Typography>
             </Stack>
-            <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', mt: 0.25 }}>
-              ME Tokens
+
+            <Typography
+              sx={{
+                mt: 0.25,
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.75)',
+              }}
+            >
+              {mode === 'tokens' ? 'Purchase ME Tokens' : "Subscribe"}
             </Typography>
           </Box>
+
           <IconButton
             onClick={onClose}
-            sx={{ color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}
+            sx={{
+              color: '#fff',
+              bgcolor: 'rgba(255,255,255,0.15)',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.25)',
+              },
+            }}
           >
             <Iconify icon="mingcute:close-line" width={20} />
           </IconButton>
         </Box>
 
         <Box sx={{ px: 3, py: 3 }}>
+          {mode === 'tokens' && (
+            <>
+              <Typography
+                fontSize={14}
+                fontWeight={700}
+                sx={{ mb: 1.5 }}
+              >
+                Select Token Package
+              </Typography>
 
-          {/* Package selector */}
-          <Typography fontSize={14} fontWeight={700} sx={{ mb: 1.5, color: '#111' }}>
-            Select Package
-          </Typography>
+              <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
+                ...
+              </Stack>
+            </>
+          )}
           <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
-            {PACKAGES.map((p) => {
-              const isActive = selectedPkg === p.id;
+            {plans.map((p) => {
+              const active = selectedPkg === p.id;
+
               return (
                 <Box
                   key={p.id}
                   onClick={() => setSelectedPkg(p.id)}
                   sx={{
                     flex: 1,
-                    position: 'relative',
-                    border: isActive ? '2px solid #4C4EFF' : '1.5px solid #e0e0e0',
-                    borderRadius: 3,
-                    bgcolor: isActive ? '#4C4EFF' : '#fff',
                     py: 1.5,
-                    textAlign: 'center',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    '&:hover': { borderColor: '#4C4EFF' },
+                    textAlign: 'center',
+                    borderRadius: 3,
+                    transition: '0.2s',
+                    position: 'relative',
+                    border: active
+                      ? '2px solid #4C4EFF'
+                      : '1px solid #ddd',
+                    bgcolor: active ? '#4C4EFF' : '#fff',
                   }}
                 >
-                  {isActive && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        top: -8,
-                        right: -8,
-                        width: 20,
-                        height: 20,
-                        borderRadius: '50%',
-                        bgcolor: '#4C4EFF',
-                        border: '2px solid #fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Iconify icon="mingcute:check-line" width={12} style={{ color: '#fff' }} />
-                    </Box>
-                  )}
-                  <Typography fontWeight={800} fontSize={15} sx={{ color: isActive ? '#fff' : '#111' }}>
-                    {p.tokens} Tokens
+                  <Typography
+                    fontWeight={800}
+                    fontSize={15}
+                    sx={{
+                      color: active ? '#fff' : '#111',
+                    }}
+                  >
+                    {mode === 'tokens' ? `${p.tokens} Tokens` : p.name}
                   </Typography>
-                  <Typography fontSize={13} sx={{ color: isActive ? 'rgba(255,255,255,0.8)' : 'text.secondary' }}>
+
+                  <Typography
+                    fontSize={13}
+                    sx={{
+                      color: active
+                        ? 'rgba(255,255,255,0.8)'
+                        : 'text.secondary',
+                    }}
+                  >
                     ${p.price.toFixed(2)}
+                    {mode === 'subscription' &&
+                      `/ ${p.period}`}
                   </Typography>
                 </Box>
               );
             })}
           </Stack>
 
-          <Divider sx={{ mb: 3 }} />
-
-          {/* Row 1: Full Name */}
-          <Field label="Full Name" sx={{ mb: 2 }}>
-            <StyledInput value={name} disabled />
-          </Field>
-
-          {/* Row 2: Email */}
-          <Field label="Email" sx={{ mb: 2 }}>
-            <StyledInput value={email} disabled />
-          </Field>
-
-          {/* Amount */}
-          <Field label="Amount (USD)" sx={{ mb: 2 }}>
-            <StyledInput
-              value={pkg?.price.toFixed(2) ?? ''}
-              disabled
-              startAdornment={<Typography fontSize={14} color="text.secondary">$</Typography>}
-            />
-          </Field>
-
-          {/* Card number */}
-          <Field label="Card Number" sx={{ mb: 2 }}>
+          {mode === 'subscription' && (
             <Box
               sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-                bgcolor: '#f4f5f9',
-                border: '1.5px solid #f0f0f0',
+                mb: 3,
+                p: 2,
                 borderRadius: 2,
-                px: 1.5,
-                py: 1.25,
-                '&:focus-within': { borderColor: '#4C4EFF' },
-                transition: 'border-color 0.15s',
+                bgcolor: '#f4f5f9',
+                border: '1px solid #e5e7eb',
               }}
             >
-              <Iconify icon="solar:card-bold" width={18} style={{ color: '#bdbdbd', flexShrink: 0 }} />
-              <InputBase placeholder="1234  5678  9012  3456" fullWidth sx={{ fontSize: 14, '& input': { p: 0 } }} />
+              <Typography fontWeight={700}>
+                {pkg?.name}
+              </Typography>
+
+              <Typography color="text.secondary">
+                ${pkg?.price} / {pkg?.period}
+              </Typography>
             </Box>
-          </Field>
+          )}
 
-          {/* Expiry + CVC + ZIP */}
-          <Stack direction="row" spacing={2}>
-            <Field label="Expiry" sx={{ flex: 1 }}>
-              <StyledInput placeholder="MM / YY" />
-            </Field>
-            <Field label="CVC" sx={{ flex: 1 }}>
-              <StyledInput placeholder="CVC" />
-            </Field>
-            <Field label="ZIP" sx={{ flex: 1 }}>
-              <StyledInput placeholder="ZIP" />
-            </Field>
-          </Stack>
+          <Divider sx={{ mb: 3 }} />
 
-          {/* Pay button */}
+          <Field label="Full Name" value={name} />
+
+          <Field label="Email" value={email} />
+
+          <Field
+            label="Amount (USD)"
+            value={pkg ? `$${pkg.price.toFixed(2)}` : '$0.00'}
+          />
+
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              fontSize={13}
+              fontWeight={700}
+              sx={{ mb: 0.75, color: '#111' }}
+            >
+              Card Details
+            </Typography>
+
+            <Box
+              sx={{
+                bgcolor: '#f4f5f9',
+                border: '1px solid #e5e7eb',
+                borderRadius: 2,
+                px: 2,
+                py: 2,
+              }}
+            >
+              <CardElement
+                options={{
+                  hidePostalCode: true,
+                }}
+              />
+            </Box>
+          </Box>
+
           <Button
             fullWidth
-            variant="contained"
             size="large"
+            variant="contained"
+            disabled={isLoading}
+            onClick={handlePayment}
             sx={{
               mt: 3,
-              bgcolor: '#4C4EFF',
-              color: '#fff',
-              borderRadius: 2,
               py: 1.5,
+              borderRadius: 2,
               fontWeight: 700,
               fontSize: 15,
-              boxShadow: 'none',
               textTransform: 'none',
-              '&:hover': { bgcolor: '#3739b7', boxShadow: 'none' },
+              bgcolor: '#4C4EFF',
+              '&:hover': {
+                bgcolor: '#3739b7',
+              },
             }}
           >
-            Pay ${pkg?.price.toFixed(2)} — Get {pkg?.tokens} Tokens
+            {isLoading ? (
+              <CircularProgress size={22} color="inherit" />
+            ) : (
+              mode === 'tokens'
+                ? `Pay $${pkg?.price.toFixed(2)} — Get ${pkg?.tokens} Tokens`
+                : `Subscribe to ${pkg?.name} — $${pkg?.price.toFixed(2)}`
+            )}
           </Button>
-
         </Box>
       </DialogContent>
     </Dialog>

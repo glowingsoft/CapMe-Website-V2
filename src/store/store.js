@@ -4,7 +4,7 @@ import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import storage from 'redux-persist/lib/storage';
 import { authApi } from './Reducer/auth';
 import userReducer from './slices/userSlice';
-import { walletsApi } from './Reducer/wallets-api';
+import { paymentApi } from './Reducer/payment-api';
 import { categoriesApi } from './Reducer/categories-api';
 import { roomsApi } from './Reducer/rooms-api';
 import { aiApi } from './Reducer/ai-api';
@@ -27,7 +27,7 @@ const persistedUserReducer = persistReducer(persistConfig, userReducer);
 export const store = configureStore({
   reducer: {
     [categoriesApi.reducerPath]: categoriesApi.reducer,
-    [walletsApi.reducerPath]: walletsApi.reducer,
+    [paymentApi.reducerPath]: paymentApi.reducer,
     [authApi.reducerPath]: authApi.reducer,
     [roomsApi.reducerPath]: roomsApi.reducer,
     [aiApi.reducerPath]: aiApi.reducer,
@@ -40,15 +40,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(
-      authApi.middleware,
-      walletsApi.middleware,
-      categoriesApi.middleware,
-      roomsApi.middleware,
-      aiApi.middleware,
-      exploreApi.middleware,
-      usersApi.middleware
-    ),
+    }).concat(authApi.middleware, paymentApi.middleware, categoriesApi.middleware, roomsApi.middleware, aiApi.middleware, exploreApi.middleware, usersApi.middleware),
 });
 
 // Initialize Redux Persist

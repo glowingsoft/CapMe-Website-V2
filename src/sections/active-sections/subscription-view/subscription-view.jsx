@@ -41,6 +41,7 @@ export default function SubscriptionView() {
   const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
 
   useEffect(() => {
     const onAccountChange = (e) => setAccountDrawerOpen(e.detail);
@@ -214,6 +215,7 @@ export default function SubscriptionView() {
             fullWidth
             variant="contained"
             size="large"
+            onClick={() => setSubscriptionModalOpen(true)}
             sx={{
               bgcolor: '#4C4EFF',
               color: '#fff',
@@ -268,7 +270,9 @@ export default function SubscriptionView() {
           </Button>
         </Stack>
 
-        <PurchaseTokensModal open={tokenModalOpen} onClose={() => setTokenModalOpen(false)} />
+        <PurchaseTokensModal open={tokenModalOpen} onClose={() => setTokenModalOpen(false)} mode='tokens' />
+
+        <PurchaseTokensModal open={subscriptionModalOpen} onClose={() => setSubscriptionModalOpen(false)} mode='subscription' selectedPlan={selectedPlan} />
 
         {/* Legal footer */}
         {/* <Typography
