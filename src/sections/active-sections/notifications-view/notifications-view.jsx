@@ -51,6 +51,16 @@ function getPageNumbers(current, total) {
   return pages;
 }
 
+function getNotificationKey(notification, index) {
+  const id = notification?._id ?? notification?.id ?? notification?.notificationId;
+  if (id !== undefined && id !== null && String(id).trim() !== '') {
+    return String(id);
+  }
+  const type = notification?.type ?? 'notification';
+  const time = notification?.createdAt ?? notification?.timeAgo ?? 'na';
+  return `${type}-${time}-${index}`;
+}
+
 export default function NotificationsView() {
   const { t } = useTranslate('common');
   const [items, setItems] = React.useState([]);
@@ -152,8 +162,8 @@ export default function NotificationsView() {
             />
           ) : (
             <Stack spacing={1.7} sx={{ width: '100%' }}>
-              {items.map((n) => (
-                <NotificationCard key={n._id} notification={n} />
+              {items.map((n, index) => (
+                <NotificationCard key={getNotificationKey(n, index)} notification={n} />
               ))}
             </Stack>
           )}
