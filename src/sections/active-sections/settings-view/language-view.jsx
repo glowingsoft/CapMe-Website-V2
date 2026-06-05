@@ -6,11 +6,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Iconify } from 'src/components/iconify';
+import { Iconify, FlagIcon } from 'src/components/iconify';
 import { allLangs } from 'src/locales/all-langs';
 import { useTranslate } from 'src/locales';
-
-const flagUrl = (countryCode) => `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 
 export default function LanguageView() {
   const navigate = useNavigate();
@@ -104,19 +102,9 @@ export default function LanguageView() {
                   }}
                 >
                   {/* Flag image */}
-                  <Box
-                    component="img"
-                    src={flagUrl(lang.countryCode)}
-                    alt={lang.label}
-                    sx={{
-                      width: 36,
-                      height: 26,
-                      borderRadius: 1,
-                      objectFit: 'cover',
-                      flexShrink: 0,
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                    }}
-                  />
+                  <Box sx={{ flexShrink: 0, lineHeight: 0, borderRadius: 1, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>
+                    <FlagIcon code={lang.countryCode} sx={{ width: 36, height: 26, display: 'block' }} />
+                  </Box>
 
                   {/* Labels */}
                   <Box sx={{ flex: 1, minWidth: 0 }}>

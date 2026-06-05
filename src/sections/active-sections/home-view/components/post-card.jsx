@@ -120,9 +120,30 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
 
     const [anchor, setAnchor] = useState(null);
     const [hashtagModalTag, setHashtagModalTag] = useState(null);
+
+    // Optimistic like state — overrides prop until server confirms via socket
+    const [localLiked, setLocalLiked] = useState(null);
+    const [localLikeCount, setLocalLikeCount] = useState(null);
+
+    // When the parent updates the post from the socket event, clear local overrides
+    const prevLikeActionRef = React.useRef(post.likeAction);
+    const prevLikeCountRef = React.useRef(post.stats?.likes);
+    React.useEffect(() => {
+        const actionChanged = prevLikeActionRef.current !== post.likeAction;
+        const countChanged = prevLikeCountRef.current !== post.stats?.likes;
+        if (actionChanged || countChanged) {
+            setLocalLiked(null);
+            setLocalLikeCount(null);
+            prevLikeActionRef.current = post.likeAction;
+            prevLikeCountRef.current = post.stats?.likes;
+        }
+    });
+
     const likeAction = String(post.likeAction ?? '').toLowerCase();
-    const liked = likeAction ? likeAction.includes('like') && !likeAction.includes('unlike') : isLikedByMe;
-    const likeCount = post.stats?.likes ?? 0;
+    const propLiked = likeAction ? likeAction.includes('like') && !likeAction.includes('unlike') : isLikedByMe;
+    const propLikeCount = post.stats?.likes ?? 0;
+    const liked = localLiked !== null ? localLiked : propLiked;
+    const likeCount = localLikeCount !== null ? localLikeCount : propLikeCount;
     const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
@@ -156,10 +177,17 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
 
         const messageId = post.id ?? post._id;
         if (!messageId) return;
-        chatSocketService.likeMessage({ messageId });
-    }, [post.id, post._id]);
 
-    // Clear overrides — isLikedByMe and post.stats.likes are now up to date
+        // Optimistic update — flip liked state and adjust count immediately
+        const nowLiked = !liked;
+        setLocalLiked(nowLiked);
+        setLocalLikeCount((prev) => {
+            const base = prev !== null ? prev : propLikeCount;
+            return nowLiked ? base + 1 : Math.max(0, base - 1);
+        });
+
+        chatSocketService.likeMessage({ messageId });
+    }, [post.id, post._id, liked, propLikeCount]);
 
     const handleComment = useCallback(() => {
         onCommentClick?.(post);

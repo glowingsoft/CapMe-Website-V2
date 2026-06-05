@@ -31,7 +31,7 @@ import {
   useTable,
 } from 'src/components/table';
 
-import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/payment-api';
+import { useDeleteCategoryMutation, useGetCategoriesQuery } from 'src/store/Reducer/categories-api';
 import { applySorting } from 'src/utils/table-utils';
 import { UserTableToolbar } from '../category-table-toolbar';
 import { UserTableFiltersResult } from '../category-table-filters-result';
@@ -88,7 +88,7 @@ export function CategoryListView({ categoryType }) {
     data: responseData,
     isLoading,
     isFetching,
-  } = useGetWalletsQuery(
+  } = useGetCategoriesQuery(
     {
       page: currentPage,
       search: searchQuery,
@@ -102,7 +102,7 @@ export function CategoryListView({ categoryType }) {
   );
 
   // Delete mutation
-  const [deleteItem, { isLoading: isDeleting }] = useDeleteWalletMutation();
+  const [deleteItem, { isLoading: isDeleting }] = useDeleteCategoryMutation();
 
   // Debounced search handler
   const debouncedSearch = useDebouncedCallback(

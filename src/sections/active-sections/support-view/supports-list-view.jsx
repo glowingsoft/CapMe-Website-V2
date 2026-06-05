@@ -21,7 +21,7 @@ import {
   TablePaginationCustom,
 } from 'src/components/table';
 
-import { useDeleteWalletMutation, useGetWalletsQuery } from 'src/store/Reducer/payment-api';
+import { useDeleteCategoryMutation, useGetCategoriesQuery } from 'src/store/Reducer/categories-api';
 import { applySorting } from 'src/utils/table-utils';
 
 // Import flexible table system
@@ -139,7 +139,7 @@ export function SupportListView() {
     handleRemoveFilter,
     handleResetFilters,
   } = useDataTable({
-    queryHook: useGetWalletsQuery,
+    queryHook: useGetCategoriesQuery,
     defaultFilters: DEFAULT_FILTERS,
     filterFields: WALLET_FILTER_FIELDS,
     defaultRowsPerPage: 10,
@@ -153,7 +153,7 @@ export function SupportListView() {
     handleDeleteRow,
     handleConfirmDelete,
     handleCancelDelete,
-  } = useDeleteConfirmation(useDeleteWalletMutation, {
+  } = useDeleteConfirmation(useDeleteCategoryMutation, {
     successMessage: 'Support deleted successfully!',
     errorMessage: 'Failed to delete wallet',
   });
