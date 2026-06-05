@@ -227,9 +227,13 @@ export function HeaderBase({
                 <Box sx={{ py: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '15rem' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                     <CapmeTitle>{t('app_name')}</CapmeTitle>
-                    <CapmeSubtitle>{t('available_tokens')}</CapmeSubtitle>
+                    <CapmeSubtitle>
+                      {currentUser?.is_active_subscription
+                        ? 'Premium Active'
+                        : 'No Active Subscription'}
+                    </CapmeSubtitle>
                   </Box>
-                  <CapmeTokens>{data?.tokens ?? 42}</CapmeTokens>
+                  <CapmeTokens>{currentUser?.subscription?.tokens ?? 0}</CapmeTokens>
                 </Box>
               </CapmeBox>
 

@@ -89,6 +89,9 @@ export function JwtSignInView() {
         password: data.password,
       });
 
+      console.log("LOGIN User Data", user);
+      
+
       dispatch(setUser(user));
       await checkUserSession();
       router.replace(paths.dashboard.root);
