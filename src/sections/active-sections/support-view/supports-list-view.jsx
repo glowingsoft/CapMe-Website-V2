@@ -191,7 +191,7 @@ export function SupportListView() {
       <Box sx={{ px: { xs: 2, md: 6 }, pb: 5, pt: 3, display: 'flex', flexDirection: 'column' }}>
         <CustomBreadcrumbs
           heading="Support"
-          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Support' }]}
+          links={[{ name: 'Dashboard', href: paths.dashboard.root }, { name: 'Supports' }]}
           sx={{ mb: { xs: 3, md: 5 } }}
         />
 
