@@ -1,5 +1,3 @@
-#dev
-
 name: CI/CD for DEV Environment
 
 on:
