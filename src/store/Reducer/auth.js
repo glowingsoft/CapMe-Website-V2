@@ -324,6 +324,7 @@ export const {
   useResetPasswordMutation,
   useAdminLoginMutation,
   useUserProfileQuery,
+  useLazyUserProfileQuery,
   useUpdateProfileMutation,
   useUploadFileMutation,
   useUploadChatFilesMutation,
