@@ -31,6 +31,7 @@ import { CustomToast } from './components/CustomToast';
 import { RightDrawer } from './components/settings/drawer/right-drawer';
 import { messaging } from './firebase/firebaseConfig';
 import { setToken } from './store/slices/userSlice';
+import { addNotification } from './store/slices/notificationsSlice';
 
 // ----------------------------------------------------------------------
 
@@ -54,7 +55,7 @@ export default function App() {
       const token = await getToken(messaging, {
         vapidKey: REACT_APP_VAPID_KEY,
       });
-      console.log("token", token);
+      console.log("[FCM] Token retrieved:", token);
 
       dispatch(setToken(token));
 
@@ -67,15 +68,24 @@ export default function App() {
     requestPermission();
   }, []);
 
-  onMessage(messaging, (payload) => {
-    console.log('Message received. ', payload);
-
-    toast.custom((t) => (
-      <CustomToast payload={payload} t={t} />
-    ), {
-      style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+  useEffect(() => {
+    const unsubscribe = onMessage(messaging, (payload) => {
+      console.log('[FCM] Foreground message received:', payload);
+      dispatch(addNotification({
+        title: payload?.notification?.title ?? 'Notification',
+        body: payload?.notification?.body ?? '',
+        image: payload?.notification?.image ?? null,
+        data: payload?.data ?? {},
+      }));
+      toast.custom((t) => (
+        <CustomToast payload={payload} t={t} />
+      ), {
+        duration: 5000,
+        style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+      });
     });
-  });
+    return unsubscribe;
+  }, [dispatch]);
 
 
   return (

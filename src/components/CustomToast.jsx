@@ -1,6 +1,6 @@
 import { Box, Typography, IconButton } from '@mui/material';
 import { Iconify } from './iconify';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export const CustomToast = ({ payload, t }) => {
   const title = payload?.notification?.title ?? 'Notification';
@@ -74,7 +74,7 @@ export const CustomToast = ({ payload, t }) => {
       {/* Close */}
       <IconButton
         size="small"
-        onClick={() => toast.dismiss(t?.id)}
+        onClick={() => toast.dismiss(t)}
         sx={{
           flexShrink: 0,
           alignSelf: 'flex-start',

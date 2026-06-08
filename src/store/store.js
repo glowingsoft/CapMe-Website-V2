@@ -4,6 +4,7 @@ import { persistReducer, persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import storage from 'redux-persist/lib/storage';
 import { authApi } from './Reducer/auth';
 import userReducer from './slices/userSlice';
+import notificationsReducer from './slices/notificationsSlice';
 import { paymentApi } from './Reducer/payment-api';
 import { categoriesApi } from './Reducer/categories-api';
 import { roomsApi } from './Reducer/rooms-api';
@@ -34,6 +35,7 @@ export const store = configureStore({
     [exploreApi.reducerPath]: exploreApi.reducer,
     [usersApi.reducerPath]: usersApi.reducer,
     user: persistedUserReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

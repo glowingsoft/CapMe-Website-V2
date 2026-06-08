@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
@@ -30,7 +31,7 @@ function SummarySkeleton() {
 
 export default function SummaryTab() {
   const { t } = useTranslate('common');
-  const [fetchSummary, { data: overviewHtml = '', isFetching, isError }] = useLazyGetAiSummaryQuery();
+  const [fetchSummary, { data: overviewHtml = '', isFetching, isError, error }] = useLazyGetAiSummaryQuery();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -41,7 +42,71 @@ export default function SummaryTab() {
 
   if (isLoading || isFetching) return <SummarySkeleton />;
 
-  if (isError || !overviewHtml) {
+  if (isError) {
+    const errorMessage = error?.data?.message || error?.message || t('chat_me.summary_empty_title');
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 2.5 }}>
+        <Box sx={{ position: 'relative' }}>
+          <Box sx={{
+            width: 148,
+            height: 148,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle at 40% 35%, rgba(76,78,255,0.13) 0%, rgba(255,180,50,0.07) 55%, transparent 75%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <Box sx={{
+              width: 92,
+              height: 92,
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #eeeeff 0%, #fffbee 100%)',
+              border: '1.5px solid rgba(76,78,255,0.18)',
+              boxShadow: '0 8px 28px rgba(76,78,255,0.14)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Iconify icon="solar:document-bold-duotone" width={46} sx={{ color: '#4C4EFF' }} />
+            </Box>
+          </Box>
+          <Box component="span" sx={{ position: 'absolute', top: 14, right: 14, width: 10, height: 10, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.25)' }} />
+          <Box component="span" sx={{ position: 'absolute', bottom: 18, left: 12, width: 6, height: 6, borderRadius: '50%', bgcolor: 'rgba(255,180,50,0.35)' }} />
+          <Box component="span" sx={{ position: 'absolute', top: 38, left: 8, width: 5, height: 5, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.18)' }} />
+        </Box>
+
+        <Box sx={{ textAlign: 'center', px: 4 }}>
+          <Typography fontWeight={700} fontSize={15} color="#111827" sx={{ mb: 0.75 }}>
+            Couldn&apos;t load summary
+          </Typography>
+          <Typography fontSize={13} color="text.secondary" lineHeight={1.65} maxWidth={300}>
+            {errorMessage}
+          </Typography>
+        </Box>
+
+        <Button
+          onClick={handleRefresh}
+          size="small"
+          startIcon={<Iconify icon="solar:refresh-bold" width={15} />}
+          sx={{
+            borderRadius: 99,
+            px: 2.5,
+            py: 0.8,
+            fontSize: 13,
+            fontWeight: 600,
+            textTransform: 'none',
+            color: '#4C4EFF',
+            border: '1.5px solid rgba(76,78,255,0.3)',
+            '&:hover': { bgcolor: 'rgba(76,78,255,0.06)', borderColor: '#4C4EFF' },
+          }}
+        >
+          Try again
+        </Button>
+      </Box>
+    );
+  }
+
+  if (!overviewHtml) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 1 }}>
         <Typography fontSize={14} fontWeight={600} color="text.secondary">{t('chat_me.summary_empty_title')}</Typography>

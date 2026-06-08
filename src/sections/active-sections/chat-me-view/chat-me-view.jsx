@@ -215,6 +215,8 @@ export default function ChatMeView() {
   const pendingBottomScrollRef = React.useRef(false);
   const autoSentRef = React.useRef(false);
 
+  const [sendError, setSendError] = React.useState('');
+
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
   const [chatHistoryDrawerOpen, setChatHistoryDrawerOpen] = React.useState(false);
@@ -429,27 +431,21 @@ export default function ChatMeView() {
         },
       ]);
       if (shouldTypeResponse(result?.response)) setTypewriterId(id);
-    } catch {
-      const id = Date.now();
+    } catch (err) {
       setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id,
-          role: 'assistant',
-          content: t('chat_me.error_reach_chat'),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
-      setTypewriterId(id);
+      setMessages((prev) => prev.filter((m) => m.id !== userMessageId));
+      setMessage(trimmed);
+      const apiMessage = err?.data?.message || err?.message || t('chat_me.error_reach_chat');
+      setSendError(apiMessage);
     }
-  }, [aiChatId, fetchAiChat, isTyping, typewriterId]);
+  }, [aiChatId, fetchAiChat, isTyping, typewriterId, t]);
 
   const handleCardClick = React.useCallback((card) => {
     sendMessage(card.subtitle, card.id);
   }, [sendMessage]);
 
   const handleSend = React.useCallback(() => {
+    setSendError('');
     sendMessage(message);
   }, [message, sendMessage]);
 
@@ -689,6 +685,12 @@ export default function ChatMeView() {
         {/* Bottom input */}
         {tab === 'prompts' && (
           <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pb: 2, pt: 1, bgcolor: '#fff' }}>
+            {sendError && (
+              <Box sx={{ width: '100%', maxWidth: 980, mx: 'auto', mb: 1, px: 1.5, py: 1, bgcolor: '#FFF5F5', border: '1px solid #FFCCCC', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Iconify icon="solar:danger-triangle-bold" width={16} sx={{ color: '#FF4444', flexShrink: 0 }} />
+                <Typography fontSize={13} color="#CC0000" lineHeight={1.5}>{sendError}</Typography>
+              </Box>
+            )}
             <Box
               sx={{
                 width: '100%',
@@ -706,7 +708,7 @@ export default function ChatMeView() {
             >
               <InputBase
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => { setMessage(e.target.value); if (sendError) setSendError(''); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder={t('chat_me.placeholder')}
                 inputRef={inputRef}
