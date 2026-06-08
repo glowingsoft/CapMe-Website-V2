@@ -13,8 +13,12 @@ import { varAlpha, stylesMode } from 'src/theme/styles';
 import { bulletColor } from 'src/components/nav-section';
 import { useSettingsContext } from 'src/components/settings';
 
-import { useSelector } from 'react-redux';
-import { connectSocket, disconnectSocket } from 'src/socket/socket';
+import { useSelector, useDispatch } from 'react-redux';
+import { useLocation } from 'react-router-dom';
+import { connectSocket, disconnectSocket, getSocket } from 'src/socket/socket';
+import { updateSubscriptionTokens } from 'src/store/slices/userSlice';
+import { selectUnreadCount, markAllAsRead } from 'src/store/slices/notificationsSlice';
+import { paths } from 'src/routes/paths';
 
 import { Main } from './main';
 import GlobalDrawers from '../components/global-drawers';
@@ -46,7 +50,11 @@ export function DashboardLayout({ sx, children, data }) {
 
   const { t } = useTranslate('common');
 
+  const dispatch = useDispatch();
+  const location = useLocation();
+  const unreadCount = useSelector(selectUnreadCount);
   const userId = user?._id ?? user?.id;
+
   useEffect(() => {
     if (userId) {
       connectSocket(userId);
@@ -55,12 +63,32 @@ export function DashboardLayout({ sx, children, data }) {
     }
   }, [userId]);
 
+  useEffect(() => {
+    if (location.pathname === paths.dashboard.notifications && unreadCount > 0) {
+      dispatch(markAllAsRead());
+    }
+  }, [location.pathname, unreadCount, dispatch]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const socket = getSocket();
+    if (!socket) return;
+    const onTokenUpdate = (data) => {
+      console.log('[Socket] token_update received — raw payload:', data);
+      const tokens = typeof data === 'number' ? data : (data?.tokens ?? data?.subscription?.tokens);
+      console.log('[Socket] token_update — resolved tokens:', tokens);
+      if (tokens !== undefined) dispatch(updateSubscriptionTokens(tokens));
+    };
+    socket.on('token_update', onTokenUpdate);
+    return () => socket.off('token_update', onTokenUpdate);
+  }, [userId, dispatch]);
+
   const navData = useMemo(() => {
     if (user?.permission === 1) {
       return getNavDataAdmin(t);
     }
-    return data?.nav ?? getNavData(t);
-  }, [user?.permission, data?.nav, t]);
+    return data?.nav ?? getNavData(t, unreadCount);
+  }, [user?.permission, data?.nav, t, unreadCount]);
 
   const isNavMini = settings.navLayout === 'mini';
 

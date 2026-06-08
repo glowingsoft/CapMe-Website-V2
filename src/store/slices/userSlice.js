@@ -16,6 +16,12 @@ const userSlice = createSlice({
       state.device_id = action.payload;
     },
 
+    updateSubscriptionTokens: (state, action) => {
+      if (state.user?.subscription) {
+        state.user.subscription.tokens = action.payload;
+      }
+    },
+
     logout: (state) => {
       console.log('userSlice - Logging out');
       state.user = null;
@@ -24,7 +30,7 @@ const userSlice = createSlice({
 });
 
 // Exporting actions
-export const { setUser, setToken, logout } = userSlice.actions;
+export const { setUser, setToken, logout, updateSubscriptionTokens } = userSlice.actions;
 export const selectUser = (state) => state.user.user;
 export const selectToken = (state) => state.user.device_id;
 

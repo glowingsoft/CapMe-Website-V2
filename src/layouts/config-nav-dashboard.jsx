@@ -1,11 +1,11 @@
+import Box from '@mui/material/Box';
+
 import { paths } from 'src/routes/paths';
 
 import { CONFIG } from 'src/config-global';
 
 import { Iconify } from 'src/components/iconify';
 import { SvgColor } from 'src/components/svg-color';
-
-// ----------------------------------------------------------------------
 
 const icon = (name) => <SvgColor src={`${CONFIG.site.basePath}/assets/icons/navbar/${name}.svg`} />;
 
@@ -50,7 +50,7 @@ const ICONS = {
 
 // ----------------------------------------------------------------------
 
-export const getNavData = (t) => [
+export const getNavData = (t, unreadCount = 0) => [
   {
     items: [
       { title: t('nav.home'), path: paths.dashboard.root, icon: ICONS.home },
@@ -58,7 +58,18 @@ export const getNavData = (t) => [
       { title: t('nav.activity_feed'), path: paths.dashboard.activityFeed, icon: ICONS.activityFeedCustom },
       { title: t('nav.chat_me'), path: paths.dashboard.chatMe, icon: ICONS.chatCustom },
       { title: t('nav.graph'), path: paths.dashboard.settings.knowledgeGraph, icon: <Iconify icon="ph:graph-fill" /> },
-      { title: t('nav.notifications'), path: paths.dashboard.notifications, icon: ICONS.notificationCustom },
+      {
+        title: t('nav.notifications'),
+        path: paths.dashboard.notifications,
+        icon: (
+          <Box component="span" sx={{ position: 'relative', width: 24, height: 24, display: 'inline-flex' }}>
+            <SvgColor src={`${import.meta.env.BASE_URL}assets/icons/notification.svg`} sx={{ width: 24, height: 24 }} />
+            {unreadCount > 0 && (
+              <Box component="span" sx={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: '50%', bgcolor: '#FF4444', border: '1.5px solid #141414' }} />
+            )}
+          </Box>
+        ),
+      },
       { title: t('nav.settings'), path: paths.dashboard.settings.root, icon: ICONS.settingCustom },
     ],
   },

@@ -34,6 +34,15 @@ function getClientDeviceId() {
   }
 }
 
+async function getDeviceId() {
+  try {
+    const { store } = await import('src/store/store');
+    const fcmToken = store.getState().user?.device_id;
+    if (fcmToken) return fcmToken;
+  } catch (_) {}
+  return getClientDeviceId();
+}
+
 function findAccessToken(payload) {
   if (!payload || typeof payload !== 'object') return null;
 
@@ -102,7 +111,7 @@ export const signInWithPassword = async ({ email, password, role, user_type }) =
     }
 
     const timezone = getClientTimeZone();
-    const deviceId = getClientDeviceId();
+    const deviceId = await getDeviceId();
     const loginPayload = {
       email,
       password,
@@ -139,7 +148,7 @@ export const signInWithPassword = async ({ email, password, role, user_type }) =
 export const signUp = async ({ name, email, password, phone, image = 'noImg.png', user_type = 2 }) => {
   try {
     const timezone = getClientTimeZone();
-    const deviceId = getClientDeviceId();
+    const deviceId = await getDeviceId();
 
     const { authApi } = await import('src/store/Reducer/auth');
     const { store } = await import('src/store/store');
@@ -173,7 +182,7 @@ export const signUp = async ({ name, email, password, phone, image = 'noImg.png'
 export const signInWithGoogle = async (googleUser) => {
   try {
     const timezone = getClientTimeZone();
-    const deviceId = getClientDeviceId();
+    const deviceId = await getDeviceId();
 
     const body = {
       social_id: googleUser.sub,

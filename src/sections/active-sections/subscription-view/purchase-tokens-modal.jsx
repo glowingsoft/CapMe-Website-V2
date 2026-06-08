@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -12,10 +12,8 @@ import DialogContent from '@mui/material/DialogContent';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { Iconify } from 'src/components/iconify';
-import { selectUser, setUser } from 'src/store/slices/userSlice';
+import { selectUser } from 'src/store/slices/userSlice';
 import { useCreatePaymentMutation } from 'src/store/Reducer/payment-api';
-import { useLazyUserProfileQuery } from 'src/store/Reducer/auth';
-import { roomsApi } from 'src/store/Reducer/rooms-api';
 import { useElements, useStripe, CardElement } from '@stripe/react-stripe-js';
 import { toast } from 'src/components/snackbar';
 
@@ -81,11 +79,9 @@ export default function PurchaseTokensModal({ open, onClose, mode = 'tokens', se
     setSelectedPkg(mode === 'tokens' ? 'pkg60' : 'monthly');
   }, [mode]);
 
-  const dispatch = useDispatch();
   const user = useSelector(selectUser);
 
   const [createPayment, { isLoading }] = useCreatePaymentMutation();
-  const [triggerUserProfile] = useLazyUserProfileQuery();
 
   const name =
     user?.basicInfo?.name ||
@@ -165,21 +161,6 @@ export default function PurchaseTokensModal({ open, onClose, mode = 'tokens', se
       console.log('API RESPONSE:', response);
 
       toast.success('Payment completed successfully');
-
-      // Refresh user profile so token count & subscription status update in real time
-      try {
-        const profileRes = await triggerUserProfile().unwrap();
-        const profileBody = profileRes?.body ?? profileRes;
-        if (profileBody && user?.token) {
-          dispatch(setUser({ ...user, ...profileBody, token: user.token }));
-        }
-      } catch (_) {
-        // profile refetch failure is non-critical
-      }
-
-      // Invalidate home API cache so room list reflects any subscription changes
-      dispatch(roomsApi.util.invalidateTags(['room']));
-
       onClose?.();
     } catch (err) {
       console.error('PAYMENT ERROR:', err);
