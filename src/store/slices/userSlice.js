@@ -17,9 +17,15 @@ const userSlice = createSlice({
     },
 
     updateSubscriptionTokens: (state, action) => {
-      if (state.user?.subscription) {
-        state.user.subscription.tokens = action.payload;
-      }
+      if (!state.user) return;
+
+      state.user = {
+        ...state.user,
+        subscription: {
+          ...state.user.subscription,
+          tokens: action.payload,
+        },
+      };
     },
 
     logout: (state) => {
