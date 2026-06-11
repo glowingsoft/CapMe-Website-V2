@@ -1,5 +1,6 @@
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
+import Portal from '@mui/material/Portal';
 import Slide from '@mui/material/Slide';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
@@ -39,20 +40,22 @@ export default function ProfilePageShell({ open, onClose, children }) {
   }
 
   return (
-    <Slide direction="left" in={open} mountOnEnter unmountOnExit timeout={280}>
-      <Box
-        sx={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 1300,
-          bgcolor: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {children}
-      </Box>
-    </Slide>
+    <Portal>
+      <Slide direction="left" in={open} mountOnEnter unmountOnExit timeout={280}>
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1300,
+            bgcolor: '#fff',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {children}
+        </Box>
+      </Slide>
+    </Portal>
   );
 }
