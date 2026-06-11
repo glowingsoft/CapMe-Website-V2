@@ -1,9 +1,10 @@
 import { getToken } from 'firebase/messaging';
 
-import { messaging } from './firebaseConfig';
+import { messagingReady } from './firebaseConfig';
 
 export async function getFcmToken() {
-  const vapidKey = import.meta.env.VITE_VAPID_KEY;
+  const msg = await messagingReady;
+  if (!msg) return null;
 
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
@@ -14,8 +15,8 @@ export async function getFcmToken() {
   );
   await navigator.serviceWorker.ready;
 
-  return getToken(messaging, {
-    vapidKey,
+  return getToken(msg, {
+    vapidKey: import.meta.env.VITE_VAPID_KEY,
     serviceWorkerRegistration,
   });
 }

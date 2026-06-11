@@ -29,7 +29,7 @@ import { AuthProvider as JwtAuthProvider } from 'src/auth/context/jwt';
 import { AuthProvider as SupabaseAuthProvider } from 'src/auth/context/supabase';
 import { CustomToast } from './components/CustomToast';
 import { RightDrawer } from './components/settings/drawer/right-drawer';
-import { messaging } from './firebase/firebaseConfig';
+import { messagingReady } from './firebase/firebaseConfig';
 import { getFcmToken } from './firebase/get-fcm-token';
 import { setToken } from './store/slices/userSlice';
 import { addNotification } from './store/slices/notificationsSlice';
@@ -50,48 +50,48 @@ export default function App() {
 
   useScrollToTop();
 
-  async function requestPermission() {
-    try {
-      const permission = await Notification.requestPermission();
+  useEffect(() => {
+    async function requestPermission() {
+      try {
+        if (typeof Notification === 'undefined') return;
+        const msg = await messagingReady;
+        if (!msg) return;
 
-      if (permission === "granted") {
-        const token = await getFcmToken();
-        console.log("[FCM] Token retrieved:", token);
-
-        if (token) {
-          dispatch(setToken(token));
-          localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const token = await getFcmToken();
+          if (token) {
+            dispatch(setToken(token));
+            localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+          }
         }
-
-      } else if (permission === "denied") {
-        console.log("You denied for the notification");
+      } catch (error) {
+        console.error('[FCM] Unable to initialize notifications:', error);
       }
-    } catch (error) {
-      console.error('[FCM] Unable to initialize notifications:', error);
     }
-  }
-
-  useEffect(() => {
     requestPermission();
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    const unsubscribe = onMessage(messaging, (payload) => {
-      console.log('[FCM] Foreground message received:', payload);
-      dispatch(addNotification({
-        title: payload?.notification?.title ?? 'Notification',
-        body: payload?.notification?.body ?? '',
-        image: payload?.notification?.image ?? null,
-        data: payload?.data ?? {},
-      }));
-      toast.custom((t) => (
-        <CustomToast payload={payload} t={t} />
-      ), {
-        duration: 5000,
-        style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+    let unsubscribe;
+    messagingReady.then((msg) => {
+      if (!msg) return;
+      unsubscribe = onMessage(msg, (payload) => {
+        dispatch(addNotification({
+          title: payload?.notification?.title ?? 'Notification',
+          body: payload?.notification?.body ?? '',
+          image: payload?.notification?.image ?? null,
+          data: payload?.data ?? {},
+        }));
+        toast.custom((t) => (
+          <CustomToast payload={payload} t={t} />
+        ), {
+          duration: 5000,
+          style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+        });
       });
     });
-    return unsubscribe;
+    return () => unsubscribe?.();
   }, [dispatch]);
 
 

@@ -1,18 +1,5 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
-import { getMessaging } from 'firebase/messaging';
-
-// Your web app's Firebase configuration
-// const firebaseConfig = {
-//   apiKey: 'AIzaSyC2YbVXDesS4TtiaGMH_ZyiKJm1od0X354',
-//   authDomain: 'palato-a508d.firebaseapp.com',
-//   projectId: 'palato-a508d',
-//   storageBucket: 'palato-a508d.firebasestorage.app',
-//   messagingSenderId: '748562398718',
-//   appId: '1:748562398718:web:a2c111d4cb10b5f5d914af',
-//   measurementId: 'G-N1K5VKCMNC',
-// };
+import { getMessaging, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBDLk3YCcKu30thVdai19TpEcpxFp5JDhU',
@@ -24,7 +11,14 @@ const firebaseConfig = {
   measurementId: 'G-3303TPS973',
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-// Messaging service
-export const messaging = getMessaging(app);
+
+// messaging is null on unsupported browsers (iOS Safari non-PWA, etc.)
+export let messaging = null;
+
+export const messagingReady = isSupported()
+  .then((supported) => {
+    if (supported) messaging = getMessaging(app);
+    return messaging;
+  })
+  .catch(() => null);
