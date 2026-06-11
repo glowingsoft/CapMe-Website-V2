@@ -167,7 +167,7 @@ export const signInWithPassword = async ({ email, password, role, user_type }) =
 
     return userData;
   } catch (error) {
-    console.error('Error during sign in:', error);
+    console.error('Error during sign in:', error?.message, error?.stack);
     throw error;
   }
 };

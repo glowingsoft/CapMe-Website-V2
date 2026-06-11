@@ -15,8 +15,13 @@ export async function getFcmToken() {
   );
   await navigator.serviceWorker.ready;
 
-  return getToken(msg, {
-    vapidKey: import.meta.env.VITE_VAPID_KEY,
-    serviceWorkerRegistration,
-  });
+  try {
+    return await getToken(msg, {
+      vapidKey: import.meta.env.VITE_VAPID_KEY,
+      serviceWorkerRegistration,
+    });
+  } catch (err) {
+    console.warn('[FCM] getToken failed (unsupported env):', err?.message);
+    return null;
+  }
 }
