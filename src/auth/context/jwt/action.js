@@ -3,6 +3,25 @@ import { STORAGE_KEY, STORAGE_USER_KEY } from './constant';
 import { stripDoubleS3Prefix } from 'src/utils/message-utils';
 
 const FCM_TOKEN_STORAGE_KEY = 'capme_fcm_token';
+const IOS_DEVICE_ID_KEY = 'capme_ios_device_id';
+
+function isIOS() {
+  return typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function getOrCreateIosDeviceId() {
+  try {
+    const stored = localStorage.getItem(IOS_DEVICE_ID_KEY);
+    if (stored) return stored;
+    const id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `ios-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(IOS_DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return `ios-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
 
 function getClientTimeZone() {
   try {
@@ -58,6 +77,9 @@ async function requestFcmToken() {
 }
 
 async function getDeviceId() {
+  // iOS browsers don't support FCM — use a stable random ID instead
+  if (isIOS()) return getOrCreateIosDeviceId();
+
   try {
     const { store } = await import('src/store/store');
     const fcmToken = store.getState().user?.device_id;
