@@ -3,13 +3,11 @@ import { useSelector } from 'react-redux';
 import { selectUser } from 'src/store/slices/userSlice';
 import { useTranslate } from 'src/locales';
 import Box from '@mui/material/Box';
-import Link from '@mui/material/Link';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import { styled, useTheme } from '@mui/material/styles';
 
 import { paths } from 'src/routes/paths';
-import { RouterLink } from 'src/routes/components';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   closeAllDrawers,
@@ -31,14 +29,59 @@ import { Icon } from '@iconify/react';
 import { MenuButton } from '../components/menu-button';
 import { SignInButton } from '../components/sign-in-button';
 import { AccountDrawer } from '../components/account-drawer';
-import { SettingsButton } from '../components/settings-button';
 import { LanguagePopover } from '../components/language-popover';
-import { ContactsPopover } from '../components/contacts-popover';
-import { WorkspacesPopover } from '../components/workspaces-popover';
-import { NotificationsDrawer } from '../components/notifications-drawer';
 import AnnouncementModal from '../components/announcement-modal';
 
 
+
+const MONGO_ID_RE = /^[a-f0-9]{24}$/i;
+
+function getSubscriptionLabel(user, t) {
+  if (user?.is_friendly_subscription) return t('subscription.friendly');
+  if (!user?.is_active_subscription || !user?.subscription?.plan) return t('subscription.no_active');
+
+  const sub = user.subscription;
+  const plan = sub.plan ?? '';
+  const interval = sub.interval ?? '';
+
+  const isYearly =
+    interval === 'year' || interval === 'annual' ||
+    plan.includes('year') || plan.includes('annual');
+  const period = isYearly ? t('subscription.yearly') : t('subscription.monthly');
+
+  // Use explicit name fields if the backend sends them
+  const explicitName = sub.planName ?? sub.name;
+  if (explicitName) return `${explicitName} · ${period}`;
+
+  // Raw MongoDB ObjectId — don't show the ID, just show "Premium"
+  if (MONGO_ID_RE.test(plan)) return `Premium · ${period}`;
+
+  // Stripe-style slug e.g. "premium_monthly" → "Premium"
+  const type = plan
+    .replace(/_(monthly|yearly|annual)$/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return `${type} · ${period}`;
+}
+
+function getSubscriptionColor(user) {
+  if (user?.is_friendly_subscription) return '#FF9900';
+  if (!user?.is_active_subscription) return '#6B7280';
+
+  const sub = user?.subscription ?? {};
+  const interval = sub.interval ?? '';
+  const plan = sub.plan ?? '';
+
+  const isYearly =
+    interval === 'year' || interval === 'annual' ||
+    plan.includes('year') || plan.includes('annual');
+
+  return isYearly ? '#34D399' : '#818CF8';
+}
+
+function isSubscriptionActive(user) {
+  return !!(user?.is_friendly_subscription || user?.is_active_subscription);
+}
 
 // CapmeBox styled component
 const CapmeBox = styled(Box)(({ theme }) => ({
@@ -51,7 +94,7 @@ const CapmeBox = styled(Box)(({ theme }) => ({
   marginRight: theme.spacing(2),
 }));
 
-const CapmeTitle = styled('span')(({ theme }) => ({
+const CapmeTitle = styled('span')(() => ({
   color: '#fff',
   fontWeight: 600,
   fontSize: 16,
@@ -65,7 +108,7 @@ const CapmeTokens = styled('span')(({ theme }) => ({
   marginLeft: theme.spacing(1),
 }));
 
-const CapmeSubtitle = styled('span')(({ theme }) => ({
+const CapmeSubtitle = styled('span')(() => ({
   color: '#bdbdbd',
   fontSize: 12,
   marginTop: 2,
@@ -114,15 +157,10 @@ export function HeaderBase({
   slotsDisplay: {
     signIn = true,
     account = true,
-    helpLink = true,
-    settings = true,
     purchase = true,
-    contacts = true,
     searchbar = true,
-    workspaces = true,
     menuButton = true,
     localization = true,
-    notifications = true,
   } = {},
 
   ...other
@@ -160,7 +198,6 @@ export function HeaderBase({
   const params = new URLSearchParams(location.search);
   const chatMeTab = params.get('tab') || 'prompts';
   const showChatMeActions = (location.pathname === '/home/chat-me' || location.pathname === '/home/banking') && chatMeTab === 'prompts';
-  const isActivityFeedPage = location.pathname.includes('/analytics');
   const isHomePage = location.pathname === '/home' || location.pathname === '/home/';
 
   // Close all persistent right drawers on every page navigation
@@ -227,13 +264,31 @@ export function HeaderBase({
                 <Box sx={{ py: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: '15rem' }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                     <CapmeTitle>{t('app_name')}</CapmeTitle>
-                    <CapmeSubtitle>
-                      {currentUser?.is_active_subscription
-                        ? 'Premium Active'
-                        : 'No Active Subscription'}
+                    <CapmeSubtitle style={{ color: getSubscriptionColor(currentUser), display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {isSubscriptionActive(currentUser) && (
+                        <Box
+                          component="span"
+                          sx={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            bgcolor: '#22C55E',
+                            flexShrink: 0,
+                            boxShadow: '0 0 0 2px rgba(34,197,94,0.25)',
+                            animation: 'subtlePulse 2s ease-in-out infinite',
+                            '@keyframes subtlePulse': {
+                              '0%, 100%': { boxShadow: '0 0 0 2px rgba(34,197,94,0.25)' },
+                              '50%': { boxShadow: '0 0 0 4px rgba(34,197,94,0.1)' },
+                            },
+                          }}
+                        />
+                      )}
+                      {getSubscriptionLabel(currentUser, t)}
                     </CapmeSubtitle>
                   </Box>
-                  <CapmeTokens>{currentUser?.subscription?.tokens ?? 0}</CapmeTokens>
+                  <CapmeTokens>
+                    {isSubscriptionActive(currentUser) ? '∞' : (currentUser?.subscription?.tokens ?? 0)}
+                  </CapmeTokens>
                 </Box>
               </CapmeBox>
 

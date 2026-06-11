@@ -22,6 +22,8 @@ import { useTranslate } from 'src/locales';
 import { NODE_TYPE_COLORS } from './constants';
 import MessageItem from './components/message-item';
 import StatsViewer from './components/stats-viewer';
+import KnowledgeGraphGate from './components/knowledge-graph-gate';
+import KnowledgeGraphEmpty from './components/knowledge-graph-empty';
 
 // ── Hooks ──────────────────────────────────────────────────────────────────────
 
@@ -376,9 +378,9 @@ function KnowledgeGraphView() {
     { color: NODE_TYPE_COLORS.link,    label: t('knowledge_graph.legend_link'),    shape: 'triangle' },
   ];
 
-  const { data, isLoading, error } = useGetknowledgeGraphVisualsQuery(
+  const { data, isLoading, isFetching, error } = useGetknowledgeGraphVisualsQuery(
     { userId },
-    { skip: !userId }
+    { skip: !userId, refetchOnMountOrArgChange: true }
   );
 
   const theme = useTheme();
@@ -805,29 +807,30 @@ function KnowledgeGraphView() {
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ gap: 0.5 }}>
-            {STAT_CONFIG.map(({ key, label, icon, type, accent, accentBg }) => (
-              <Box
-                key={key}
-                onClick={() => handleStatsChipClick(type)}
-                sx={{
-                  display: 'flex', alignItems: 'center', gap: 0.625,
-                  px: 1.25, py: 0.625,
-                  borderRadius: 1.5,
-                  bgcolor: accentBg,
-                  cursor: 'pointer',
-                  border: '1px solid transparent',
-                  transition: 'border-color 0.15s',
-                  // subtle border on hover — no background change
-                  '&:hover': { borderColor: `${accent}35` },
-                }}
-              >
-                <Iconify icon={icon} width={15} sx={{ color: accent }} />
-                <Typography fontWeight={800} fontSize={13.5} sx={{ color: accent }}>{stats[key] ?? 0}</Typography>
-                <Typography fontSize={12} color="text.secondary" fontWeight={600}>{label}</Typography>
-              </Box>
-            ))}
-          </Stack>
+          {data?.body?.subscription_details?.is_active_subscription !== false && (
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ gap: 0.5 }}>
+              {STAT_CONFIG.map(({ key, label, icon, type, accent, accentBg }) => (
+                <Box
+                  key={key}
+                  onClick={() => handleStatsChipClick(type)}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.625,
+                    px: 1.25, py: 0.625,
+                    borderRadius: 1.5,
+                    bgcolor: accentBg,
+                    cursor: 'pointer',
+                    border: '1px solid transparent',
+                    transition: 'border-color 0.15s',
+                    '&:hover': { borderColor: `${accent}35` },
+                  }}
+                >
+                  <Iconify icon={icon} width={15} sx={{ color: accent }} />
+                  <Typography fontWeight={800} fontSize={13.5} sx={{ color: accent }}>{stats[key] ?? 0}</Typography>
+                  <Typography fontSize={12} color="text.secondary" fontWeight={600}>{label}</Typography>
+                </Box>
+              ))}
+            </Stack>
+          )}
         </Stack>
       </Box>
 
@@ -913,7 +916,7 @@ function KnowledgeGraphView() {
                   minHeight: isFullscreen ? 0 : { xs: 260, sm: 400, md: 450 },
                 }}
               >
-                {isLoading ? (
+                {(isLoading || isFetching) ? (
                   <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', gap: 1.5 }}>
                     <CircularProgress size={32} sx={{ color: '#4C4EFF' }} />
                     <Typography color="text.secondary" fontSize={13}>{t('knowledge_graph.loading')}</Typography>
@@ -928,16 +931,10 @@ function KnowledgeGraphView() {
                       {error?.message || t('knowledge_graph.error_message')}
                     </Typography>
                   </Stack>
+                ) : data?.body?.subscription_details?.is_active_subscription === false ? (
+                  <KnowledgeGraphGate />
                 ) : graphData.nodes.length === 0 ? (
-                  <Stack alignItems="center" justifyContent="center" sx={{ height: '100%', px: 3, gap: 1 }}>
-                    <Box sx={{ width: 56, height: 56, borderRadius: '50%', bgcolor: 'rgba(76,78,255,0.06)', display: 'grid', placeItems: 'center' }}>
-                      <Iconify icon="solar:graph-bold" width={28} sx={{ color: '#4C4EFF' }} />
-                    </Box>
-                    <Typography fontWeight={800} fontSize={15}>{t('knowledge_graph.empty_title')}</Typography>
-                    <Typography color="text.secondary" fontSize={13} textAlign="center">
-                      {t('knowledge_graph.empty_subtitle')}
-                    </Typography>
-                  </Stack>
+                  <KnowledgeGraphEmpty />
                 ) : (
                   graphWidth > 0 && graphHeight > 0 && (
                     <ForceGraph2D

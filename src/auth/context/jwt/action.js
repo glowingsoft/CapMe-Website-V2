@@ -2,7 +2,7 @@ import { setSession } from './utils';
 import { STORAGE_KEY, STORAGE_USER_KEY } from './constant';
 import { stripDoubleS3Prefix } from 'src/utils/message-utils';
 
-const DEVICE_ID_STORAGE_KEY = 'capme_device_id';
+const FCM_TOKEN_STORAGE_KEY = 'capme_fcm_token';
 
 function getClientTimeZone() {
   try {
@@ -13,24 +13,47 @@ function getClientTimeZone() {
   }
 }
 
-function createDeviceId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
+function getStoredFcmToken() {
+  try {
+    return localStorage.getItem(FCM_TOKEN_STORAGE_KEY);
+  } catch (error) {
+    return null;
   }
-
-  return `device-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function getClientDeviceId() {
-  try {
-    const existingId = localStorage.getItem(DEVICE_ID_STORAGE_KEY);
-    if (existingId) return existingId;
+function storeFcmToken(token) {
+  if (!token) return;
 
-    const newId = createDeviceId();
-    localStorage.setItem(DEVICE_ID_STORAGE_KEY, newId);
-    return newId;
+  try {
+    localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
   } catch (error) {
-    return createDeviceId();
+    console.error('[FCM] Unable to cache token:', error);
+  }
+}
+
+async function requestFcmToken() {
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      return null;
+    }
+
+    const [{ getFcmToken }, { store }, { setToken }] = await Promise.all([
+      import('src/firebase/get-fcm-token'),
+      import('src/store/store'),
+      import('src/store/slices/userSlice'),
+    ]);
+
+    const token = await getFcmToken();
+
+    if (token) {
+      store.dispatch(setToken(token));
+      storeFcmToken(token);
+    }
+
+    return token;
+  } catch (error) {
+    console.error('[FCM] Unable to retrieve token for device_id:', error);
+    return null;
   }
 }
 
@@ -40,7 +63,14 @@ async function getDeviceId() {
     const fcmToken = store.getState().user?.device_id;
     if (fcmToken) return fcmToken;
   } catch (_) {}
-  return getClientDeviceId();
+
+  const storedFcmToken = getStoredFcmToken();
+  if (storedFcmToken) return storedFcmToken;
+
+  const requestedFcmToken = await requestFcmToken();
+  if (requestedFcmToken) return requestedFcmToken;
+
+  return null;
 }
 
 function findAccessToken(payload) {

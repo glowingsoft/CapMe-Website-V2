@@ -8,9 +8,11 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Typography from '@mui/material/Typography';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
+import { selectUser } from 'src/store/slices/userSlice';
 import HashtagSuggestions from 'src/components/hashtags/hashtag-suggestions';
 import { HASHTAGS } from 'src/sections/active-sections/home-view/hashtags-mock';
 import InterestsTab from './interests';
@@ -188,6 +190,8 @@ export default function ChatMeView() {
   const { t } = useTranslate('common');
   const location = useLocation();
   const navigate = useNavigate();
+  const currentUser = useSelector(selectUser);
+  const showTokenWarning = !currentUser?.is_active_subscription && !currentUser?.is_friendly_subscription;
   const searchParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
   const tab = searchParams.get('tab') || 'prompts';
   const incomingQuery = location.state?.query;
@@ -685,6 +689,14 @@ export default function ChatMeView() {
         {/* Bottom input */}
         {tab === 'prompts' && (
           <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pb: 2, pt: 1, bgcolor: '#fff' }}>
+            {showTokenWarning && (
+              <Box sx={{ width: '100%', maxWidth: 980, mx: 'auto', mb: 1, px: 1.5, py: 1, bgcolor: 'rgba(255,153,0,0.08)', border: '1px solid rgba(255,153,0,0.25)', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Iconify icon="solar:coin-bold-duotone" width={16} sx={{ color: '#FF9900', flexShrink: 0 }} />
+                <Typography fontSize={13} color="#CC7700" lineHeight={1.5}>
+                  {t('chat_me.token_warning_chat')}
+                </Typography>
+              </Box>
+            )}
             {sendError && (
               <Box sx={{ width: '100%', maxWidth: 980, mx: 'auto', mb: 1, px: 1.5, py: 1, bgcolor: '#FFF5F5', border: '1px solid #FFCCCC', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Iconify icon="solar:danger-triangle-bold" width={16} sx={{ color: '#FF4444', flexShrink: 0 }} />

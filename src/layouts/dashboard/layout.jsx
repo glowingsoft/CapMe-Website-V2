@@ -16,8 +16,9 @@ import { useSettingsContext } from 'src/components/settings';
 import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { connectSocket, disconnectSocket, getSocket } from 'src/socket/socket';
-import { updateSubscriptionTokens } from 'src/store/slices/userSlice';
+import { updateSubscriptionTokens, updateSubscription } from 'src/store/slices/userSlice';
 import { selectUnreadCount, markAllAsRead } from 'src/store/slices/notificationsSlice';
+import { useLazyValidateSubscriptionQuery } from 'src/store/Reducer/payment-api';
 import { paths } from 'src/routes/paths';
 
 import { Main } from './main';
@@ -54,6 +55,15 @@ export function DashboardLayout({ sx, children, data }) {
   const location = useLocation();
   const unreadCount = useSelector(selectUnreadCount);
   const userId = user?._id ?? user?.id;
+
+  const [validateSubscription] = useLazyValidateSubscriptionQuery();
+
+  useEffect(() => {
+    if (!userId) return;
+    validateSubscription().then((res) => {
+      if (res?.data) dispatch(updateSubscription(res.data));
+    });
+  }, [userId, location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (userId) {

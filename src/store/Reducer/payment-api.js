@@ -15,7 +15,30 @@ export const paymentApi = createApi({
         body: paymentData,
       }),
     }),
+
+    validateSubscription: builder.query({
+      query: () => API_ROUTES.SUBSCRIPTION_VALIDATE,
+      transformResponse: (res) => res?.body ?? res,
+    }),
+
+    getSubscriptionPlans: builder.query({
+      query: () => API_ROUTES.SUBSCRIPTION_PLANS,
+      transformResponse: (res) => res?.body ?? res?.data ?? res,
+    }),
+
+    createSubscription: builder.mutation({
+      query: (body) => ({
+        url: API_ROUTES.SUBSCRIPTION_CREATE,
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
-export const { useCreatePaymentMutation } = paymentApi;
+export const {
+  useCreatePaymentMutation,
+  useLazyValidateSubscriptionQuery,
+  useLazyGetSubscriptionPlansQuery,
+  useCreateSubscriptionMutation,
+} = paymentApi;

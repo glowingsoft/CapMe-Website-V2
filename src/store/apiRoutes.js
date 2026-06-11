@@ -24,6 +24,9 @@ export const API_ROUTES = {
     },
 
     CREATE_PAYMENT: '/payment/create-payment',
+    SUBSCRIPTION_VALIDATE: '/subscription/validate/user',
+    SUBSCRIPTION_PLANS: '/admin/subscription-plan',
+    SUBSCRIPTION_CREATE: '/subscription',
 
     WALLETS: '/wallets',
     WALLETS_BY_ID: (id) => `/wallets/${id}`,

@@ -3,16 +3,21 @@ import { io } from 'socket.io-client';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
 let socket = null;
+let socketUserId = null;
 
 export const connectSocket = (userId) => {
   if (!userId) return null;
-  if (socket?.connected) return socket;
 
+  if (socket?.connected && socketUserId === userId) return socket;
+
+  // Different user or stale socket — always disconnect and reconnect
   if (socket) {
     socket.disconnect();
     socket = null;
+    socketUserId = null;
   }
 
+  socketUserId = userId;
   socket = io(SOCKET_URL, {
     transports: ['websocket'],
     query: { user_id: userId },
@@ -40,5 +45,6 @@ export const disconnectSocket = () => {
     console.log('[Socket] Disconnecting...');
     socket.disconnect();
     socket = null;
+    socketUserId = null;
   }
 };

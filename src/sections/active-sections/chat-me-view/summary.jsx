@@ -6,9 +6,11 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
+import { useSelector } from 'react-redux';
 
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
+import { selectUser } from 'src/store/slices/userSlice';
 import { useLazyGetAiSummaryQuery } from 'src/store/Reducer/ai-api';
 
 function SummarySkeleton() {
@@ -31,6 +33,8 @@ function SummarySkeleton() {
 
 export default function SummaryTab() {
   const { t } = useTranslate('common');
+  const currentUser = useSelector(selectUser);
+  const showTokenWarning = !currentUser?.is_active_subscription && !currentUser?.is_friendly_subscription;
   const [fetchSummary, { data: overviewHtml = '', isFetching, isError, error }] = useLazyGetAiSummaryQuery();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -117,7 +121,13 @@ export default function SummaryTab() {
 
   return (
     <Box>
-      <Stack direction="row" alignItems="center" justifyContent="flex-end" sx={{ mb: 1.5 }}>
+      <Stack direction="row" alignItems="center" justifyContent={showTokenWarning ? 'space-between' : 'flex-end'} sx={{ mb: 1.5 }}>
+        {showTokenWarning && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1.25, py: 0.6, bgcolor: 'rgba(255,153,0,0.08)', border: '1px solid rgba(255,153,0,0.25)', borderRadius: 2 }}>
+            <Iconify icon="solar:coin-bold-duotone" width={14} sx={{ color: '#FF9900', flexShrink: 0 }} />
+            <Typography fontSize={12} color="#CC7700">{t('chat_me.token_warning_refresh')}</Typography>
+          </Box>
+        )}
         <Tooltip title={t('chat_me.refresh_summary_tooltip')}>
           <IconButton
             size="small"

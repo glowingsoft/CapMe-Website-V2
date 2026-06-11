@@ -516,18 +516,26 @@
                     "interests_empty_title":  "Noch keine Interessen gefunden.",
                     "interests_empty_subtitle":  "Ihre KI-erkannten Interessen werden hier angezeigt.",
                     "refresh_tooltip":  "Interessen aktualisieren",
+                    "token_warning_chat":  "Ihr Abonnement ist inaktiv. Jede Nachricht verbraucht 1 Token aus Ihrem Guthaben.",
+                    "token_warning_refresh":  "Das Aktualisieren verbraucht 1 Token.",
                     "summary_empty_title":  "Noch keine Zusammenfassung verfügbar.",
                     "summary_empty_subtitle":  "Ihre KI-Zusammenfassung wird hier angezeigt, sobald sie generiert wurde.",
                     "refresh_summary_tooltip":  "Zusammenfassung aktualisieren",
                     "confidence_label":  "Konfidenz: {{value}}%"
                 },
+    "subscription":  {
+                        "no_active":  "Kein aktives Abonnement",
+                        "friendly":  "Freundschaftsabonnement",
+                        "monthly":  "Monatlich",
+                        "yearly":  "Jährlich"
+                    },
     "settings":  {
                      "title":  "App Einstellungen",
                      "subtitle":  "Verwalten Sie Ihre Einstellungen und Kontooptionen.",
                      "section_general":  "Allgemein",
                      "language_label":  "App Sprache",
                      "subscription_label":  "Abonnement",
-                     "subscription_subtitle":  "Kostenloser Plan",
+                     "subscription_subtitle": "Verwalte dein Abonnement",
                      "knowledge_graph_label":  "Wissensgraph",
                      "knowledge_graph_subtitle":  "Ihr Interessengraph ansehen",
                      "contact_label":  "Kontakt",
@@ -557,12 +565,27 @@
                        "message_placeholder":  "Beschreiben Sie Ihr Problem oder Ihre Frage...",
                        "submit":  "Nachricht senden",
                        "toast_success":  "Nachricht gesendet! Wir melden uns bald.",
-                       "toast_error":  "Senden fehlgeschlagen. Bitte versuchen Sie es erneut."
+                       "toast_error":  "Senden fehlgeschlagen. Bitte versuchen Sie es erneut.",
+                       "banner_title":  "Wir freuen uns von dir zu hören",
+                       "banner_subtitle":  "Hast du eine Frage oder Feedback? Schick uns eine Nachricht und wir melden uns schnellstmöglich.",
+                       "section_subtitle":  "Füll das Formular aus und wir antworten in Kürze.",
+                       "info_response_title":  "Antwortzeit",
+                       "info_response_value":  "Innerhalb von 24 Stunden",
+                       "info_email_title":  "Support-E-Mail",
+                       "info_email_value":  "support@capme.app",
+                       "info_hours_title":  "Support-Zeiten",
+                       "info_hours_value":  "Mo – Fr, 9 – 18 Uhr",
+                       "tips_title":  "Tipps für schnellere Hilfe",
+                       "tip_1":  "Gib deine Konto-E-Mail in der Nachricht an.",
+                       "tip_2":  "Beschreibe die Schritte zur Reproduktion des Problems.",
+                       "tip_3":  "Hänge wenn möglich einen Screenshot an."
                    },
     "language_view":  {
                           "title":  "App Sprache",
                           "subtitle":  "Wählen Sie Ihre bevorzugte Anzeigesprache.",
-                          "update_btn":  "Sprache aktualisieren"
+                          "update_btn":  "Sprache aktualisieren",
+                          "banner_title":  "Sprache wählen",
+                          "banner_subtitle":  "Wähle deine bevorzugte Anzeigesprache. Die App aktualisiert sich sofort."
                       },
     "notifications":  {
                           "title":  "Meine Benachrichtigungen",
@@ -632,6 +655,13 @@
                             "stats_topics_title":  "Alle Themen",
                             "field_url":  "URL",
                             "field_platform":  "Plattform",
-                            "room_messages_hint":  "Klicken Sie auf eine Nachricht, um Themen anzuzeigen"
+                            "room_messages_hint":  "Klicken Sie auf eine Nachricht, um Themen anzuzeigen",
+                            "empty_cta":  "Gespräch starten",
+                            "subscribe_title":  "Wissensgraph freischalten",
+                            "subscribe_subtitle":  "Upgrade auf einen Premium-Plan, um dein soziales Netzwerk zu visualisieren und versteckte Verbindungen zu entdecken.",
+                            "subscribe_cta":  "Pläne ansehen",
+                            "feature_graph":  "Graphansicht",
+                            "feature_rooms":  "Raum-Einblicke",
+                            "feature_topics":  "Themenanalyse"
                         }
 }

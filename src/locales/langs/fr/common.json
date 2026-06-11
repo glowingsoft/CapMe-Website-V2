@@ -515,18 +515,26 @@
                     "interests_empty_title":  "Aucun intérêt trouvé pour l\u0027instant.",
                     "interests_empty_subtitle":  "Vos intérêts détectés par l\u0027IA apparaîtront ici.",
                     "refresh_tooltip":  "Actualiser les intérêts",
+                    "token_warning_chat":  "Votre abonnement est inactif. Chaque message consommera 1 jeton de votre solde.",
+                    "token_warning_refresh":  "L'actualisation consommera 1 jeton.",
                     "summary_empty_title":  "Aucun résumé disponible pour l\u0027instant.",
                     "summary_empty_subtitle":  "Votre résumé IA apparaîtra ici une fois généré.",
                     "refresh_summary_tooltip":  "Actualiser le résumé",
                     "confidence_label":  "Confiance : {{value}}%"
                 },
+    "subscription":  {
+                        "no_active":  "Aucun abonnement actif",
+                        "friendly":  "Abonnement privilégié",
+                        "monthly":  "Mensuel",
+                        "yearly":  "Annuel"
+                    },
     "settings":  {
                      "title":  "Paramètres",
                      "subtitle":  "Gérez vos préférences et options de compte.",
                      "section_general":  "Général",
                      "language_label":  "Langue de l\u0027app",
                      "subscription_label":  "Abonnement",
-                     "subscription_subtitle":  "Plan gratuit",
+                     "subscription_subtitle": "Gérer votre abonnement",
                      "knowledge_graph_label":  "Graphe de connaissances",
                      "knowledge_graph_subtitle":  "Voir votre graphe d\u0027intérêts",
                      "contact_label":  "Nous contacter",
@@ -556,12 +564,27 @@
                        "message_placeholder":  "Décrivez votre problème ou question...",
                        "submit":  "Envoyer le message",
                        "toast_success":  "Message envoyé ! Nous vous répondrons bientôt.",
-                       "toast_error":  "Échec de l\u0027envoi. Veuillez réessayer."
+                       "toast_error":  "Échec de l\u0027envoi. Veuillez réessayer.",
+                       "banner_title":  "Nous serions ravis de vous entendre",
+                       "banner_subtitle":  "Vous avez une question ou un retour ? Envoyez-nous un message et notre équipe vous répondra dès que possible.",
+                       "section_subtitle":  "Remplissez le formulaire ci-dessous et nous vous répondrons rapidement.",
+                       "info_response_title":  "Temps de réponse",
+                       "info_response_value":  "Sous 24 heures",
+                       "info_email_title":  "E-mail du support",
+                       "info_email_value":  "support@capme.app",
+                       "info_hours_title":  "Heures de support",
+                       "info_hours_value":  "Lun – Ven, 9h – 18h",
+                       "tips_title":  "Conseils pour une aide plus rapide",
+                       "tip_1":  "Incluez votre e-mail de compte dans le message.",
+                       "tip_2":  "Décrivez les étapes pour reproduire le problème.",
+                       "tip_3":  "Joignez une capture d'écran si possible."
                    },
     "language_view":  {
                           "title":  "Langue de l\u0027app",
                           "subtitle":  "Choisissez votre langue d\u0027affichage préférée.",
-                          "update_btn":  "Mettre à jour la langue"
+                          "update_btn":  "Mettre à jour la langue",
+                          "banner_title":  "Choisissez votre langue",
+                          "banner_subtitle":  "Sélectionnez votre langue d'affichage préférée. L'application se met à jour instantanément."
                       },
     "notifications":  {
                           "title":  "Mes Notifications",
@@ -631,6 +654,13 @@
                             "stats_topics_title":  "Tous les sujets",
                             "field_url":  "URL",
                             "field_platform":  "Plateforme",
-                            "room_messages_hint":  "Cliquez sur un message pour voir ses sujets"
+                            "room_messages_hint":  "Cliquez sur un message pour voir ses sujets",
+                            "empty_cta":  "Démarrer une conversation",
+                            "subscribe_title":  "Débloquer le Graphe",
+                            "subscribe_subtitle":  "Passez à un plan premium pour visualiser votre réseau social et découvrir des connexions cachées.",
+                            "subscribe_cta":  "Voir les plans",
+                            "feature_graph":  "Vue graphique",
+                            "feature_rooms":  "Aperçus des salles",
+                            "feature_topics":  "Analyse des sujets"
                         }
 }

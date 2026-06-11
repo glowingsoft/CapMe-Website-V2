@@ -19,7 +19,7 @@ import { Snackbar, toast } from 'src/components/snackbar';
 
 import { CheckoutProvider } from 'src/sections/checkout/context';
 
-import { getToken, onMessage } from 'firebase/messaging';
+import { onMessage } from 'firebase/messaging';
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { AuthProvider as AmplifyAuthProvider } from 'src/auth/context/amplify';
@@ -30,10 +30,13 @@ import { AuthProvider as SupabaseAuthProvider } from 'src/auth/context/supabase'
 import { CustomToast } from './components/CustomToast';
 import { RightDrawer } from './components/settings/drawer/right-drawer';
 import { messaging } from './firebase/firebaseConfig';
+import { getFcmToken } from './firebase/get-fcm-token';
 import { setToken } from './store/slices/userSlice';
 import { addNotification } from './store/slices/notificationsSlice';
 
 // ----------------------------------------------------------------------
+
+const FCM_TOKEN_STORAGE_KEY = 'capme_fcm_token';
 
 const AuthProvider =
   (CONFIG.auth.method === 'amplify' && AmplifyAuthProvider) ||
@@ -44,23 +47,27 @@ const AuthProvider =
 
 export default function App() {
   const dispatch = useDispatch();
-  const REACT_APP_VAPID_KEY = import.meta.env.VITE_VAPID_KEY
 
   useScrollToTop();
 
   async function requestPermission() {
-    const permission = await Notification.requestPermission();
+    try {
+      const permission = await Notification.requestPermission();
 
-    if (permission === "granted") {
-      const token = await getToken(messaging, {
-        vapidKey: REACT_APP_VAPID_KEY,
-      });
-      console.log("[FCM] Token retrieved:", token);
+      if (permission === "granted") {
+        const token = await getFcmToken();
+        console.log("[FCM] Token retrieved:", token);
 
-      dispatch(setToken(token));
+        if (token) {
+          dispatch(setToken(token));
+          localStorage.setItem(FCM_TOKEN_STORAGE_KEY, token);
+        }
 
-    } else if (permission === "denied") {
-      console.log("You denied for the notification");
+      } else if (permission === "denied") {
+        console.log("You denied for the notification");
+      }
+    } catch (error) {
+      console.error('[FCM] Unable to initialize notifications:', error);
     }
   }
 
