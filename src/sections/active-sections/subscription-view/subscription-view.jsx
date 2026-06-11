@@ -71,7 +71,7 @@ export default function SubscriptionView() {
   const anyRightDrawerOpen = accountDrawerOpen || profileDrawerOpen || notificationsDrawerOpen;
 
   return (
-    <Box sx={{ bgcolor: '#f4f5f9', minHeight: 'calc(100vh - 105px)', py: 4, px: 2, mr: anyRightDrawerOpen ? { md: '420px' } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
+    <Box sx={{ bgcolor: '#f4f5f9', minHeight: '100%', py: 4, px: 2, mr: anyRightDrawerOpen ? { md: '420px' } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
       <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
 
         {/* Back button */}

@@ -773,8 +773,8 @@ function KnowledgeGraphView() {
     <Box
       sx={{
         flexGrow: 1,
+        minHeight: 0,
         bgcolor: '#f4f5f9',
-        height: 'calc(100vh - 105px)',
         overflow: 'hidden',
         mr: anyRightDrawerOpen ? { md: '420px' } : 0,
         transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)',

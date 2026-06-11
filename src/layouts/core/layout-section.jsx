@@ -33,13 +33,14 @@ export function LayoutSection({
     <>
       {inputGlobalStyles}
 
-      <Box id="root__layout" className={layoutClasses.root} sx={sx}>
+      <Box id="root__layout" className={layoutClasses.root} sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', ...sx }}>
         {sidebarSection ? (
           <>
             {sidebarSection}
             <Box
               display="flex"
               flex="1 1 auto"
+              minHeight="0"
               flexDirection="column"
               className={layoutClasses.hasSidebar}
             >

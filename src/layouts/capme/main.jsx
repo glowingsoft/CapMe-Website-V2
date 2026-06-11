@@ -13,6 +13,7 @@ export function Main({ children, sx, ...other }) {
         display: 'flex',
         flex: '1 1 auto',
         flexDirection: 'column',
+        minHeight: 0,
         bgcolor: '#0A0C12',
         ...sx,
       }}

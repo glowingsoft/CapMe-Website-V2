@@ -25,7 +25,7 @@ export default function CommentDrawerShell({ open, onClose, title, children }) {
             width: 420,
             borderTopLeftRadius: 20,
             mt: '105px',
-            height: 'calc(100vh - 105px)',
+            height: 'calc(100dvh - 105px)',
             bgcolor: '#fff',
             p: 0,
             pointerEvents: 'auto',

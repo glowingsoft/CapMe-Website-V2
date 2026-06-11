@@ -45,8 +45,8 @@ export default function TermsView() {
     <Box
       sx={{
         flexGrow: 1,
+        minHeight: 0,
         bgcolor: '#f4f5f9',
-        height: 'calc(100vh - 105px)',
         overflowY: 'auto',
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(0,0,0,0.15) transparent',

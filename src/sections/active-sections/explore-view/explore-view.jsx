@@ -346,7 +346,7 @@ export default function ExploreView() {
         [selectedRoom, roomId]);
 
     return (
-        <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: { xs: 'calc(100vh - 74px)', lg: 'calc(100vh - 140px)' }, display: 'flex', overflow: 'hidden' }}>
+        <Box sx={{ flexGrow: 1, minHeight: 0, bgcolor: '#f4f5f9', display: 'flex', overflow: 'hidden' }}>
 
             {/* Desktop fixed sidebar */}
             <ExploreLeftDrawer
@@ -563,7 +563,7 @@ export default function ExploreView() {
                                 width: 420,
                                 borderTopLeftRadius: 20,
                                 mt: '105px',
-                                height: 'calc(100vh - 105px)',
+                                bottom: 0,
                                 bgcolor: '#fff',
                                 p: 0,
                                 pointerEvents: 'auto',

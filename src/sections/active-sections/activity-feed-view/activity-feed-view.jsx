@@ -246,7 +246,7 @@ export default function ActivityFeedView() {
   const isPaginating = isFetching && !isLoading;
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden' }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, bgcolor: '#f4f5f9', display: 'flex', overflow: 'hidden' }}>
       <Box
         sx={{
           flexGrow: 1,

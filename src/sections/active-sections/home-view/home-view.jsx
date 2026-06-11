@@ -824,7 +824,7 @@ export default function HomeView() {
   const leftDrawerWidth = showLeftDrawer && leftDrawerOpen ? DRAWER_WIDTH : 0;
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: { xs: 'calc(100vh - 74px)', lg: 'calc(100vh - 140px)' }, display: 'flex', overflow: 'hidden' }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, bgcolor: '#f4f5f9', display: 'flex', overflow: 'hidden' }}>
 
       {/* Desktop fixed sidebar */}
       {showLeftDrawer && (

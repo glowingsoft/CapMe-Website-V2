@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
-import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
 import Skeleton from '@mui/material/Skeleton';
@@ -11,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 import { useTranslate } from 'src/locales';
 import { ConfirmModal } from 'src/components/custom-dialog';
+import ProfilePageShell from 'src/components/profile-page-shell';
 import DrawerHeader from 'src/sections/active-sections/home-view/components/drawer-header';
 import { useDeleteAllAiChatsMutation, useLazyGetAiHistoryQuery } from 'src/store/Reducer/ai-api';
 
@@ -166,30 +166,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
 
   return (
     <>
-      <Drawer
-        anchor="right"
-        open={open}
-        onClose={onClose}
-        hideBackdrop
-        disableEnforceFocus
-        disableAutoFocus
-        disableScrollLock
-        ModalProps={{ sx: { pointerEvents: 'none' } }}
-        PaperProps={{
-          sx: {
-            width: 420,
-            borderTopLeftRadius: 20,
-            mt: '105px',
-            height: 'calc(100vh - 105px)',
-            bgcolor: '#fff',
-            p: 0,
-            pointerEvents: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          },
-        }}
-      >
+      <ProfilePageShell open={open} onClose={onClose}>
         {/* ── Header ── */}
         <DrawerHeader title={t('chat_history.title')} onBack={onClose} showEdit={false} showShare={false} />
 
@@ -322,20 +299,9 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
           ) : (
             groupOrder.filter((g) => grouped[g]?.length).map((group) => (
               <Box key={group}>
-                {/* Group label */}
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ px: 2.5, pt: 2, pb: 0.75 }}>
-                  <Box
-                    sx={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      bgcolor: '#4C4EFF',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Typography
-                    sx={{ fontSize: 11.5, fontWeight: 800, color: '#4C4EFF', letterSpacing: 0.6, textTransform: 'uppercase' }}
-                  >
+                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#4C4EFF', flexShrink: 0 }} />
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: '#4C4EFF', letterSpacing: 0.6, textTransform: 'uppercase' }}>
                     {CHAT_HISTORY_GROUP_ORDER.includes(group) ? t(`chat_history.group_${group}`) : group}
                   </Typography>
                 </Stack>
@@ -375,10 +341,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
                         {item.text}
                       </Typography>
                       {item.description ? (
-                        <Typography
-                          sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}
-                          noWrap
-                        >
+                        <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }} noWrap>
                           {item.description}
                         </Typography>
                       ) : null}
@@ -475,7 +438,7 @@ export default function ChatHistoryDrawer({ open, onClose, onChatSelect, onNewCh
             {t('chat_history.clear_btn')}
           </Button>
         </Box>
-      </Drawer>
+      </ProfilePageShell>
 
       <ConfirmModal
         open={confirmClearOpen}

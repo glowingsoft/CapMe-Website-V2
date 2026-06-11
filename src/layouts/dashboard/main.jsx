@@ -17,6 +17,8 @@ export function Main({ children, isNavHorizontal, sx, ...other }) {
         display: 'flex',
         flex: '1 1 auto',
         flexDirection: 'column',
+        minHeight: 0,
+        overflow: 'auto',
         ...(isNavHorizontal && {
           '--layout-dashboard-content-pt': '40px',
         }),

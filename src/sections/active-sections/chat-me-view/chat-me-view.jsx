@@ -499,11 +499,11 @@ export default function ChatMeView() {
   const showPromptSkeleton = tab === 'prompts' && (isPromptsUninitialized || isPromptsLoading || isPromptsFetching);
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: '#fff', height: 'calc(100vh - 105px)', display: 'flex', overflow: 'hidden', mr: contentRightOffset, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, height: '100%', bgcolor: '#fff', display: 'flex', overflow: 'hidden', mr: contentRightOffset, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Tabs */}
-        <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pt: 2 }}>
+        {/* Tabs — sticky at top */}
+        <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pt: 2, bgcolor: '#fff', borderBottom: '1px solid rgba(0,0,0,0.06)', zIndex: 2 }}>
           <Tabs
             value={tab}
             onChange={(_, v) => setTabWithUrl(v)}
@@ -545,26 +545,24 @@ export default function ChatMeView() {
             minHeight: 0,
             overflowY: 'auto',
             px: { xs: 2, md: 4 },
-            pt: hasMessages ? 3 : 3,
+            pt: { xs: 2, md: 3 },
             pb: tab === 'prompts' ? 2 : 4,
-            display: 'flex',
-            justifyContent: 'center',
             scrollbarWidth: 'thin',
             scrollbarColor: 'rgba(0,0,0,0.12) transparent',
             '&::-webkit-scrollbar': { width: '4px' },
             '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.12)', borderRadius: '10px' },
           }}
         >
-          <Box sx={{ width: '100%', maxWidth: 920 }}>
+          <Box sx={{ width: '100%', maxWidth: 920, mx: 'auto' }}>
 
             {/* ── Prompts: initial suggestion state ── */}
             {tab === 'prompts' && !hasMessages && (
               <>
-                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                  <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} alt="Capme" sx={{ width: 70, height: 70 }} />
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 2, md: 3 } }}>
+                  <Box component="img" src={`${import.meta.env.BASE_URL}logo/logo-single.svg`} alt="Capme" sx={{ width: { xs: 52, md: 70 }, height: { xs: 52, md: 70 } }} />
                 </Box>
 
-                <Stack spacing={2.5} sx={{ mb: 3 }}>
+                <Stack spacing={{ xs: 1.5, md: 2.5 }} sx={{ mb: { xs: 2, md: 3 } }}>
                   {showPromptSkeleton ? (
                     [0, 1, 2].map((item) => <PromptCardSkeleton key={item} />)
                   ) : (
@@ -575,27 +573,27 @@ export default function ChatMeView() {
                         sx={{
                           bgcolor: '#f7f7f8',
                           borderRadius: 4,
-                          px: { xs: 2.5, md: 4 },
-                          py: { xs: 2.5, md: 3 },
+                          px: { xs: 2, md: 4 },
+                          py: { xs: 1.75, md: 3 },
                           textAlign: 'center',
                           border: '1px solid rgba(0,0,0,0.06)',
                           cursor: 'pointer',
                           transition: 'transform 0.12s, box-shadow 0.12s, border-color 0.12s',
                           '&:hover': {
-                          transform: 'translateY(-1px)',
-                          boxShadow: '0px 10px 30px rgba(0,0,0,0.10)',
-                          borderColor: '#4C4EFF',
-                        },
+                            transform: 'translateY(-1px)',
+                            boxShadow: '0px 10px 30px rgba(0,0,0,0.10)',
+                            borderColor: '#4C4EFF',
+                          },
                         }}
                       >
-                        <Typography fontSize={16} fontWeight={750} color="#111827" sx={{ mb: 0.45 }}>{c.title}</Typography>
+                        <Typography fontSize={{ xs: 14, md: 16 }} fontWeight={750} color="#111827" sx={{ mb: 0.45 }}>{c.title}</Typography>
                         <Typography fontSize={12.5} color="text.secondary">{c.subtitle}</Typography>
                       </Box>
                     ))
                   )}
                 </Stack>
 
-                <Typography textAlign="center" fontSize={14} color="text.secondary" sx={{ mb: 2 }}>
+                <Typography textAlign="center" fontSize={13} color="text.secondary" sx={{ mb: { xs: 1, md: 2 } }}>
                   {t('chat_me.examples_note')}
                 </Typography>
               </>
@@ -686,9 +684,9 @@ export default function ChatMeView() {
           </Box>
         </Box>
 
-        {/* Bottom input */}
+        {/* Bottom input — sticky at bottom via flexShrink: 0 in the flex column */}
         {tab === 'prompts' && (
-          <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pb: 2, pt: 1, bgcolor: '#fff' }}>
+          <Box sx={{ flexShrink: 0, px: { xs: 2, md: 4 }, pb: { xs: 1.5, md: 2 }, pt: 1, bgcolor: '#fff', borderTop: '1px solid rgba(0,0,0,0.06)', zIndex: 2 }}>
             {showTokenWarning && (
               <Box sx={{ width: '100%', maxWidth: 980, mx: 'auto', mb: 1, px: 1.5, py: 1, bgcolor: 'rgba(255,153,0,0.08)', border: '1px solid rgba(255,153,0,0.25)', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Iconify icon="solar:coin-bold-duotone" width={16} sx={{ color: '#FF9900', flexShrink: 0 }} />

@@ -119,7 +119,8 @@ export default function RoomChannel({
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                height: 'calc(100vh - 120px)',
+                flex: 1,
+                minHeight: 0,
                 bgcolor: '#fff',
                 borderRadius: 3,
                 overflow: 'hidden',

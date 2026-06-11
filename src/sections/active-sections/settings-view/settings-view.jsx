@@ -220,7 +220,7 @@ export default function SettingsView() {
   };
 
   return (
-    <Box sx={{ flexGrow: 1, bgcolor: '#f4f5f9', height: '100%', mr: anyRightDrawerOpen ? { md: '420px' } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
+    <Box sx={{ flexGrow: 1, minHeight: 0, bgcolor: '#f4f5f9', overflowY: 'auto', mr: anyRightDrawerOpen ? { md: '420px' } : 0, transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)' }}>
       <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 2, md: 4 }, pt: { xs: 2, md: 3 }, pb: { xs: 2, md: 4 } }}>
         <Stack spacing={0.5} sx={{ mb: 4 }}>
           <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
