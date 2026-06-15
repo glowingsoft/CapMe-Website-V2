@@ -239,12 +239,13 @@ export default function ContactUsView() {
         </Box>
 
         {/* Two-column layout */}
-        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'flex-start' } }}>
 
           {/* ── Form card ── */}
           <Box
             sx={{
-              flex: '1 1 0',
+              flex: { xs: 'none', md: '1 1 0' },
+              width: { xs: '100%', md: 'auto' },
               minWidth: 0,
               bgcolor: '#fff',
               borderRadius: 4,
@@ -402,7 +403,7 @@ export default function ContactUsView() {
           </Box>
 
           {/* ── Right sidebar ── */}
-          <Stack spacing={2} sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0 }}>
+          <Stack spacing={2} sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0, display: { xs: 'none', md: 'flex' } }}>
 
             {/* Info cards */}
             <InfoCard

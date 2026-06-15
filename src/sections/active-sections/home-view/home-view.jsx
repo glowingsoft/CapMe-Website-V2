@@ -60,6 +60,7 @@ export default function HomeView() {
   const [pinnedMessages, setPinnedMessages] = React.useState([]);
   const [isPinnedRefetching, setIsPinnedRefetching] = React.useState(false);
 
+  const [suggestedRoomsExpanded, setSuggestedRoomsExpanded] = React.useState(true);
   const [roomInfoOpen, setRoomInfoOpen] = React.useState(false);
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
@@ -892,7 +893,7 @@ export default function HomeView() {
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              mr: anyRightDrawerOpen ? { lg: '90px' } : 0,
+              mr: anyRightDrawerOpen && !suggestedRoomsExpanded ? { lg: `${DRAWER_WIDTH}px` } : 0,
               transition: 'margin-right 0.3s cubic-bezier(.4,0,.2,1)',
             }}
           >
@@ -1200,8 +1201,8 @@ export default function HomeView() {
               </Box>
             )}
           </Box>
-          <Box sx={{ flex: '0 0 320px', minWidth: 0, width: 320, overflow: 'hidden', display: { xs: 'none', lg: 'block' } }}>
-            <SuggestedRooms />
+          <Box sx={{ display: { xs: 'none', lg: 'block' }, flexShrink: 0 }}>
+            <SuggestedRooms expanded={suggestedRoomsExpanded} onExpandedChange={setSuggestedRoomsExpanded} />
           </Box>
 
         </Box>

@@ -89,6 +89,7 @@ export default function ActivityFeedView() {
   const [commentDrawerOpen, setCommentDrawerOpen] = React.useState(false);
   const [selectedPost, setSelectedPost] = React.useState(null);
   const [accountDrawerOpen, setAccountDrawerOpen] = React.useState(false);
+  const [suggestedRoomsExpanded, setSuggestedRoomsExpanded] = React.useState(true);
   const [profileDrawerOpen, setProfileDrawerOpen] = React.useState(false);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = React.useState(false);
 
@@ -389,8 +390,8 @@ export default function ActivityFeedView() {
             </Box>
           </Box>
 
-          <Box sx={{ flex: '0 0 320px', minWidth: 0, width: 320, overflow: 'hidden', display: { xs: 'none', lg: 'block' } }}>
-            <SuggestedRooms />
+          <Box sx={{ display: { xs: 'none', lg: 'block' }, flexShrink: 0 }}>
+            <SuggestedRooms expanded={suggestedRoomsExpanded} onExpandedChange={setSuggestedRoomsExpanded} />
           </Box>
         </Box>
 
