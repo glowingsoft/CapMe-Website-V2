@@ -6,6 +6,10 @@ import Typography from '@mui/material/Typography';
 import { Iconify } from 'src/components/iconify';
 import ImagePreviewDialog, { PdfPreviewDialog } from './image-preview-dialog';
 
+// Shared across all AudioPlayer instances — pauses any currently playing audio
+// when a new one starts, so only one plays at a time.
+let globalCurrentAudio = null;
+
 // ─── Per-type icon / colour for the generic file card ────────────────────────
 function getFileStyle(type, name) {
   const ext = name?.split('.').pop()?.toLowerCase();
@@ -44,6 +48,7 @@ export function AudioPlayer({ url, sx }) {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [resolvingDuration, setResolvingDuration] = useState(false);
 
   const stopRAF = () => {
     if (rafRef.current) {
@@ -64,8 +69,11 @@ export function AudioPlayer({ url, sx }) {
     rafRef.current = requestAnimationFrame(tick);
   };
 
-  // Proper RAF cleanup on unmount
-  useEffect(() => () => stopRAF(), []);
+  // Proper RAF cleanup on unmount; also release global ref if this instance held it
+  useEffect(() => () => {
+    stopRAF();
+    if (globalCurrentAudio === audioRef.current) globalCurrentAudio = null;
+  }, []);
 
   // Reset all player state whenever the audio URL changes
   useEffect(() => {
@@ -78,19 +86,25 @@ export function AudioPlayer({ url, sx }) {
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    setResolvingDuration(false);
     seekingForDurationRef.current = false;
     console.log('[AudioPlayer] url changed:', url);
   }, [url]);
 
   const toggle = () => {
     const el = audioRef.current;
-    if (!el) return;
+    if (!el || resolvingDuration) return;
 
     if (playing) {
       el.pause();
-      setPlaying(false);
-      stopRAF();
+      // state synced via onPause handler
     } else {
+      // Stop any other player that's currently running
+      if (globalCurrentAudio && globalCurrentAudio !== el) {
+        globalCurrentAudio.pause();
+        // The other AudioPlayer's onPause handler will update its own state
+      }
+      globalCurrentAudio = el;
       el.play()
         .then(() => {
           setPlaying(true);
@@ -100,6 +114,7 @@ export function AudioPlayer({ url, sx }) {
           console.error('[AudioPlayer] play failed:', err?.message || err);
           setPlaying(false);
           stopRAF();
+          if (globalCurrentAudio === el) globalCurrentAudio = null;
         });
     }
   };
@@ -112,6 +127,7 @@ export function AudioPlayer({ url, sx }) {
     console.log('[AudioPlayer] metadata loaded — raw duration:', el.duration);
     if (!isFinite(el.duration)) {
       seekingForDurationRef.current = true;
+      setResolvingDuration(true);
       el.currentTime = 1e101;
     } else {
       setDuration(el.duration);
@@ -132,6 +148,7 @@ export function AudioPlayer({ url, sx }) {
     const d = isFinite(el.duration) ? el.duration : 0;
     console.log('[AudioPlayer] seeked — resolved duration:', d);
     setDuration(d);
+    setResolvingDuration(false);
     el.currentTime = 0;
   };
 
@@ -178,15 +195,21 @@ export function AudioPlayer({ url, sx }) {
         <audio
           ref={audioRef}
           src={url}
-          preload="metadata"
+          preload="auto"
           onLoadedMetadata={handleLoadedMetadata}
           onDurationChange={handleDurationChange}
           onSeeked={handleSeeked}
           onTimeUpdate={handleTimeUpdate}
+          onPause={() => {
+            setPlaying(false);
+            stopRAF();
+            if (globalCurrentAudio === audioRef.current) globalCurrentAudio = null;
+          }}
           onEnded={() => {
             setPlaying(false);
             setCurrentTime(0);
             stopRAF();
+            if (globalCurrentAudio === audioRef.current) globalCurrentAudio = null;
           }}
           onError={handleError}
           style={{ display: 'none' }}
@@ -213,6 +236,7 @@ export function AudioPlayer({ url, sx }) {
       <IconButton
         size="small"
         onClick={toggle}
+        disabled={resolvingDuration}
         sx={{
           width: 32,
           height: 32,
@@ -221,6 +245,7 @@ export function AudioPlayer({ url, sx }) {
           borderRadius: '50%',
           flexShrink: 0,
           '&:hover': { bgcolor: '#3739b7' },
+          '&.Mui-disabled': { bgcolor: '#9e9eff', color: '#fff' },
         }}
       >
         <Iconify icon={playing ? 'solar:pause-bold' : 'solar:play-bold'} width={14} />

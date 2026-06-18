@@ -52,6 +52,8 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
       return;
     }
 
+    console.log('[Upload] ① file before upload — name:', file.name, 'type:', file.type, 'size:', file.size, 'bytes');
+
     const previewUrl = URL.createObjectURL(file);
 
     setUpload({ file, progress: 0 });
@@ -63,11 +65,13 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
 
     try {
       const result = await uploadChatFiles(file).unwrap();
+      console.log('[Upload] ② backend raw response:', result);
       clearInterval(uploadTimerRef.current);
       setUpload((prev) => ({ ...prev, progress: 100 }));
       setTimeout(() => {
         setUpload({ file: null, progress: 0 });
         const data = Array.isArray(result) ? result[0] : result;
+        console.log('[Upload] ③ attachedFile set — fileUrl:', data.fileUrl, 'fileName:', data.fileName, 'fileType:', data.fileType);
         setAttachedFile({
           url: data.fileUrl || previewUrl,
           type: file.type,
@@ -76,9 +80,10 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
           uploadedData: data,
         });
       }, 400);
-    } catch {
+    } catch (err) {
       clearInterval(uploadTimerRef.current);
       setUpload({ file: null, progress: 0 });
+      console.error('[Upload] ✗ upload failed:', err);
       toast.error(t('chat_input.toast_upload_failed'));
     }
   };

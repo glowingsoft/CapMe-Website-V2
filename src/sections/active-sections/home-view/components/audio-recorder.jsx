@@ -10,9 +10,6 @@ const formatTime = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 const BAR_HEIGHTS = Array.from({ length: 180 }, () => 8 + Math.floor(Math.random() * 22));
-
-// Prefer AAC/MP4 for React Native and mobile playback. Some browsers, especially
-// Chromium builds, only support WebM recording, so WebM remains a fallback.
 const MIME_TYPE = (() => {
   if (typeof MediaRecorder === 'undefined') return '';
   const candidates = [
@@ -186,9 +183,12 @@ export default function AudioRecorder({ onDone, onCancel }) {
       const mimeType = rec.mimeType || MIME_TYPE || 'audio/webm';
       const blob = new Blob(ownChunksRef.current, { type: mimeType });
 
-      console.log('[AudioRecorder] recordingBlob:', blob);
-      console.log('[AudioRecorder] recordingBlob.type:', blob.type);
-      console.log('[AudioRecorder] recordingBlob.size:', blob.size, 'bytes');
+      console.log('[AudioRecorder] ─── blob built ───────────────────────');
+      console.log('[AudioRecorder]   mimeType (recorder):', rec.mimeType);
+      console.log('[AudioRecorder]   mimeType (MIME_TYPE const):', MIME_TYPE);
+      console.log('[AudioRecorder]   blob.type:', blob.type);
+      console.log('[AudioRecorder]   blob.size:', blob.size, 'bytes');
+      console.log('[AudioRecorder]   chunks collected:', ownChunksRef.current.length);
 
       if (blob.size < 1000) {
         setError('Recording failed — blob is too small. Please check your microphone and try again.');
@@ -221,9 +221,11 @@ export default function AudioRecorder({ onDone, onCancel }) {
     const { type, ext } = normalizeType(blob.type);
     const file = new File([blob], `audio-${Date.now()}.${ext}`, { type });
 
-    console.log('[AudioRecorder] file:', file);
-    console.log('[AudioRecorder] file.type:', file.type);
-    console.log('[AudioRecorder] file.size:', file.size, 'bytes');
+    console.log('[AudioRecorder] ─── File handed to upload ─────────────');
+    console.log('[AudioRecorder]   file.name:', file.name);
+    console.log('[AudioRecorder]   file.type:', file.type);
+    console.log('[AudioRecorder]   file.size:', file.size, 'bytes');
+    console.log('[AudioRecorder]   blob.type was:', blob.type, '→ normalizeType ext:', ext);
 
     sentRef.current = true;
 

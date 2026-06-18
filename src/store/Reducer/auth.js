@@ -158,9 +158,19 @@ export const authApi = createApi({
         const fileArray = Array.isArray(files) ? files : [files];
         const body = res?.body ?? res;
 
+        console.log('[Upload] ─── backend raw response (pre-transform) ──────');
+        console.log('[Upload]   full body:', JSON.stringify(body, null, 2));
+        console.log('[Upload]   body.fileName:', body?.fileName);
+        console.log('[Upload]   body.fileUrl:', body?.fileUrl);
+        console.log('[Upload]   body.mimetype / fileType:', body?.mimetype ?? body?.fileType ?? '(none)');
+        console.log('[Upload]   body.originalName:', body?.originalName ?? body?.originalname ?? '(none)');
+        console.log('[Upload]   body.size / fileSize:', body?.size ?? body?.fileSize ?? '(none)');
+        console.log('[Upload]   client file.type sent:', fileArray[0]?.type);
+        console.log('[Upload]   client file.name sent:', fileArray[0]?.name);
+
         // Primary shape from /file/upload: { fileUrl, fileName, originalName }
         if (body?.fileName) {
-          return [
+          const normalized = [
             {
               fileUrl: body.fileUrl ?? '',
               fileName: body.fileName,
@@ -168,22 +178,26 @@ export const authApi = createApi({
               originalFileName: body.originalName ?? body.originalFileName ?? body.fileName,
             },
           ];
+          console.log('[Upload]   → normalized result:', normalized);
+          return normalized;
         }
 
         // Array response: [{ key/fileName, mimetype/fileType, originalname/originalFileName, fileUrl? }]
         if (Array.isArray(body)) {
-          return body.map((item, i) => ({
+          const normalized = body.map((item, i) => ({
             fileUrl: item.fileUrl ?? item.url ?? '',
             fileName: item.fileName ?? item.key ?? item.name ?? '',
             fileType: normalizeFileType(item.fileType ?? item.mimetype ?? fileArray[i]?.type ?? ''),
             originalFileName: item.originalFileName ?? item.originalName ?? item.originalname ?? fileArray[i]?.name ?? '',
           }));
+          console.log('[Upload]   → normalized result:', normalized);
+          return normalized;
         }
 
         // String or other URL-only response
         const rawUrl = typeof body === 'string' ? body : body?.url ?? body?.fileUrl ?? '';
         const fileName = rawUrl.includes('/') ? rawUrl.split('/').pop().split('?')[0] : rawUrl;
-        return [
+        const normalized = [
           {
             fileUrl: rawUrl,
             fileName,
@@ -191,6 +205,8 @@ export const authApi = createApi({
             originalFileName: fileArray[0]?.name ?? fileName,
           },
         ];
+        console.log('[Upload]   → normalized result:', normalized);
+        return normalized;
       },
     }),
 
