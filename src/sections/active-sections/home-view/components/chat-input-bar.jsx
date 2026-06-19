@@ -20,14 +20,16 @@ import LinkPreview from './link-preview';
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/;
 
-export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
+export default function ChatInputBar({ activeRoom, onOptimisticMessage, dropFile }) {
   const { t } = useTranslate('common');
   const inputRef = React.useRef(null);
+  const containerRef = React.useRef(null);
   const [message, setMessage] = React.useState('');
   const [fileMenuAnchor, setFileMenuAnchor] = React.useState(null);
   const [upload, setUpload] = React.useState({ file: null, progress: 0 });
   const [attachedFile, setAttachedFile] = React.useState(null);
   const [audioRecorderOpen, setAudioRecorderOpen] = React.useState(false);
+  const [isDragOver, setIsDragOver] = React.useState(false);
   const uploadTimerRef = React.useRef(null);
   const [isSending, setIsSending] = React.useState(false);
   const [linkMeta, setLinkMeta] = React.useState(null);
@@ -45,52 +47,28 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
     { skip: !activeRoom?.id || !hashtagQuery }
   );
 
-  const handleFileSelected = async (fileInput) => {
+  // Just store the file locally — no upload yet. Upload happens on send.
+  const handleFileSelected = (fileInput) => {
     const file = fileInput?.file ?? fileInput;
     if (!(file instanceof File)) {
       toast.error(t('chat_input.toast_file_read_error'));
       return;
     }
-
-    console.log('[Upload] ① file before upload — name:', file.name, 'type:', file.type, 'size:', file.size, 'bytes');
-
-    const previewUrl = URL.createObjectURL(file);
-
-    setUpload({ file, progress: 0 });
-    let fakeProgress = 0;
-    uploadTimerRef.current = setInterval(() => {
-      fakeProgress = Math.min(85, fakeProgress + Math.floor(Math.random() * 12) + 4);
-      setUpload((prev) => ({ ...prev, progress: fakeProgress }));
-    }, 200);
-
-    try {
-      const result = await uploadChatFiles(file).unwrap();
-      console.log('[Upload] ② backend raw response:', result);
-      clearInterval(uploadTimerRef.current);
-      setUpload((prev) => ({ ...prev, progress: 100 }));
-      setTimeout(() => {
-        setUpload({ file: null, progress: 0 });
-        const data = Array.isArray(result) ? result[0] : result;
-        console.log('[Upload] ③ attachedFile set — fileUrl:', data.fileUrl, 'fileName:', data.fileName, 'fileType:', data.fileType);
-        setAttachedFile({
-          url: data.fileUrl || previewUrl,
-          type: file.type,
-          name: file.name,
-          size: file.size,
-          uploadedData: data,
-        });
-      }, 400);
-    } catch (err) {
-      clearInterval(uploadTimerRef.current);
-      setUpload({ file: null, progress: 0 });
-      console.error('[Upload] ✗ upload failed:', err);
-      toast.error(t('chat_input.toast_upload_failed'));
-    }
+    // Revoke any previous preview URL to avoid memory leaks
+    if (attachedFile?.url) URL.revokeObjectURL(attachedFile.url);
+    setAttachedFile({
+      file,
+      url: URL.createObjectURL(file),
+      type: file.type,
+      name: file.name,
+      size: file.size,
+    });
   };
 
   const cancelUpload = () => {
     clearInterval(uploadTimerRef.current);
     setUpload({ file: null, progress: 0 });
+    if (attachedFile?.url) URL.revokeObjectURL(attachedFile.url);
     setAttachedFile(null);
   };
 
@@ -127,6 +105,53 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [message]);
 
+  // File dropped on the messages area (passed down from home-view)
+  React.useEffect(() => {
+    if (dropFile?.file) handleFileSelected(dropFile.file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dropFile]);
+
+  // Paste image — scoped to the input container so it doesn't fire on other inputs
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) handleFileSelected(file);
+          break;
+        }
+      }
+    };
+
+    el.addEventListener('paste', handlePaste);
+    return () => el.removeEventListener('paste', handlePaste);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Drag & drop image onto the input bar
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.items.length > 0) setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    // only clear when leaving the container entirely, not a child element
+    if (!containerRef.current?.contains(e.relatedTarget)) setIsDragOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelected(file);
+  };
+
   const handleSend = async () => {
     const rawText = message.trim();
     if (!rawText && !attachedFile && !linkMeta) return;
@@ -137,21 +162,33 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
       return;
     }
 
-    if (upload.file) {
-      toast.error(t('chat_input.toast_uploading'));
-      return;
-    }
-
     setIsSending(true);
     try {
       let attachments = [];
-      if (attachedFile && !attachedFile.uploadedData) {
-        toast.error(t('chat_input.toast_preparing'));
-        return;
-      }
-      if (attachedFile?.uploadedData) {
-        const { fileName, fileType, originalFileName } = attachedFile.uploadedData;
-        attachments = [{ fileName, fileType, originalFileName }];
+
+      // Upload the file now, at send time
+      if (attachedFile?.file) {
+        setUpload({ file: attachedFile.file, progress: 0 });
+        let fakeProgress = 0;
+        uploadTimerRef.current = setInterval(() => {
+          fakeProgress = Math.min(85, fakeProgress + Math.floor(Math.random() * 12) + 4);
+          setUpload((prev) => ({ ...prev, progress: fakeProgress }));
+        }, 200);
+
+        try {
+          const result = await uploadChatFiles(attachedFile.file).unwrap();
+          clearInterval(uploadTimerRef.current);
+          setUpload({ file: null, progress: 0 });
+          const data = Array.isArray(result) ? result[0] : result;
+          const { fileName, fileType, originalFileName } = data;
+          attachments = [{ fileName, fileType, originalFileName }];
+        } catch (err) {
+          clearInterval(uploadTimerRef.current);
+          setUpload({ file: null, progress: 0 });
+          console.error('[Upload] ✗ upload failed:', err);
+          toast.error(t('chat_input.toast_upload_failed'));
+          return;
+        }
       }
 
       chatSocketService.sendMessage({
@@ -171,6 +208,7 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
       clearTimeout(linkDebounceRef.current);
       fetchGenerationRef.current += 1;
       setMessage('');
+      if (attachedFile?.url) URL.revokeObjectURL(attachedFile.url);
       setAttachedFile(null);
       setLinkMeta(null);
       setLinkMetaDismissed(false);
@@ -191,7 +229,13 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
   };
 
   return (
-    <Box sx={{ flexShrink: 0, mt: 1.5 }}>
+    <Box
+      ref={containerRef}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      sx={{ flexShrink: 0, mt: 1.5 }}
+    >
       {upload.file && (
         <FileUploadProgress
           file={upload.file}
@@ -225,13 +269,14 @@ export default function ChatInputBar({ activeRoom, onOptimisticMessage }) {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            bgcolor: '#fff',
-            border: '1px solid #e8e8e8',
+            bgcolor: isDragOver ? '#f0f0ff' : '#fff',
+            border: isDragOver ? '1.5px dashed #4C4EFF' : '1px solid #e8e8e8',
             borderRadius: 3,
             px: 1.5,
             py: 0.75,
             boxShadow: '0px 1px 8px rgba(0,0,0,0.06)',
             position: 'relative',
+            transition: 'border 0.15s, background-color 0.15s',
           }}
         >
           <IconButton

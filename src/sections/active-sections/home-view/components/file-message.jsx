@@ -338,9 +338,10 @@ export default function FileMessage({ file, imageSx }) {
           onClick={() => setImagePreviewOpen(true)}
           sx={{
             width: '100%',
-            height: 480,
+            height: 'auto',
+            maxHeight: 600,
             borderRadius: 2,
-            objectFit: 'cover',
+            objectFit: 'contain',
             display: 'block',
             cursor: 'pointer',
             ...imageSx,

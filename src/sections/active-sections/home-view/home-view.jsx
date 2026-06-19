@@ -69,6 +69,9 @@ export default function HomeView() {
   const [targetMessageId, setTargetMessageId] = React.useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = React.useState(null);
   const postsContainerRef = React.useRef(null);
+  const [dropFile, setDropFile] = React.useState(null);
+  const [isDragOverMessages, setIsDragOverMessages] = React.useState(false);
+  const dragCounterRef = React.useRef(0);
   const highlightTimerRef = React.useRef(null);
   const [localPosts, setLocalPosts] = React.useState([]);
   const [messagesPage, setMessagesPage] = React.useState(1);
@@ -1004,9 +1007,65 @@ export default function HomeView() {
                       </Box>
                     )}
                   </Box>
-                ) : (<>
+                ) : (
+                  // Wrapper owns drag state — overlay is positioned relative to this, covering messages + input
+                  <Box
+                    sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      dragCounterRef.current += 1;
+                      if (dragCounterRef.current === 1) setIsDragOverMessages(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      dragCounterRef.current -= 1;
+                      if (dragCounterRef.current === 0) setIsDragOverMessages(false);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      dragCounterRef.current = 0;
+                      setIsDragOverMessages(false);
+                      const file = e.dataTransfer.files[0];
+                      if (file) setDropFile({ file, ts: Date.now() });
+                    }}
+                  >
+                  {/* Drag-over overlay — covers messages + input bar */}
+                  {isDragOverMessages && (
+                    <Box sx={{
+                      position: 'absolute', inset: 0, zIndex: 20,
+                      bgcolor: 'rgba(0,0,0,0.55)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 3,
+                      pointerEvents: 'none',
+                    }}>
+                      <Box sx={{ textAlign: 'center', userSelect: 'none' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', mb: 3, height: 72 }}>
+                          {['solar:file-text-bold', 'solar:gallery-bold', 'solar:video-frame-bold'].map((icon, i) => (
+                            <Box key={i} sx={{
+                              width: 52, height: i === 1 ? 68 : 56, borderRadius: 2,
+                              bgcolor: i === 1 ? '#4C4EFF' : i === 0 ? '#e0e1ff' : '#c7c8ff',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transform: i === 0 ? 'rotate(-12deg) translateX(10px)' : i === 2 ? 'rotate(12deg) translateX(-10px)' : 'none',
+                              boxShadow: i === 1 ? '0 8px 28px rgba(76,78,255,0.4)' : '0 2px 8px rgba(0,0,0,0.08)',
+                              zIndex: i === 1 ? 2 : 1,
+                              flexShrink: 0,
+                            }}>
+                              <Iconify icon={icon} width={24} style={{ color: i === 1 ? '#fff' : '#4C4EFF' }} />
+                            </Box>
+                          ))}
+                        </Box>
+                        <Typography sx={{ fontSize: 22, fontWeight: 800, color: '#fff', mb: 1 }}>
+                          Add anything
+                        </Typography>
+                        <Typography sx={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
+                          Drop any file here to attach it to the message
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
 
-                  {/* Scrollable posts â€” only this scrolls */}
+                  {/* Scrollable posts — only this scrolls */}
                   <Box
                     ref={postsContainerRef}
                     onScroll={() => {
@@ -1014,7 +1073,7 @@ export default function HomeView() {
                       if (!el) return;
                       // Reset guard when user scrolls away from top
                       if (el.scrollTop > 80) { scrollGuardRef.current = false; return; }
-                      // Near top â€” load older messages
+                      // Near top — load older messages
                       if (scrollGuardRef.current || !hasMoreMessages || messagesQuery.isFetching) return;
                       scrollGuardRef.current = true;
                       prevScrollHeightRef.current = el.scrollHeight;
@@ -1120,7 +1179,7 @@ export default function HomeView() {
 
                   {/* Message input â€” pinned at bottom, never scrolls */}
                   {canPost ? (
-                    <ChatInputBar activeRoom={activeRoom} onOptimisticMessage={handleOptimisticMessage} />
+                    <ChatInputBar activeRoom={activeRoom} onOptimisticMessage={handleOptimisticMessage} dropFile={dropFile} />
                   ) : (() => {
                     let icon = 'solar:lock-bold';
                     let title = t('home_view.view_access_title');
@@ -1165,7 +1224,8 @@ export default function HomeView() {
                       </Box>
                     );
                   })()}
-                </>) /* end isBlockedInRoom ternary */}
+                  </Box> /* end drag wrapper */
+                ) /* end isBlockedInRoom ternary */}
               </>
             ) : (
               <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
