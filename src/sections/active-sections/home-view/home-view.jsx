@@ -525,6 +525,26 @@ export default function HomeView() {
     setLocalPosts((prev) => [...prev, optimistic]);
   }, [currentUserId, currentUser, currentUserImage]);
 
+  const handleMessageDeleted = React.useCallback((messageId) => {
+    setLocalPosts((prev) => {
+      const next = prev.filter((m) => getEntityId(m) !== String(messageId));
+      const last = next[next.length - 1];
+      window.dispatchEvent(new CustomEvent('roomListUpdate', {
+        detail: {
+          roomId: activeRoomRef.current?.id,
+          lastMessage: last
+            ? {
+                content: last.content ?? last.text ?? '',
+                createdAt: last.createdAt,
+                attachments: last.attachments ?? [],
+              }
+            : { content: '', createdAt: new Date().toISOString(), attachments: [] },
+        },
+      }));
+      return next;
+    });
+  }, []);
+
   const handleRoomSelect = (room) => {
     if (room?.id && room.id === activeRoom?.id) return;
     roomVisibilityRef.current = null;
@@ -1168,7 +1188,7 @@ export default function HomeView() {
                             }),
                           }}
                         >
-                          <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch canInteract={canPost} menuActions={isRoomNotFollowing ? ['copy'] : null} />
+                          <PostCard post={item} onCommentClick={handleOpenComments} noAutoFetch canInteract={canPost} menuActions={isRoomNotFollowing ? ['copy'] : null} onDeleteConfirmed={handleMessageDeleted} />
                         </Box>
                       )
                     )}

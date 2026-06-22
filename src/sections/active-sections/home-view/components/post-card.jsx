@@ -104,7 +104,7 @@ function PostCardSubheader({ time, visibility, roomname, roomId, hideRoomName })
     );
 }
 
-function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hideRoomName = false, menuActions = null, canInteract = true }) {
+function PostCard({ post, onCommentClick, onMenuAction, onDeleteConfirmed, noAutoFetch = false, hideRoomName = false, menuActions = null, canInteract = true }) {
     const { t } = useTranslate('common');
     const navigate = useNavigate();
     const currentUser = useSelector(selectUser);
@@ -254,7 +254,13 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
         const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
 
         setDeleteConfirmOpen(false);
-        if (!messageId || !roomId || post.isOptimistic || String(messageId).startsWith('optimistic-')) return;
+        if (!messageId || !roomId) return;
+
+        // Optimistic message: not on the server yet — just remove locally
+        if (post.isOptimistic || String(messageId).startsWith('optimistic-')) {
+            onDeleteConfirmed?.(messageId);
+            return;
+        }
 
         const socket = getSocket();
         if (!socket?.connected) {
@@ -263,7 +269,9 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
         }
 
         chatSocketService.deleteMessage({ messageId, roomId });
-    }, [post.id, post._id, post.roomId, post.room?._id, post.room?.id, post.isOptimistic]);
+        // Backend broadcasts to other users only — remove locally for the sender immediately
+        onDeleteConfirmed?.(messageId);
+    }, [post.id, post._id, post.roomId, post.room?._id, post.room?.id, post.isOptimistic, onDeleteConfirmed]);
 
     const handleSaveEdit = useCallback(
         (newContent) => {

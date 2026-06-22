@@ -25,8 +25,8 @@ function getLastMessageDesc(lastMessage) {
   if (text) return { text, isFile: false };
   const att = lastMessage?.attachments?.[0];
   if (!att) return { text: '', isFile: false };
-  const ft = att.fileType ?? '';
-  const name = att.originalFileName ?? att.originalName ?? att.fileName ?? 'File';
+  const ft = att.fileType ?? att.type ?? '';
+  const name = att.originalFileName ?? att.originalName ?? att.fileName ?? att.name ?? 'File';
   if (ft === 'image' || ft.startsWith('image/')) return { text: name, isFile: true, icon: 'solar:gallery-bold' };
   if (ft === 'video' || ft.startsWith('video/')) return { text: name, isFile: true, icon: 'solar:video-frame-bold' };
   if (ft === 'audio' || ft.startsWith('audio/')) return { text: name, isFile: true, icon: 'solar:music-note-bold' };
