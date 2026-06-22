@@ -250,31 +250,36 @@ function PostCard({ post, onCommentClick, onMenuAction, noAutoFetch = false, hid
     );
 
     const handleConfirmDelete = useCallback(() => {
+        const messageId = post.id ?? post._id;
+        const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
+
+        setDeleteConfirmOpen(false);
+        if (!messageId || !roomId || post.isOptimistic || String(messageId).startsWith('optimistic-')) return;
+
         const socket = getSocket();
         if (!socket?.connected) {
             toast.error(t('post_card.toast_not_connected'));
             return;
         }
 
-        const messageId = post.id ?? post._id;
-        const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
-        if (!messageId || !roomId) return;
-
-        setDeleteConfirmOpen(false);
         chatSocketService.deleteMessage({ messageId, roomId });
-    }, [post.id, post._id, post.roomId, post.room?._id, post.room?.id]);
+    }, [post.id, post._id, post.roomId, post.room?._id, post.room?.id, post.isOptimistic]);
 
     const handleSaveEdit = useCallback(
         (newContent) => {
+            const messageId = post.id ?? post._id;
+            const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
+
+            if (!messageId || !roomId || post.isOptimistic || String(messageId).startsWith('optimistic-')) {
+                setEditOpen(false);
+                return;
+            }
+
             const socket = getSocket();
             if (!socket?.connected) {
                 toast.error(t('post_card.toast_not_connected'));
                 return;
             }
-
-            const messageId = post.id ?? post._id;
-            const roomId = post.roomId ?? post.room?._id ?? post.room?.id;
-            if (!messageId || !roomId) return;
 
             setEditOpen(false);
             chatSocketService.editMessage({
