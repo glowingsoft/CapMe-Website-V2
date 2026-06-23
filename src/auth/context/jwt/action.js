@@ -9,6 +9,12 @@ function isIOS() {
   return typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
+function isMacSafari() {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|CriOS/.test(ua);
+}
+
 function getOrCreateIosDeviceId() {
   try {
     const stored = localStorage.getItem(IOS_DEVICE_ID_KEY);
@@ -77,8 +83,8 @@ async function requestFcmToken() {
 }
 
 async function getDeviceId() {
-  // iOS browsers don't support FCM — use a stable random ID instead
-  if (isIOS()) return getOrCreateIosDeviceId();
+  // iOS and macOS Safari don't support FCM reliably — use a stable random ID instead
+  if (isIOS() || isMacSafari()) return getOrCreateIosDeviceId();
 
   try {
     const { store } = await import('src/store/store');

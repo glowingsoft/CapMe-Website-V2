@@ -74,23 +74,27 @@ export default function App() {
 
   useEffect(() => {
     let unsubscribe;
-    messagingReady.then((msg) => {
-      if (!msg) return;
-      unsubscribe = onMessage(msg, (payload) => {
-        dispatch(addNotification({
-          title: payload?.notification?.title ?? 'Notification',
-          body: payload?.notification?.body ?? '',
-          image: payload?.notification?.image ?? null,
-          data: payload?.data ?? {},
-        }));
-        toast.custom((t) => (
-          <CustomToast payload={payload} t={t} />
-        ), {
-          duration: 5000,
-          style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+    messagingReady
+      .then((msg) => {
+        if (!msg) return;
+        unsubscribe = onMessage(msg, (payload) => {
+          dispatch(addNotification({
+            title: payload?.notification?.title ?? 'Notification',
+            body: payload?.notification?.body ?? '',
+            image: payload?.notification?.image ?? null,
+            data: payload?.data ?? {},
+          }));
+          toast.custom((t) => (
+            <CustomToast payload={payload} t={t} />
+          ), {
+            duration: 5000,
+            style: { background: 'transparent', boxShadow: 'none', padding: 0, border: 'none' },
+          });
         });
+      })
+      .catch((err) => {
+        console.warn('[FCM] onMessage setup failed:', err?.message);
       });
-    });
     return () => unsubscribe?.();
   }, [dispatch]);
 
