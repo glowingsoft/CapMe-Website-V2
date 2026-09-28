@@ -120,5 +120,6 @@ firebase-debug.log
 
 # Turbo
 .turbo
-*.md
+
+branch_structure.json
 *.md
