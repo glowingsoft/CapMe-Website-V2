@@ -1,5 +1,5 @@
 import { forwardRef, useState, useRef } from 'react';
-import PhoneInputBase, { getCountries, getCountryCallingCode } from 'react-phone-number-input';
+import PhoneInputBase, { getCountries, getCountryCallingCode, parsePhoneNumber } from 'react-phone-number-input';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import InputBase from '@mui/material/InputBase';
@@ -9,6 +9,8 @@ import ClickAwayListener from '@mui/material/ClickAwayListener';
 
 import 'react-phone-number-input/style.css';
 import { Iconify } from 'src/components/iconify';
+
+import { detectCountry } from './detect-country';
 
 
 // ----------------------------------------------------------------------
@@ -43,11 +45,24 @@ const StyledInput = forwardRef(({ value, onChange, fullWidth, error, ...props },
 ));
 StyledInput.displayName = 'StyledInput';
 
+// A saved number (e.g. "+4915112345678") decides the country; otherwise guess from location.
+function getInitialCountry(value, defaultCountry) {
+  try {
+    const fromNumber = value ? parsePhoneNumber(value)?.country : null;
+    if (fromNumber) return fromNumber;
+  } catch {
+    // not a full international number — ignore
+  }
+  return defaultCountry || detectCountry();
+}
+
 // ----------------------------------------------------------------------
 
 export const PhoneInput = forwardRef(
-  ({ value, onChange, placeholder, defaultCountry = 'PK', sx, ...other }, ref) => {
-    const [selectedCountry, setSelectedCountry] = useState(defaultCountry);
+  ({ value, onChange, placeholder, defaultCountry, sx, ...other }, ref) => {
+    const [selectedCountry, setSelectedCountry] = useState(() =>
+      getInitialCountry(value, defaultCountry)
+    );
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [search, setSearch] = useState('');
     const anchorRef = useRef(null);

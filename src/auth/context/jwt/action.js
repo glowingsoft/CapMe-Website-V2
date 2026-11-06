@@ -3,7 +3,7 @@ import { STORAGE_KEY, STORAGE_USER_KEY } from './constant';
 import { stripDoubleS3Prefix } from 'src/utils/message-utils';
 
 const FCM_TOKEN_STORAGE_KEY = 'capme_fcm_token';
-const IOS_DEVICE_ID_KEY = 'capme_ios_device_id';
+const FALLBACK_DEVICE_ID_KEY = 'capme_ios_device_id';
 
 function isIOS() {
   return typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -15,17 +15,19 @@ function isMacSafari() {
   return /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|CriOS/.test(ua);
 }
 
-function getOrCreateIosDeviceId() {
+// Stable per-browser ID for when there's no FCM token (iOS/Safari, notifications
+// declined, in-app browsers/WebViews). The backend requires a non-empty device_id.
+function getOrCreateFallbackDeviceId() {
   try {
-    const stored = localStorage.getItem(IOS_DEVICE_ID_KEY);
+    const stored = localStorage.getItem(FALLBACK_DEVICE_ID_KEY);
     if (stored) return stored;
     const id = typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
-      : `ios-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    localStorage.setItem(IOS_DEVICE_ID_KEY, id);
+      : `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(FALLBACK_DEVICE_ID_KEY, id);
     return id;
   } catch {
-    return `ios-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 }
 
@@ -84,7 +86,7 @@ async function requestFcmToken() {
 
 async function getDeviceId() {
   // iOS and macOS Safari don't support FCM reliably — use a stable random ID instead
-  if (isIOS() || isMacSafari()) return getOrCreateIosDeviceId();
+  if (isIOS() || isMacSafari()) return getOrCreateFallbackDeviceId();
 
   try {
     const { store } = await import('src/store/store');
@@ -98,7 +100,10 @@ async function getDeviceId() {
   const requestedFcmToken = await requestFcmToken();
   if (requestedFcmToken) return requestedFcmToken;
 
-  return null;
+  // No push token available (permission denied/dismissed, WebView, unsupported browser).
+  // Sign-up/login still need a device_id, so fall back to a stable ID — push just won't
+  // reach this device until a later login with notifications allowed.
+  return getOrCreateFallbackDeviceId();
 }
 
 function findAccessToken(payload) {

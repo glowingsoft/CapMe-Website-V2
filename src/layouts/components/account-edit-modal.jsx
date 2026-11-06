@@ -168,7 +168,6 @@ export default function AccountEditModal({ open, onClose, user, onSave, isLoadin
                             value={form.phone}
                             onChange={handlePhoneChange}
                             placeholder="3002300"
-                            defaultCountry="PK"
                             sx={{ height: 56 }}
                         />
                     </Box>
