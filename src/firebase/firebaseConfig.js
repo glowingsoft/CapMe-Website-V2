@@ -1,22 +1,30 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, isSupported } from 'firebase/messaging';
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyBDLk3YCcKu30thVdai19TpEcpxFp5JDhU',
-  authDomain: 'capme-72d73.firebaseapp.com',
-  projectId: 'capme-72d73',
-  storageBucket: 'capme-72d73.firebasestorage.app',
-  messagingSenderId: '793149237331',
-  appId: '1:793149237331:web:b09951d16f11c8c13dfea6',
-  measurementId: 'G-3303TPS973',
+// Values come from .env (see .env.example). The service worker receives the
+// same config through its registration URL — see get-fcm-token.js.
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const isConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-// messaging is null on unsupported browsers (iOS Safari non-PWA, etc.)
+if (!isConfigured) {
+  console.warn('[Firebase] VITE_FIREBASE_* env vars missing — push notifications disabled.');
+}
+
+const app = isConfigured ? initializeApp(firebaseConfig) : null;
+
+// messaging is null on unsupported browsers (iOS Safari non-PWA, etc.) or when unconfigured
 export let messaging = null;
 
-export const messagingReady = isSupported()
+export const messagingReady = (app ? isSupported() : Promise.resolve(false))
   .then((supported) => {
     if (supported) messaging = getMessaging(app);
     return messaging;
